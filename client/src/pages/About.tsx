@@ -114,14 +114,14 @@ export default function About() {
               }} />
               {/* Floating tech icons */}
               <div className="absolute inset-0 overflow-hidden">
-                <Terminal className="absolute left-[8%] top-[20%] h-5 w-5 text-indigo-400/20" />
-                <Database className="absolute left-[20%] top-[60%] h-6 w-6 text-purple-400/20" />
-                <Server className="absolute left-[35%] top-[15%] h-5 w-5 text-cyan-400/20" />
-                <Cpu className="absolute left-[50%] top-[55%] h-7 w-7 text-indigo-300/15" />
-                <Cloud className="absolute left-[65%] top-[25%] h-6 w-6 text-purple-300/20" />
-                <Zap className="absolute left-[78%] top-[65%] h-5 w-5 text-amber-400/20" />
-                <Code2 className="absolute left-[88%] top-[20%] h-6 w-6 text-indigo-400/15" />
-                <Globe className="absolute left-[42%] top-[70%] h-5 w-5 text-cyan-300/15" />
+                <Terminal className="absolute left-[8%] top-[20%] h-5 w-5 text-indigo-400/20 animate-[floatRight_12s_linear_infinite]" />
+                <Database className="absolute left-[20%] top-[60%] h-6 w-6 text-purple-400/20 animate-[floatLeft_15s_linear_infinite]" />
+                <Server className="absolute left-[35%] top-[15%] h-5 w-5 text-cyan-400/20 animate-[floatUp_10s_linear_infinite]" />
+                <Cpu className="absolute left-[50%] top-[55%] h-7 w-7 text-indigo-300/15 animate-[floatRight_18s_linear_infinite]" />
+                <Cloud className="absolute left-[65%] top-[25%] h-6 w-6 text-purple-300/20 animate-[floatLeft_13s_linear_infinite]" />
+                <Zap className="absolute left-[78%] top-[65%] h-5 w-5 text-amber-400/20 animate-[floatUp_11s_linear_infinite]" />
+                <Code2 className="absolute left-[88%] top-[20%] h-6 w-6 text-indigo-400/15 animate-[floatRight_14s_linear_infinite]" />
+                <Globe className="absolute left-[42%] top-[70%] h-5 w-5 text-cyan-300/15 animate-[floatLeft_16s_linear_infinite]" />
               </div>
               {/* Code snippet overlay */}
               <div className="absolute right-6 top-4 hidden font-mono text-[10px] leading-relaxed text-indigo-300/20 sm:block">
