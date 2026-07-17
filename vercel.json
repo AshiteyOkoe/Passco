@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd client && npm install && npm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm install --prefix client",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://passco-api.onrender.com/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://passco-api.onrender.com/uploads/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
