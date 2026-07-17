@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { BookOpen, Target, Heart, Lightbulb } from 'lucide-react';
+import { BookOpen, Target, Heart, Lightbulb, Github, Linkedin, Mail } from 'lucide-react';
 import { stagger, fadeUp } from '../utils/animations';
 
 export default function About() {
@@ -84,20 +84,80 @@ export default function About() {
         </div>
       </section>
 
-      {/* Team */}
-      <section className="py-20">
-        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+      {/* Creator */}
+      <section className="border-y border-slate-200 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            className="text-center"
           >
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Built with Passion</h2>
-            <p className="mt-3 text-slate-500 dark:text-slate-400">
-              Passco is developed by a dedicated team of educators, engineers, and designers who believe in
-              the power of active recall and spaced repetition. We're constantly improving the platform based on
-              feedback from students and teachers.
-            </p>
+            <h2 className="mb-12 text-3xl font-bold text-slate-900 dark:text-white">Meet the Creator</h2>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="flex flex-col items-center gap-8 md:flex-row md:items-start md:gap-12"
+          >
+            <div className="shrink-0">
+              <div className="relative">
+                <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-20 blur" />
+                <img
+                  src="/images/avatars/my.png"
+                  alt="Jonathan Ashitey Okoe"
+                  className="relative h-40 w-40 rounded-full border-4 border-white object-cover shadow-xl dark:border-slate-800 md:h-48 md:w-48"
+                />
+              </div>
+            </div>
+
+            <div className="text-center md:text-left">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Jonathan Ashitey Okoe</h3>
+              <p className="mt-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">Founder & Developer</p>
+              <p className="mt-4 max-w-lg text-slate-600 dark:text-slate-400">
+                A passionate software developer and educator who believes every student deserves access to
+                quality exam preparation tools. Jonathan created Passco to solve a problem he witnessed
+                firsthand — students struggling with ineffective study methods and limited practice resources.
+              </p>
+              <p className="mt-3 max-w-lg text-slate-600 dark:text-slate-400">
+                With a background in computer science and a deep commitment to education in Ghana,
+                he built Passco from the ground up — combining modern web technology with proven learning
+                science to help JHS students across the country prepare for their exams with confidence.
+              </p>
+              <div className="mt-6 flex items-center gap-4 md:justify-start">
+                <motion.a
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  href="https://github.com/AshiteyOkoe"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                >
+                  <Github className="h-5 w-5" />
+                </motion.a>
+                <motion.a
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  href="https://linkedin.com/in/ashiteyokoe"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                >
+                  <Linkedin className="h-5 w-5" />
+                </motion.a>
+                <motion.a
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  href="mailto:ashiteyokoe@example.com"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                >
+                  <Mail className="h-5 w-5" />
+                </motion.a>
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>
