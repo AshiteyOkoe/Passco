@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { BookOpen, Target, Heart, Lightbulb, Github, Linkedin, Mail } from 'lucide-react';
+import { BookOpen, Target, Heart, Lightbulb, Github, Linkedin, Mail, Code2, GraduationCap, Globe, Smartphone } from 'lucide-react';
 import { stagger, fadeUp } from '../utils/animations';
 
 export default function About() {
@@ -85,76 +85,157 @@ export default function About() {
       </section>
 
       {/* Creator */}
-      <section className="border-y border-slate-200 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <section className="py-20">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center"
           >
-            <h2 className="mb-12 text-3xl font-bold text-slate-900 dark:text-white">Meet the Creator</h2>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Meet the Creator</h2>
+            <p className="mt-3 text-slate-500 dark:text-slate-400">The mind behind Passco</p>
           </motion.div>
 
+          {/* Profile Card */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="flex flex-col items-center gap-8 md:flex-row md:items-start md:gap-12"
+            className="mt-12 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
-            <div className="shrink-0">
-              <div className="relative">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-20 blur" />
-                <img
-                  src="/images/avatars/my.png"
-                  alt="Jonathan Ashitey Okoe"
-                  className="relative h-40 w-40 rounded-full border-4 border-white object-cover shadow-xl dark:border-slate-800 md:h-48 md:w-48"
-                />
-              </div>
+            {/* Header Banner */}
+            <div className="relative h-32 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 sm:h-40">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjA1Ij48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnYtMmgtNHY2aDJ2Mmgydi0yek0yNiAyNGgtMnYyaDJ2LTJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-40" />
             </div>
 
-            <div className="text-center md:text-left">
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Jonathan Ashitey Okoe</h3>
-              <p className="mt-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">Founder & Developer</p>
-              <p className="mt-4 max-w-lg text-slate-600 dark:text-slate-400">
-                A passionate software developer and educator who believes every student deserves access to
-                quality exam preparation tools. Jonathan created Passco to solve a problem he witnessed
-                firsthand — students struggling with ineffective study methods and limited practice resources.
+            <div className="px-6 pb-8 sm:px-10">
+              {/* Avatar + Name */}
+              <div className="flex flex-col items-center -mt-16 sm:flex-row sm:items-end sm:gap-6">
+                <div className="relative shrink-0">
+                  <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-30 blur" />
+                  <img
+                    src="/images/avatars/my.png"
+                    alt="Jonathan Ashitey Okoe"
+                    className="relative h-32 w-32 rounded-full border-4 border-white object-cover shadow-lg dark:border-slate-900 sm:h-40 sm:w-40"
+                  />
+                </div>
+                <div className="mt-4 text-center sm:mt-0 sm:pb-1 sm:text-left">
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Jonathan Ashitey Okoe</h3>
+                  <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Full-Stack Developer & EdTech Pioneer</p>
+                </div>
+              </div>
+
+              {/* Bio */}
+              <p className="mt-6 max-w-2xl text-slate-600 dark:text-slate-400">
+                A software developer and educator passionate about using technology to transform education in Ghana.
+                Jonathan built Passco from the ground up — combining modern web technology with proven learning
+                science to help JHS students prepare for their exams with confidence.
               </p>
-              <p className="mt-3 max-w-lg text-slate-600 dark:text-slate-400">
-                With a background in computer science and a deep commitment to education in Ghana,
-                he built Passco from the ground up — combining modern web technology with proven learning
-                science to help JHS students across the country prepare for their exams with confidence.
-              </p>
-              <div className="mt-6 flex items-center gap-4 md:justify-start">
+
+              {/* Stats */}
+              <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {[
+                  { label: 'Subjects Covered', value: '8+' },
+                  { label: 'Question Bank', value: '1000+' },
+                  { label: 'Students Served', value: '500+' },
+                  { label: 'Tech Stack', value: '10+' },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 + i * 0.05 }}
+                    className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center dark:border-slate-800 dark:bg-slate-800/50"
+                  >
+                    <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{stat.value}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Skills */}
+              <div className="mt-8">
+                <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Tech Stack</h4>
+                <div className="flex flex-wrap gap-2">
+                  {['React', 'TypeScript', 'Node.js', 'Express', 'Supabase', 'PostgreSQL', 'Tailwind CSS', 'Vite', 'Vercel', 'Git'].map((skill) => (
+                    <span
+                      key={skill}
+                      className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Focus Areas */}
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                {[
+                  { icon: Code2, label: 'Full-Stack Development', desc: 'End-to-end web application design and development' },
+                  { icon: GraduationCap, label: 'EdTech Solutions', desc: 'Building tools that make learning more effective' },
+                  { icon: Globe, label: 'Open Source', desc: 'Contributing to the developer community' },
+                ].map((area, i) => (
+                  <motion.div
+                    key={area.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                    className="flex items-start gap-3 rounded-xl border border-slate-100 p-4 dark:border-slate-800"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-500/10">
+                      <area.icon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-white">{area.label}</p>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{area.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Social Links */}
+              <div className="mt-8 flex items-center gap-3">
                 <motion.a
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
                   href="https://github.com/AshiteyOkoe"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:shadow dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
                 >
-                  <Github className="h-5 w-5" />
+                  <Github className="h-4 w-4" /> GitHub
                 </motion.a>
                 <motion.a
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
                   href="https://linkedin.com/in/ashiteyokoe"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:shadow dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
                 >
-                  <Linkedin className="h-5 w-5" />
+                  <Linkedin className="h-4 w-4" /> LinkedIn
                 </motion.a>
                 <motion.a
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  href="mailto:oashitey8@gmail.com"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  href="https://wa.me/2335485447765"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:shadow dark:border-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:border-emerald-700"
                 >
-                  <Mail className="h-5 w-5" />
+                  <Smartphone className="h-4 w-4" /> WhatsApp
+                </motion.a>
+                <motion.a
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  href="mailto:oashitey8@gmail.com"
+                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:shadow dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
+                >
+                  <Mail className="h-4 w-4" /> Email
                 </motion.a>
               </div>
             </div>
