@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { BookOpen, Target, Heart, Lightbulb, Github, Linkedin, Mail, Code2, GraduationCap, Globe, Smartphone } from 'lucide-react';
+import { BookOpen, Target, Heart, Lightbulb, Github, Linkedin, Mail, Code2, GraduationCap, Globe, Smartphone, Terminal, Database, Server, Cpu, Cloud, Zap } from 'lucide-react';
 import { stagger, fadeUp } from '../utils/animations';
 
 export default function About() {
@@ -106,8 +106,34 @@ export default function About() {
             className="mt-12 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
             {/* Header Banner */}
-            <div className="relative h-32 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 sm:h-40">
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjA1Ij48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnYtMmgtNHY2aDJ2Mmgydi0yek0yNiAyNGgtMnYyaDJ2LTJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-40" />
+            <div className="relative h-40 overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 sm:h-48">
+              {/* Grid pattern */}
+              <div className="absolute inset-0 opacity-10" style={{
+                backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                backgroundSize: '40px 40px',
+              }} />
+              {/* Floating tech icons */}
+              <div className="absolute inset-0 overflow-hidden">
+                <Terminal className="absolute left-[8%] top-[20%] h-5 w-5 text-indigo-400/20" />
+                <Database className="absolute left-[20%] top-[60%] h-6 w-6 text-purple-400/20" />
+                <Server className="absolute left-[35%] top-[15%] h-5 w-5 text-cyan-400/20" />
+                <Cpu className="absolute left-[50%] top-[55%] h-7 w-7 text-indigo-300/15" />
+                <Cloud className="absolute left-[65%] top-[25%] h-6 w-6 text-purple-300/20" />
+                <Zap className="absolute left-[78%] top-[65%] h-5 w-5 text-amber-400/20" />
+                <Code2 className="absolute left-[88%] top-[20%] h-6 w-6 text-indigo-400/15" />
+                <Globe className="absolute left-[42%] top-[70%] h-5 w-5 text-cyan-300/15" />
+              </div>
+              {/* Code snippet overlay */}
+              <div className="absolute right-6 top-4 hidden font-mono text-[10px] leading-relaxed text-indigo-300/20 sm:block">
+                <p>{'const passco = {'}</p>
+                <p className="ml-4">{'mission: "education",'}</p>
+                <p className="ml-4">{'stack: ["React", "Node"],'}</p>
+                <p className="ml-4">{'impact: "global",'}</p>
+                <p>{'};'}</p>
+              </div>
+              {/* Gradient orbs */}
+              <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-indigo-500/20 blur-3xl" />
+              <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-purple-500/20 blur-3xl" />
             </div>
 
             <div className="px-6 pb-8 sm:px-10">
@@ -222,7 +248,7 @@ export default function About() {
                 <motion.a
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  href="https://wa.me/2335485447765"
+                  href="https://wa.me/233548544775"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:shadow dark:border-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:border-emerald-700"
