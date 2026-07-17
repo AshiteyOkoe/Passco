@@ -1,8 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
-import BulkUpload from '../models/BulkUpload';
-import Document from '../models/Document';
-import Question from '../models/Question';
+import { supabase } from '../config/supabase';
 
 export async function parseUploadedFile(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -12,13 +10,19 @@ export async function parseUploadedFile(req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const bulkUpload = await BulkUpload.create({
-      userId: req.user!.id,
-      fileName: file.originalname,
-      mimeType: file.mimetype,
-      fileSize: file.size,
-      status: 'processing',
-    });
+    const { data: bulkUpload, error: insertError } = await supabase
+      .from('bulk_uploads')
+      .insert({
+        user_id: req.user!.id,
+        file_name: file.originalname,
+        mime_type: file.mimetype,
+        file_size: file.size,
+        status: 'processing',
+      })
+      .select('id')
+      .single();
+
+    if (insertError) throw insertError;
 
     let extractedText = '';
     const mime = file.mimetype;
@@ -67,18 +71,25 @@ export async function parseUploadedFile(req: AuthRequest, res: Response): Promis
         extractedText = fs.readFileSync(file.path, 'utf-8');
       }
     } catch (parseError) {
-      await BulkUpload.findByIdAndUpdate(bulkUpload._id, {
-        status: 'failed',
-        errorMessage: `Failed to parse file: ${(parseError as Error).message}`,
-      });
-      res.status(500).json({ message: 'Failed to parse file', bulkUploadId: bulkUpload._id });
+      await supabase
+        .from('bulk_uploads')
+        .update({
+          status: 'failed',
+          error_message: `Failed to parse file: ${(parseError as Error).message}`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', bulkUpload.id);
+      res.status(500).json({ message: 'Failed to parse file', bulkUploadId: bulkUpload.id });
       return;
     }
 
-    await BulkUpload.findByIdAndUpdate(bulkUpload._id, { status: 'parsed' });
+    await supabase
+      .from('bulk_uploads')
+      .update({ status: 'parsed', updated_at: new Date().toISOString() })
+      .eq('id', bulkUpload.id);
 
     res.json({
-      bulkUploadId: bulkUpload._id,
+      bulkUploadId: bulkUpload.id,
       fileName: file.originalname,
       extractedText,
       status: 'parsed',
@@ -98,62 +109,73 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const doc = await Document.create({
-      userId: req.user!.id,
-      originalName: `Bulk Upload - ${new Date().toLocaleDateString()}`,
-      storagePath: `bulk-upload-${Date.now()}`,
-      mimeType: 'application/bulk-upload',
-      fileSize: 0,
-      extractedText: `Bulk upload of ${questions.length} questions`,
-      topics: [...new Set(questions.map((q: { topic?: string }) => q.topic).filter(Boolean))],
-      status: 'ready',
-    });
+    const { data: doc, error: docError } = await supabase
+      .from('documents')
+      .insert({
+        user_id: req.user!.id,
+        original_name: `Bulk Upload - ${new Date().toLocaleDateString()}`,
+        storage_path: `bulk-upload-${Date.now()}`,
+        mime_type: 'application/bulk-upload',
+        file_size: 0,
+        extracted_text: `Bulk upload of ${questions.length} questions`,
+        topics: [...new Set(questions.map((q: { topic?: string; subject?: string }) => q.topic || q.subject).filter(Boolean))] as string[],
+        status: 'ready',
+      })
+      .select('id')
+      .single();
 
-    const createdQuestions = [];
+    if (docError) throw docError;
+
     const subjectBreakdown: Record<string, number> = {};
     const classBreakdown: Record<string, number> = {};
     const difficultyBreakdown: Record<string, number> = {};
 
-    for (const q of questions) {
-      const question = await Question.create({
-        documentId: doc._id,
-        createdBy: req.user!.id,
+    const insertRows = questions.map((q: Record<string, unknown>) => {
+      const subj = (q.subject as string) || 'General';
+      subjectBreakdown[subj] = (subjectBreakdown[subj] || 0) + 1;
+      const cls = (q.classLevel as string) || 'unknown';
+      classBreakdown[cls] = (classBreakdown[cls] || 0) + 1;
+      const diff = (q.difficulty as string) || 'intermediate';
+      difficultyBreakdown[diff] = (difficultyBreakdown[diff] || 0) + 1;
+
+      return {
+        document_id: doc.id,
+        created_by: req.user!.id,
         question: q.question,
         type: q.type || 'multiple-choice',
-        options: q.type === 'multiple-choice' ? q.options : undefined,
-        correctAnswer: q.correctAnswer,
+        options: q.type === 'multiple-choice' ? q.options : [],
+        correct_answer: q.correctAnswer,
         explanation: q.explanation || '',
         difficulty: q.difficulty || 'intermediate',
-        topic: q.topic || q.subject || 'General',
-        subject: q.subject || '',
-        classLevel: q.classLevel || '',
+        topic: (q.topic as string) || (q.subject as string) || 'General',
+        subject: subj,
+        class_level: q.classLevel || '',
         approved: req.user?.role === 'admin',
-      });
-      createdQuestions.push(question);
+      };
+    });
 
-      const subj = q.subject || 'General';
-      subjectBreakdown[subj] = (subjectBreakdown[subj] || 0) + 1;
-      const cls = q.classLevel || 'unknown';
-      classBreakdown[cls] = (classBreakdown[cls] || 0) + 1;
-      const diff = q.difficulty || 'intermediate';
-      difficultyBreakdown[diff] = (difficultyBreakdown[diff] || 0) + 1;
-    }
+    const { error: qError } = await supabase.from('questions').insert(insertRows);
+    if (qError) throw qError;
 
     if (bulkUploadId) {
-      await BulkUpload.findByIdAndUpdate(bulkUploadId, {
-        status: 'completed',
-        totalQuestions: questions.length,
-        savedQuestions: createdQuestions.length,
-        subjectBreakdown,
-        classBreakdown,
-        difficultyBreakdown,
-      });
+      await supabase
+        .from('bulk_uploads')
+        .update({
+          status: 'completed',
+          total_questions: questions.length,
+          saved_questions: questions.length,
+          subject_breakdown: subjectBreakdown,
+          class_breakdown: classBreakdown,
+          difficulty_breakdown: difficultyBreakdown,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', bulkUploadId);
     }
 
     res.status(201).json({
-      message: `${createdQuestions.length} questions saved successfully`,
-      count: createdQuestions.length,
-      documentId: doc._id,
+      message: `${questions.length} questions saved successfully`,
+      count: questions.length,
+      documentId: doc.id,
       subjectBreakdown,
       classBreakdown,
       difficultyBreakdown,
@@ -166,10 +188,14 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
 
 export async function getBulkUploads(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const uploads = await BulkUpload.find({ userId: req.user!.id })
-      .sort({ createdAt: -1 })
+    const { data: uploads } = await supabase
+      .from('bulk_uploads')
+      .select('*')
+      .eq('user_id', req.user!.id)
+      .order('created_at', { ascending: false })
       .limit(50);
-    res.json({ uploads });
+
+    res.json({ uploads: uploads || [] });
   } catch (error) {
     console.error('Get bulk uploads error:', error);
     res.status(500).json({ message: 'Failed to fetch uploads' });

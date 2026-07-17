@@ -1,54 +1,70 @@
 import { Response } from 'express';
-import User from '../models/User';
-import Document from '../models/Document';
-import Question from '../models/Question';
-import Quiz from '../models/Quiz';
-import Result from '../models/Result';
+import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 
 export async function getDashboardStats(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const totalStudents = await User.countDocuments({ role: 'student' });
-    const totalDocuments = await Document.countDocuments();
-    const totalQuestions = await Question.countDocuments();
-    const pendingQuestions = await Question.countDocuments({ approved: false });
-    const totalQuizzes = await Quiz.countDocuments();
-    const totalResults = await Result.countDocuments();
+    const [studentsCount, docsCount, questionsCount, pendingCount, quizzesCount, resultsCount] = await Promise.all([
+      supabase.from('users').select('id', { count: 'exact', head: true }).eq('role', 'student'),
+      supabase.from('documents').select('id', { count: 'exact', head: true }),
+      supabase.from('questions').select('id', { count: 'exact', head: true }),
+      supabase.from('questions').select('id', { count: 'exact', head: true }).eq('approved', false),
+      supabase.from('quizzes').select('id', { count: 'exact', head: true }),
+      supabase.from('results').select('id', { count: 'exact', head: true }),
+    ]);
 
-    const recentDocuments = await Document.find()
-      .populate('userId', 'name email')
-      .sort({ createdAt: -1 })
+    const { data: recentDocs } = await supabase
+      .from('documents')
+      .select('id, original_name, status, created_at, user_id')
+      .order('created_at', { ascending: false })
       .limit(5);
 
-    const recentResults = await Result.find()
-      .populate('userId', 'name email')
-      .populate('quizId', 'title')
-      .sort({ completedAt: -1 })
+    const docsWithUsers = await Promise.all(
+      (recentDocs || []).map(async (doc) => {
+        const { data: user } = await supabase.from('users').select('name').eq('id', doc.user_id).single();
+        return {
+          id: doc.id,
+          name: doc.original_name,
+          uploadedBy: user?.name || 'Unknown',
+          status: doc.status,
+          createdAt: doc.created_at,
+        };
+      })
+    );
+
+    const { data: recentResults } = await supabase
+      .from('results')
+      .select('id, score, completed_at, user_id, quiz_id')
+      .order('completed_at', { ascending: false })
       .limit(5);
+
+    const resultsWithNames = await Promise.all(
+      (recentResults || []).map(async (r) => {
+        const [{ data: user }, { data: quiz }] = await Promise.all([
+          supabase.from('users').select('name').eq('id', r.user_id).single(),
+          supabase.from('quizzes').select('title').eq('id', r.quiz_id).single(),
+        ]);
+        return {
+          id: r.id,
+          studentName: user?.name || 'Unknown',
+          quizTitle: quiz?.title || 'Unknown',
+          score: r.score,
+          completedAt: r.completed_at,
+        };
+      })
+    );
 
     res.json({
       stats: {
-        totalStudents,
-        totalDocuments,
-        totalQuestions,
-        pendingQuestions,
-        totalQuizzes,
-        totalResults,
+        totalStudents: studentsCount.count || 0,
+        totalDocuments: docsCount.count || 0,
+        totalQuestions: questionsCount.count || 0,
+        pendingQuestions: pendingCount.count || 0,
+        totalQuizzes: quizzesCount.count || 0,
+        totalResults: resultsCount.count || 0,
       },
-      recentDocuments: recentDocuments.map((doc) => ({
-        id: doc._id,
-        name: doc.originalName,
-        uploadedBy: (doc.userId as unknown as { name: string }).name,
-        status: doc.status,
-        createdAt: doc.createdAt,
-      })),
-      recentResults: recentResults.map((res) => ({
-        id: res._id,
-        studentName: (res.userId as unknown as { name: string }).name,
-        quizTitle: (res.quizId as unknown as { title: string }).title,
-        score: res.score,
-        completedAt: res.completedAt,
-      })),
+      recentDocuments: docsWithUsers,
+      recentResults: resultsWithNames,
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
@@ -58,31 +74,35 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
 
 export async function getStudents(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const students = await User.find({ role: 'student' })
-      .select('-password')
-      .sort({ createdAt: -1 });
+    const { data: students } = await supabase
+      .from('users')
+      .select('id, name, email, institution, grade_level, avatar, gender, created_at')
+      .eq('role', 'student')
+      .order('created_at', { ascending: false });
 
     const studentsWithStats = await Promise.all(
-      students.map(async (student) => {
-        const resultCount = await Result.countDocuments({ userId: student._id });
-        const avgResult = await Result.aggregate([
-          { $match: { userId: student._id } },
-          { $group: { _id: null, avgScore: { $avg: '$score' } } },
+      (students || []).map(async (student) => {
+        const [resultCount, avgResult, docCount] = await Promise.all([
+          supabase.from('results').select('id', { count: 'exact', head: true }).eq('user_id', student.id),
+          supabase.from('results').select('score').eq('user_id', student.id),
+          supabase.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', student.id),
         ]);
-        const documentCount = await Document.countDocuments({ userId: student._id });
+
+        const scores = (avgResult.data || []).map((r) => r.score);
+        const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
         return {
-          id: student._id,
+          id: student.id,
           name: student.name,
           email: student.email,
           institution: student.institution,
-          gradeLevel: student.gradeLevel,
+          gradeLevel: student.grade_level,
           avatar: student.avatar || '',
           gender: student.gender || '',
-          quizzesTaken: resultCount,
-          avgScore: avgResult.length > 0 ? Math.round(avgResult[0].avgScore) : 0,
-          documentsUploaded: documentCount,
-          createdAt: student.createdAt,
+          quizzesTaken: resultCount.count || 0,
+          avgScore,
+          documentsUploaded: docCount.count || 0,
+          createdAt: student.created_at,
         };
       })
     );
@@ -96,43 +116,53 @@ export async function getStudents(req: AuthRequest, res: Response): Promise<void
 
 export async function getFullAnalytics(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const totalQuizzes = await Result.countDocuments();
-    const avgScore = await Result.aggregate([
-      { $group: { _id: null, avg: { $avg: '$score' } } },
-    ]);
+    const { data: results } = await supabase.from('results').select('score, completed_at');
 
-    const scoreDistribution = await Result.aggregate([
-      {
-        $bucket: {
-          groupBy: '$score',
-          boundaries: [0, 25, 50, 60, 75, 90, 100],
-          default: 'Other',
-          output: { count: { $sum: 1 } },
-        },
-      },
-    ]);
+    const totalQuizzes = results?.length || 0;
+    const averageScore = totalQuizzes > 0
+      ? Math.round(results!.reduce((sum, r) => sum + r.score, 0) / totalQuizzes)
+      : 0;
 
-    const resultsByDay = await Result.aggregate([
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } },
-          count: { $sum: 1 },
-          avgScore: { $avg: '$score' },
-        },
-      },
-      { $sort: { _id: 1 } },
-      { $limit: 30 },
-    ]);
+    const scoreDistribution = [
+      { range: '0-25', count: 0 },
+      { range: '25-50', count: 0 },
+      { range: '50-60', count: 0 },
+      { range: '60-75', count: 0 },
+      { range: '75-90', count: 0 },
+      { range: '90-100', count: 0 },
+    ];
+
+    for (const r of results || []) {
+      if (r.score < 25) scoreDistribution[0].count++;
+      else if (r.score < 50) scoreDistribution[1].count++;
+      else if (r.score < 60) scoreDistribution[2].count++;
+      else if (r.score < 75) scoreDistribution[3].count++;
+      else if (r.score < 90) scoreDistribution[4].count++;
+      else scoreDistribution[5].count++;
+    }
+
+    const dayMap: Record<string, { count: number; totalScore: number }> = {};
+    for (const r of results || []) {
+      const day = r.completed_at?.slice(0, 10) || 'unknown';
+      if (!dayMap[day]) dayMap[day] = { count: 0, totalScore: 0 };
+      dayMap[day].count++;
+      dayMap[day].totalScore += r.score;
+    }
+
+    const resultsByDay = Object.entries(dayMap)
+      .map(([date, data]) => ({
+        date,
+        count: data.count,
+        avgScore: Math.round(data.totalScore / data.count),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 30);
 
     res.json({
       totalQuizzes,
-      averageScore: avgScore.length > 0 ? Math.round(avgScore[0].avg) : 0,
+      averageScore,
       scoreDistribution,
-      resultsByDay: resultsByDay.map((r) => ({
-        date: r._id,
-        count: r.count,
-        avgScore: Math.round(r.avgScore),
-      })),
+      resultsByDay,
     });
   } catch (error) {
     console.error('Analytics error:', error);
@@ -142,54 +172,78 @@ export async function getFullAnalytics(req: AuthRequest, res: Response): Promise
 
 export async function getStudentDetail(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const student = await User.findById(req.params.id).select('-password');
+    const { data: student } = await supabase
+      .from('users')
+      .select('id, name, email, institution, grade_level, created_at')
+      .eq('id', req.params.id)
+      .single();
+
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
     }
 
-    const documents = await Document.find({ userId: student._id }).sort({ createdAt: -1 });
-    const results = await Result.find({ userId: student._id })
-      .populate('quizId', 'title questions')
-      .sort({ completedAt: -1 });
-    const questions = await Question.find({ createdBy: student._id }).sort({ createdAt: -1 });
+    const { data: documents } = await supabase
+      .from('documents')
+      .select('id, original_name, status, file_size, created_at')
+      .eq('user_id', student.id)
+      .order('created_at', { ascending: false });
+
+    const { data: resultsRaw } = await supabase
+      .from('results')
+      .select('id, score, total_questions, correct_count, incorrect_count, skipped_count, time_taken, completed_at, quiz_id')
+      .eq('user_id', student.id)
+      .order('completed_at', { ascending: false });
+
+    const resultsWithQuiz = await Promise.all(
+      (resultsRaw || []).map(async (r) => {
+        const { data: quiz } = await supabase.from('quizzes').select('title, questions').eq('id', r.quiz_id).single();
+        return {
+          id: r.id,
+          quizTitle: quiz?.title || 'Unknown',
+          score: r.score,
+          totalQuestions: r.total_questions,
+          correctCount: r.correct_count,
+          incorrectCount: r.incorrect_count,
+          skippedCount: r.skipped_count,
+          timeTaken: r.time_taken,
+          completedAt: r.completed_at,
+        };
+      })
+    );
+
+    const { count: questionsCount } = await supabase
+      .from('questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('created_by', student.id);
+
+    const avgScore = resultsWithQuiz.length > 0
+      ? Math.round(resultsWithQuiz.reduce((sum, r) => sum + r.score, 0) / resultsWithQuiz.length)
+      : 0;
 
     res.json({
       student: {
-        id: student._id,
+        id: student.id,
         name: student.name,
         email: student.email,
         institution: student.institution,
-        gradeLevel: student.gradeLevel,
-        createdAt: student.createdAt,
+        gradeLevel: student.grade_level,
+        createdAt: student.created_at,
       },
-      documents: documents.map((doc) => ({
-        id: doc._id,
-        name: doc.originalName,
+      documents: (documents || []).map((doc) => ({
+        id: doc.id,
+        name: doc.original_name,
         status: doc.status,
-        fileSize: doc.fileSize,
-        createdAt: doc.createdAt,
+        fileSize: doc.file_size,
+        createdAt: doc.created_at,
       })),
-      results: results.map((r) => ({
-        id: r._id,
-        quizTitle: (r.quizId as unknown as { title: string }).title,
-        score: r.score,
-        totalQuestions: r.totalQuestions,
-        correctCount: r.correctCount,
-        incorrectCount: r.incorrectCount,
-        skippedCount: r.skippedCount,
-        timeTaken: r.timeTaken,
-        completedAt: r.completedAt,
-      })),
-      questionsCreated: questions.length,
+      results: resultsWithQuiz,
+      questionsCreated: questionsCount || 0,
       stats: {
-        documentsUploaded: documents.length,
-        quizzesTaken: results.length,
-        questionsCreated: questions.length,
-        avgScore:
-          results.length > 0
-            ? Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length)
-            : 0,
+        documentsUploaded: documents?.length || 0,
+        quizzesTaken: resultsWithQuiz.length,
+        questionsCreated: questionsCount || 0,
+        avgScore,
       },
     });
   } catch (error) {
@@ -200,20 +254,21 @@ export async function getStudentDetail(req: AuthRequest, res: Response): Promise
 
 export async function deleteStudent(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const student = await User.findById(req.params.id);
+    const { data: student } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', req.params.id)
+      .single();
+
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
     }
 
-    await Promise.all([
-      Document.deleteMany({ userId: student._id }),
-      Question.deleteMany({ createdBy: student._id }),
-      Result.deleteMany({ userId: student._id }),
-      Quiz.deleteMany({ createdBy: student._id }),
-    ]);
-
-    await User.findByIdAndDelete(student._id);
+    await supabase.from('documents').delete().eq('user_id', student.id);
+    await supabase.from('questions').delete().eq('created_by', student.id);
+    await supabase.from('results').delete().eq('user_id', student.id);
+    await supabase.from('users').delete().eq('id', student.id);
 
     res.json({ message: 'Student and all associated data deleted' });
   } catch (error) {
@@ -224,38 +279,58 @@ export async function deleteStudent(req: AuthRequest, res: Response): Promise<vo
 
 export async function getStudentResults(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const student = await User.findById(req.params.id).select('-password');
+    const { data: student } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('id', req.params.id)
+      .single();
+
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
     }
 
-    const results = await Result.find({ userId: student._id })
-      .populate('quizId', 'title questions difficulty timeLimit')
-      .sort({ completedAt: -1 });
+    const { data: resultsRaw } = await supabase
+      .from('results')
+      .select('id, score, total_questions, correct_count, incorrect_count, skipped_count, time_taken, completed_at, quiz_id')
+      .eq('user_id', student.id)
+      .order('completed_at', { ascending: false });
+
+    const resultsWithQuiz = await Promise.all(
+      (resultsRaw || []).map(async (r) => {
+        const { data: quiz } = await supabase
+          .from('quizzes')
+          .select('id, title, difficulty')
+          .eq('id', r.quiz_id)
+          .single();
+
+        const { count: totalQ } = await supabase
+          .from('quiz_questions')
+          .select('question_id', { count: 'exact', head: true })
+          .eq('quiz_id', r.quiz_id);
+
+        return {
+          id: r.id,
+          quiz: {
+            id: quiz?.id || r.quiz_id,
+            title: quiz?.title || 'Unknown',
+            difficulty: quiz?.difficulty || 'intermediate',
+            totalQuestions: totalQ || r.total_questions,
+          },
+          score: r.score,
+          totalQuestions: r.total_questions,
+          correctCount: r.correct_count,
+          incorrectCount: r.incorrect_count,
+          skippedCount: r.skipped_count,
+          timeTaken: r.time_taken,
+          completedAt: r.completed_at,
+        };
+      })
+    );
 
     res.json({
-      student: {
-        id: student._id,
-        name: student.name,
-        email: student.email,
-      },
-      results: results.map((r) => ({
-        id: r._id,
-        quiz: {
-          id: (r.quizId as unknown as { _id: string })._id,
-          title: (r.quizId as unknown as { title: string }).title,
-          difficulty: (r.quizId as unknown as { difficulty: string }).difficulty,
-          totalQuestions: (r.quizId as unknown as { questions: string[] }).questions.length,
-        },
-        score: r.score,
-        totalQuestions: r.totalQuestions,
-        correctCount: r.correctCount,
-        incorrectCount: r.incorrectCount,
-        skippedCount: r.skippedCount,
-        timeTaken: r.timeTaken,
-        completedAt: r.completedAt,
-      })),
+      student: { id: student.id, name: student.name, email: student.email },
+      results: resultsWithQuiz,
     });
   } catch (error) {
     console.error('Get student results error:', error);
@@ -265,28 +340,35 @@ export async function getStudentResults(req: AuthRequest, res: Response): Promis
 
 export async function getAllQuizzes(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const quizzes = await Quiz.find()
-      .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
+    const { data: quizzes } = await supabase
+      .from('quizzes')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     const quizzesWithStats = await Promise.all(
-      quizzes.map(async (quiz) => {
-        const resultCount = await Result.countDocuments({ quizId: quiz._id });
+      (quizzes || []).map(async (quiz) => {
+        const [{ data: creator }, { count: resultCount }] = await Promise.all([
+          supabase.from('users').select('name, email').eq('id', quiz.created_by).single(),
+          supabase.from('results').select('id', { count: 'exact', head: true }).eq('quiz_id', quiz.id),
+        ]);
+
+        const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', quiz.id);
+
         return {
-          id: quiz._id,
+          id: quiz.id,
           title: quiz.title,
           description: quiz.description,
           difficulty: quiz.difficulty,
-          timeLimit: quiz.timeLimit,
-          isActive: quiz.isActive,
+          timeLimit: quiz.time_limit,
+          isActive: quiz.is_active,
           createdBy: {
-            id: (quiz.createdBy as unknown as { _id: string })._id,
-            name: (quiz.createdBy as unknown as { name: string }).name,
-            email: (quiz.createdBy as unknown as { email: string }).email,
+            id: quiz.created_by,
+            name: creator?.name || 'Unknown',
+            email: creator?.email || '',
           },
-          questionsCount: quiz.questions.length,
-          resultCount,
-          createdAt: quiz.createdAt,
+          questionsCount: qqRows?.length || 0,
+          resultCount: resultCount || 0,
+          createdAt: quiz.created_at,
         };
       })
     );
@@ -300,32 +382,37 @@ export async function getAllQuizzes(req: AuthRequest, res: Response): Promise<vo
 
 export async function getAllDocuments(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const documents = await Document.find()
-      .populate('userId', 'name email')
-      .sort({ createdAt: -1 });
+    const { data: documents } = await supabase
+      .from('documents')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    const documentsWithStats = await Promise.all(
-      documents.map(async (doc) => {
-        const questionCount = await Question.countDocuments({ documentId: doc._id });
+    const docsWithStats = await Promise.all(
+      (documents || []).map(async (doc) => {
+        const [{ data: user }, { count: questionCount }] = await Promise.all([
+          supabase.from('users').select('name, email').eq('id', doc.user_id).single(),
+          supabase.from('questions').select('id', { count: 'exact', head: true }).eq('document_id', doc.id),
+        ]);
+
         return {
-          id: doc._id,
-          name: doc.originalName,
-          mimeType: doc.mimeType,
-          fileSize: doc.fileSize,
+          id: doc.id,
+          name: doc.original_name,
+          mimeType: doc.mime_type,
+          fileSize: doc.file_size,
           status: doc.status,
           topics: doc.topics,
           uploadedBy: {
-            id: (doc.userId as unknown as { _id: string })._id,
-            name: (doc.userId as unknown as { name: string }).name,
-            email: (doc.userId as unknown as { email: string }).email,
+            id: doc.user_id,
+            name: user?.name || 'Unknown',
+            email: user?.email || '',
           },
-          questionCount,
-          createdAt: doc.createdAt,
+          questionCount: questionCount || 0,
+          createdAt: doc.created_at,
         };
       })
     );
 
-    res.json({ documents: documentsWithStats });
+    res.json({ documents: docsWithStats });
   } catch (error) {
     console.error('Get all documents error:', error);
     res.status(500).json({ message: 'Failed to fetch documents' });

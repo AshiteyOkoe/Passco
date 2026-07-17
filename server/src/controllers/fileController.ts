@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import Document from '../models/Document';
+import { supabase } from '../config/supabase';
 import { parseFile, extractTopics } from '../services/fileParser';
 import { AuthRequest } from '../types';
 
@@ -12,24 +12,30 @@ export async function uploadFile(req: AuthRequest, res: Response): Promise<void>
 
     const userId = req.user?.id;
 
-    const document = await Document.create({
-      userId,
-      originalName: req.file.originalname,
-      storagePath: req.file.path,
-      mimeType: req.file.mimetype,
-      fileSize: req.file.size,
-      status: 'processing',
-    });
+    const { data: document, error } = await supabase
+      .from('documents')
+      .insert({
+        user_id: userId,
+        original_name: req.file.originalname,
+        storage_path: req.file.path,
+        mime_type: req.file.mimetype,
+        file_size: req.file.size,
+        status: 'processing',
+      })
+      .select('id, original_name, mime_type, file_size, status, created_at')
+      .single();
+
+    if (error) throw error;
 
     res.status(201).json({
       message: 'File uploaded successfully',
       document: {
-        id: document._id,
-        originalName: document.originalName,
-        mimeType: document.mimeType,
-        fileSize: document.fileSize,
+        id: document.id,
+        originalName: document.original_name,
+        mimeType: document.mime_type,
+        fileSize: document.file_size,
         status: document.status,
-        createdAt: document.createdAt,
+        createdAt: document.created_at,
       },
     });
   } catch (error) {
@@ -42,41 +48,50 @@ export async function processFile(req: AuthRequest, res: Response): Promise<void
   try {
     const { documentId } = req.params;
 
-    const document = await Document.findById(documentId);
-    if (!document) {
+    const { data: document, error: fetchError } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', documentId)
+      .single();
+
+    if (fetchError || !document) {
       res.status(404).json({ message: 'Document not found' });
       return;
     }
 
-    if (document.userId.toString() !== req.user?.id && req.user?.role !== 'admin') {
+    if (document.user_id !== req.user?.id && req.user?.role !== 'admin') {
       res.status(403).json({ message: 'Not authorized' });
       return;
     }
 
-    const text = await parseFile(document.storagePath, document.mimeType);
+    const text = await parseFile(document.storage_path, document.mime_type);
 
     if (!text || text.trim().length === 0) {
-      document.status = 'failed';
-      await document.save();
+      await supabase.from('documents').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', documentId);
       res.status(400).json({ message: 'No text could be extracted from the file' });
       return;
     }
 
     const topics = extractTopics(text);
 
-    document.extractedText = text;
-    document.topics = topics;
-    document.status = 'ready';
-    await document.save();
+    await supabase
+      .from('documents')
+      .update({
+        extracted_text: text,
+        topics,
+        status: 'ready',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', documentId);
 
     res.json({
       message: 'File processed successfully',
       document: {
-        id: document._id,
-        originalName: document.originalName,
+        id: document.id,
+        originalName: document.original_name,
         extractedText: text.substring(0, 1000) + (text.length > 1000 ? '...' : ''),
         topics,
-        status: document.status,
+        status: 'ready',
       },
     });
   } catch (error) {
@@ -87,27 +102,34 @@ export async function processFile(req: AuthRequest, res: Response): Promise<void
 
 export async function getDocuments(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const filter: Record<string, unknown> = {};
+    let query = supabase.from('documents').select('*').order('created_at', { ascending: false });
     if (req.user?.role === 'student') {
-      filter.userId = req.user.id;
+      query = query.eq('user_id', req.user.id);
     }
 
-    const documents = await Document.find(filter)
-      .populate('userId', 'name email')
-      .sort({ createdAt: -1 });
+    const { data: documents } = await query;
 
-    res.json({
-      documents: documents.map((doc) => ({
-        id: doc._id,
-        originalName: doc.originalName,
-        mimeType: doc.mimeType,
-        fileSize: doc.fileSize,
-        topics: doc.topics,
-        status: doc.status,
-        uploadedBy: req.user?.role === 'admin' ? (doc.userId as unknown as { name: string }).name : undefined,
-        createdAt: doc.createdAt,
-      })),
-    });
+    const enriched = await Promise.all(
+      (documents || []).map(async (doc) => {
+        let uploaderName: string | undefined;
+        if (req.user?.role === 'admin') {
+          const { data: user } = await supabase.from('users').select('name').eq('id', doc.user_id).single();
+          uploaderName = user?.name;
+        }
+        return {
+          id: doc.id,
+          originalName: doc.original_name,
+          mimeType: doc.mime_type,
+          fileSize: doc.file_size,
+          topics: doc.topics,
+          status: doc.status,
+          uploadedBy: uploaderName,
+          createdAt: doc.created_at,
+        };
+      })
+    );
+
+    res.json({ documents: enriched });
   } catch (error) {
     console.error('Get documents error:', error);
     res.status(500).json({ message: 'Failed to fetch documents' });
@@ -116,27 +138,31 @@ export async function getDocuments(req: AuthRequest, res: Response): Promise<voi
 
 export async function getDocumentById(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const document = await Document.findById(req.params.documentId).populate('userId', 'name email');
+    const { data: document, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', req.params.documentId)
+      .single();
 
-    if (!document) {
+    if (error || !document) {
       res.status(404).json({ message: 'Document not found' });
       return;
     }
 
-    if (document.userId.toString() !== req.user?.id && req.user?.role !== 'admin') {
+    if (document.user_id !== req.user?.id && req.user?.role !== 'admin') {
       res.status(403).json({ message: 'Not authorized' });
       return;
     }
 
     res.json({
-      id: document._id,
-      originalName: document.originalName,
-      mimeType: document.mimeType,
-      fileSize: document.fileSize,
-      extractedText: document.extractedText,
+      id: document.id,
+      originalName: document.original_name,
+      mimeType: document.mime_type,
+      fileSize: document.file_size,
+      extractedText: document.extracted_text,
       topics: document.topics,
       status: document.status,
-      createdAt: document.createdAt,
+      createdAt: document.created_at,
     });
   } catch (error) {
     console.error('Get document error:', error);
@@ -146,19 +172,23 @@ export async function getDocumentById(req: AuthRequest, res: Response): Promise<
 
 export async function deleteDocument(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const document = await Document.findById(req.params.documentId);
+    const { data: document, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', req.params.documentId)
+      .single();
 
-    if (!document) {
+    if (error || !document) {
       res.status(404).json({ message: 'Document not found' });
       return;
     }
 
-    if (document.userId.toString() !== req.user?.id && req.user?.role !== 'admin') {
+    if (document.user_id !== req.user?.id && req.user?.role !== 'admin') {
       res.status(403).json({ message: 'Not authorized' });
       return;
     }
 
-    await Document.findByIdAndDelete(req.params.documentId);
+    await supabase.from('documents').delete().eq('id', req.params.documentId);
 
     res.json({ message: 'Document deleted successfully' });
   } catch (error) {

@@ -1,6 +1,5 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import User from './models/User';
+import { supabase } from './config/supabase';
 
 const SEED_USERS = [
   {
@@ -9,8 +8,8 @@ const SEED_USERS = [
     password: 'password123',
     role: 'student' as const,
     institution: 'PASSCO Academy',
-    gradeLevel: 'JHS 3',
-    dateOfBirth: new Date('2008-07-15'),
+    grade_level: 'JHS 3',
+    date_of_birth: new Date('2008-07-15').toISOString(),
   },
   {
     name: 'Test Admin',
@@ -18,46 +17,36 @@ const SEED_USERS = [
     password: 'password123',
     role: 'admin' as const,
     institution: 'PASSCO Academy',
-    gradeLevel: '',
-    dateOfBirth: new Date('1990-03-10'),
+    grade_level: '',
+    date_of_birth: new Date('1990-03-10').toISOString(),
   },
 ];
 
 export async function seedUsers(): Promise<void> {
   for (const userData of SEED_USERS) {
-    const existing = await User.findOne({ email: userData.email });
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', userData.email)
+      .single();
+
     if (existing) continue;
 
     const hashedPassword = await bcrypt.hash(userData.password, 12);
-    await User.create({ ...userData, password: hashedPassword });
-    console.log(`  Seeded: ${userData.email} [${userData.role}]`);
+    const { error } = await supabase.from('users').insert({
+      name: userData.name,
+      email: userData.email,
+      password_hash: hashedPassword,
+      role: userData.role,
+      institution: userData.institution,
+      grade_level: userData.grade_level,
+      date_of_birth: userData.date_of_birth,
+    });
+
+    if (error) {
+      console.error(`  Failed to seed ${userData.email}:`, error.message);
+    } else {
+      console.log(`  Seeded: ${userData.email} [${userData.role}]`);
+    }
   }
-}
-
-async function seed() {
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/passco';
-
-  try {
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
-    console.log('Connected to MongoDB');
-  } catch {
-    console.log('Local MongoDB not available, trying in-memory...');
-    const { MongoMemoryServer } = await import('mongodb-memory-server');
-    const memServer = await MongoMemoryServer.create();
-    await mongoose.connect(memServer.getUri());
-    console.log('Connected to in-memory MongoDB');
-  }
-
-  await seedUsers();
-
-  console.log('\nSeed complete.');
-  await mongoose.disconnect();
-  process.exit(0);
-}
-
-if (process.argv[1]?.endsWith('seed.ts')) {
-  seed().catch((err) => {
-    console.error('Seed failed:', err);
-    process.exit(1);
-  });
 }

@@ -1,23 +1,35 @@
 import { Response } from 'express';
-import Quiz from '../models/Quiz';
-import Question from '../models/Question';
-import Result from '../models/Result';
+import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 
 export async function createQuiz(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { title, description, documentId, questions, difficulty, timeLimit, assignedTo } = req.body;
 
-    const quiz = await Quiz.create({
-      title,
-      description,
-      documentId,
-      createdBy: req.user!.id,
-      questions,
-      difficulty: difficulty || 'intermediate',
-      timeLimit: timeLimit || 600,
-      assignedTo: assignedTo || [],
-    });
+    const { data: quiz, error } = await supabase
+      .from('quizzes')
+      .insert({
+        title,
+        description: description || '',
+        document_id: documentId || null,
+        created_by: req.user!.id,
+        difficulty: difficulty || 'intermediate',
+        time_limit: timeLimit || 600,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (questions && questions.length > 0) {
+      const qqRows = questions.map((qId: string) => ({ quiz_id: quiz.id, question_id: qId }));
+      await supabase.from('quiz_questions').insert(qqRows);
+    }
+
+    if (assignedTo && assignedTo.length > 0) {
+      const qaRows = assignedTo.map((uId: string) => ({ quiz_id: quiz.id, user_id: uId }));
+      await supabase.from('quiz_assigned_users').insert(qaRows);
+    }
 
     res.status(201).json({ message: 'Quiz created successfully', quiz });
   } catch (error) {
@@ -26,29 +38,72 @@ export async function createQuiz(req: AuthRequest, res: Response): Promise<void>
   }
 }
 
+async function getQuizWithJoins(quizId: string, hideAnswers = false) {
+  const { data: quiz } = await supabase.from('quizzes').select('*').eq('id', quizId).single();
+  if (!quiz) return null;
+
+  const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', quizId);
+  const questionIds = (qqRows || []).map((r) => r.question_id);
+
+  let questions: unknown[] = [];
+  if (questionIds.length > 0) {
+    const selectCols = hideAnswers
+      ? 'id, question, type, options, explanation, difficulty, topic, subject, class_level'
+      : '*';
+    const { data } = await supabase.from('questions').select(selectCols).in('id', questionIds);
+    questions = data || [];
+  }
+
+  const { data: qaRows } = await supabase.from('quiz_assigned_users').select('user_id').eq('quiz_id', quizId);
+  const assignedTo = (qaRows || []).map((r) => r.user_id);
+
+  const { data: creator } = await supabase.from('users').select('name, email').eq('id', quiz.created_by).single();
+
+  return {
+    ...quiz,
+    questions,
+    assignedTo,
+    createdBy: creator ? { _id: quiz.created_by, name: creator.name, email: creator.email } : quiz.created_by,
+  };
+}
+
 export async function getQuizzes(req: AuthRequest, res: Response): Promise<void> {
   try {
-    let quizzes;
+    let quizQuery;
 
     if (req.user?.role === 'admin') {
-      quizzes = await Quiz.find()
-        .populate('createdBy', 'name email')
-        .populate('questions')
-        .sort({ createdAt: -1 });
+      quizQuery = supabase.from('quizzes').select('*').order('created_at', { ascending: false });
     } else {
-      quizzes = await Quiz.find({
-        $or: [
-          { assignedTo: { $in: [req.user!.id] } },
-          { createdBy: req.user!.id },
-        ],
-        isActive: true,
-      })
-        .populate('createdBy', 'name email')
-        .populate('questions')
-        .sort({ createdAt: -1 });
+      const { data: assigned } = await supabase
+        .from('quiz_assigned_users')
+        .select('quiz_id')
+        .eq('user_id', req.user!.id);
+      const assignedIds = (assigned || []).map((r) => r.quiz_id);
+
+      quizQuery = supabase
+        .from('quizzes')
+        .select('*')
+        .eq('is_active', true)
+        .or(`created_by.eq.${req.user!.id},id.in.(${assignedIds.length > 0 ? assignedIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
+        .order('created_at', { ascending: false });
     }
 
-    res.json({ quizzes });
+    const { data: quizzes } = await quizQuery;
+
+    const enriched = await Promise.all(
+      (quizzes || []).map(async (quiz) => {
+        const { data: creator } = await supabase.from('users').select('name, email').eq('id', quiz.created_by).single();
+        const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', quiz.id);
+        const questionIds = (qqRows || []).map((r) => r.question_id);
+        const { data: questions } = questionIds.length > 0
+          ? await supabase.from('questions').select('*').in('id', questionIds)
+          : { data: [] };
+
+        return { ...quiz, questions: questions || [], createdBy: creator || { name: 'Unknown', email: '' } };
+      })
+    );
+
+    res.json({ quizzes: enriched });
   } catch (error) {
     console.error('Get quizzes error:', error);
     res.status(500).json({ message: 'Failed to fetch quizzes' });
@@ -57,13 +112,8 @@ export async function getQuizzes(req: AuthRequest, res: Response): Promise<void>
 
 export async function getQuizById(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const selectFields = req.user?.role === 'student' ? { correctAnswer: 0 } : {};
-    const quiz = await Quiz.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .populate({
-        path: 'questions',
-        select: selectFields,
-      });
+    const hideAnswers = req.user?.role === 'student';
+    const quiz = await getQuizWithJoins(req.params.id as string, hideAnswers);
 
     if (!quiz) {
       res.status(404).json({ message: 'Quiz not found' });
@@ -71,8 +121,8 @@ export async function getQuizById(req: AuthRequest, res: Response): Promise<void
     }
 
     if (req.user?.role === 'student') {
-      const isAssigned = quiz.assignedTo.some((id) => id.toString() === req.user!.id);
-      const isCreator = quiz.createdBy.toString() === req.user.id;
+      const isAssigned = quiz.assignedTo?.some((id: string) => id === req.user!.id);
+      const isCreator = quiz.created_by === req.user.id;
       if (!isAssigned && !isCreator) {
         res.status(403).json({ message: 'Not authorized' });
         return;
@@ -91,71 +141,88 @@ export async function submitQuiz(req: AuthRequest, res: Response): Promise<void>
     const { id } = req.params;
     const { answers, timeTaken } = req.body;
 
-    const quiz = await Quiz.findById(id).populate('questions');
+    const { data: quiz } = await supabase.from('quizzes').select('*').eq('id', id).single();
     if (!quiz) {
       res.status(404).json({ message: 'Quiz not found' });
       return;
     }
 
-    const questions = quiz.questions as unknown as Array<{
-      _id: string;
-      correctAnswer: string | boolean;
-      type: string;
-    }>;
+    const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', id);
+    const questionIds = (qqRows || []).map((r) => r.question_id);
+
+    const { data: questions } = await supabase.from('questions').select('id, correct_answer, type').in('id', questionIds);
 
     let correctCount = 0;
     let incorrectCount = 0;
     let skippedCount = 0;
-    const answerDetails = [];
+    const answerDetails: Array<{
+      result_id?: string;
+      question_id: string;
+      user_answer: unknown;
+      correct_answer: unknown;
+      is_correct: boolean;
+      time_spent: number;
+    }> = [];
 
-    for (const question of questions) {
-      const userAnswer = answers.find((a: { questionId: string }) => a.questionId === question._id)?.answer ?? null;
+    for (const question of questions || []) {
+      const userAnswer = answers.find((a: { questionId: string }) => a.questionId === question.id)?.answer ?? null;
 
       let isCorrect = false;
       if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
         skippedCount++;
       } else {
         if (question.type === 'true-false') {
-          isCorrect = userAnswer === question.correctAnswer;
+          isCorrect = userAnswer === question.correct_answer;
         } else {
-          isCorrect = String(userAnswer).toLowerCase().trim() === String(question.correctAnswer).toLowerCase().trim();
+          isCorrect = String(userAnswer).toLowerCase().trim() === String(question.correct_answer).toLowerCase().trim();
         }
         if (isCorrect) correctCount++;
         else incorrectCount++;
       }
 
       answerDetails.push({
-        questionId: question._id,
-        userAnswer,
-        correctAnswer: question.correctAnswer,
-        isCorrect,
-        timeSpent: 0,
+        question_id: question.id,
+        user_answer: userAnswer,
+        correct_answer: question.correct_answer,
+        is_correct: isCorrect,
+        time_spent: 0,
       });
     }
 
-    const result = await Result.create({
-      userId: req.user!.id,
-      quizId: id,
-      answers: answerDetails,
-      score: Math.round((correctCount / questions.length) * 100),
-      totalQuestions: questions.length,
-      correctCount,
-      incorrectCount,
-      skippedCount,
-      timeTaken,
-      completedAt: new Date(),
-    });
+    const totalQ = (questions || []).length;
+    const score = Math.round((correctCount / totalQ) * 100);
+
+    const { data: result, error: resultError } = await supabase
+      .from('results')
+      .insert({
+        user_id: req.user!.id,
+        quiz_id: id,
+        score,
+        total_questions: totalQ,
+        correct_count: correctCount,
+        incorrect_count: incorrectCount,
+        skipped_count: skippedCount,
+        time_taken: timeTaken || 0,
+        completed_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (resultError) throw resultError;
+
+    const answerRows = answerDetails.map((a) => ({ ...a, result_id: result.id }));
+    await supabase.from('result_answers').insert(answerRows);
 
     res.status(201).json({
       message: 'Quiz submitted successfully',
       result: {
-        id: result._id,
-        score: result.score,
-        correctCount: result.correctCount,
-        incorrectCount: result.incorrectCount,
-        skippedCount: result.skippedCount,
-        totalQuestions: result.totalQuestions,
-        timeTaken: result.timeTaken,
+        id: result.id,
+        score,
+        correctCount,
+        incorrectCount,
+        skippedCount,
+        totalQuestions: totalQ,
+        timeTaken: timeTaken || 0,
       },
     });
   } catch (error) {
@@ -166,20 +233,25 @@ export async function submitQuiz(req: AuthRequest, res: Response): Promise<void>
 
 export async function getResults(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const filter: Record<string, unknown> = {};
+    let query = supabase.from('results').select('*').order('completed_at', { ascending: false });
 
     if (req.user?.role === 'student') {
-      filter.userId = req.user.id;
+      query = query.eq('user_id', req.user.id);
     }
     if (req.query.quizId) {
-      filter.quizId = req.query.quizId;
+      query = query.eq('quiz_id', req.query.quizId);
     }
 
-    const results = await Result.find(filter)
-      .populate('quizId', 'title difficulty')
-      .sort({ completedAt: -1 });
+    const { data: results } = await query;
 
-    res.json({ results });
+    const enriched = await Promise.all(
+      (results || []).map(async (r) => {
+        const { data: quiz } = await supabase.from('quizzes').select('title, difficulty').eq('id', r.quiz_id).single();
+        return { ...r, quizId: quiz || { title: 'Unknown', difficulty: 'intermediate' } };
+      })
+    );
+
+    res.json({ results: enriched });
   } catch (error) {
     console.error('Get results error:', error);
     res.status(500).json({ message: 'Failed to fetch results' });
@@ -188,24 +260,34 @@ export async function getResults(req: AuthRequest, res: Response): Promise<void>
 
 export async function getResultById(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const result = await Result.findById(req.params.id)
-      .populate({
-        path: 'quizId',
-        select: 'title difficulty questions',
-        populate: { path: 'questions' },
-      });
+    const { data: result, error } = await supabase.from('results').select('*').eq('id', req.params.id).single();
 
-    if (!result) {
+    if (error || !result) {
       res.status(404).json({ message: 'Result not found' });
       return;
     }
 
-    if (result.userId.toString() !== req.user?.id && req.user?.role !== 'admin') {
+    if (result.user_id !== req.user?.id && req.user?.role !== 'admin') {
       res.status(403).json({ message: 'Not authorized' });
       return;
     }
 
-    res.json({ result });
+    const { data: quiz } = await supabase.from('quizzes').select('title, difficulty').eq('id', result.quiz_id).single();
+    const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', result.quiz_id);
+    const questionIds = (qqRows || []).map((r) => r.question_id);
+    const { data: questions } = questionIds.length > 0
+      ? await supabase.from('questions').select('*').in('id', questionIds)
+      : { data: [] };
+
+    const { data: answerRows } = await supabase.from('result_answers').select('*').eq('result_id', result.id);
+
+    res.json({
+      result: {
+        ...result,
+        quizId: { ...quiz, questions: questions || [] },
+        answers: answerRows || [],
+      },
+    });
   } catch (error) {
     console.error('Get result error:', error);
     res.status(500).json({ message: 'Failed to fetch result' });
@@ -216,12 +298,20 @@ export async function assignQuiz(req: AuthRequest, res: Response): Promise<void>
   try {
     const { userIds } = req.body;
 
-    const quiz = await Quiz.findByIdAndUpdate(
-      req.params.id,
-      { $addToSet: { assignedTo: { $each: userIds } } },
-      { new: true }
-    );
+    const { data: existing } = await supabase
+      .from('quiz_assigned_users')
+      .select('user_id')
+      .eq('quiz_id', req.params.id);
 
+    const existingIds = new Set((existing || []).map((r) => r.user_id));
+    const newUserIds = userIds.filter((id: string) => !existingIds.has(id));
+
+    if (newUserIds.length > 0) {
+      const rows = newUserIds.map((uId: string) => ({ quiz_id: req.params.id, user_id: uId }));
+      await supabase.from('quiz_assigned_users').insert(rows);
+    }
+
+    const { data: quiz } = await supabase.from('quizzes').select('*').eq('id', req.params.id).single();
     if (!quiz) {
       res.status(404).json({ message: 'Quiz not found' });
       return;
@@ -236,19 +326,16 @@ export async function assignQuiz(req: AuthRequest, res: Response): Promise<void>
 
 export async function getQuizByDocumentId(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const quiz = await Quiz.findOne({ documentId: req.params.documentId })
-      .populate('createdBy', 'name email')
-      .populate({
-        path: 'questions',
-        select: req.user?.role === 'student' ? { correctAnswer: 0 } : {},
-      });
+    const { data: quiz } = await supabase.from('quizzes').select('*').eq('document_id', req.params.documentId).single();
 
     if (!quiz) {
       res.status(404).json({ message: 'No quiz found for this document' });
       return;
     }
 
-    res.json({ quiz });
+    const hideAnswers = req.user?.role === 'student';
+    const fullQuiz = await getQuizWithJoins(quiz.id, hideAnswers);
+    res.json({ quiz: fullQuiz });
   } catch (error) {
     console.error('Get quiz by document error:', error);
     res.status(500).json({ message: 'Failed to fetch quiz' });
@@ -257,9 +344,13 @@ export async function getQuizByDocumentId(req: AuthRequest, res: Response): Prom
 
 export async function getStudentAnalytics(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const results = await Result.find({ userId: req.user!.id }).sort({ completedAt: -1 });
+    const { data: results } = await supabase
+      .from('results')
+      .select('*')
+      .eq('user_id', req.user!.id)
+      .order('completed_at', { ascending: false });
 
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       res.json({
         totalQuizzes: 0,
         averageScore: 0,
@@ -274,21 +365,22 @@ export async function getStudentAnalytics(req: AuthRequest, res: Response): Prom
 
     const totalQuizzes = results.length;
     const averageScore = Math.round(results.reduce((sum, r) => sum + r.score, 0) / totalQuizzes);
-    const totalCorrect = results.reduce((sum, r) => sum + r.correctCount, 0);
-    const totalQuestions = results.reduce((sum, r) => sum + r.totalQuestions, 0);
+    const totalCorrect = results.reduce((sum, r) => sum + r.correct_count, 0);
+    const totalQuestionsCount = results.reduce((sum, r) => sum + r.total_questions, 0);
 
-    let weakAreas: Record<string, { correct: number; total: number }> = {};
+    const weakAreas: Record<string, { correct: number; total: number }> = {};
     for (const result of results) {
-      for (const answer of result.answers) {
-        const topic = 'Question'; 
+      const { data: answerRows } = await supabase.from('result_answers').select('is_correct').eq('result_id', result.id);
+      for (const answer of answerRows || []) {
+        const topic = 'Question';
         if (!weakAreas[topic]) weakAreas[topic] = { correct: 0, total: 0 };
         weakAreas[topic].total++;
-        if (answer.isCorrect) weakAreas[topic].correct++;
+        if (answer.is_correct) weakAreas[topic].correct++;
       }
     }
 
     const weakTopics = Object.entries(weakAreas)
-      .filter(([_, data]) => data.total >= 2)
+      .filter(([, data]) => data.total >= 2)
       .map(([topic, data]) => ({
         topic,
         score: Math.round((data.correct / data.total) * 100),
@@ -301,16 +393,16 @@ export async function getStudentAnalytics(req: AuthRequest, res: Response): Prom
       totalQuizzes,
       averageScore,
       totalCorrect,
-      totalQuestions,
+      totalQuestions: totalQuestionsCount,
       recentResults: results.slice(0, 10).map((r) => ({
-        id: r._id,
+        id: r.id,
         score: r.score,
-        totalQuestions: r.totalQuestions,
-        correctCount: r.correctCount,
-        completedAt: r.completedAt,
+        totalQuestions: r.total_questions,
+        correctCount: r.correct_count,
+        completedAt: r.completed_at,
       })),
-      scoreHistory: results.reverse().map((r) => ({
-        date: r.completedAt,
+      scoreHistory: [...results].reverse().map((r) => ({
+        date: r.completed_at,
         score: r.score,
       })),
       weakTopics,

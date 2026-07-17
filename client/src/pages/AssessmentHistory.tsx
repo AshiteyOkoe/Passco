@@ -16,12 +16,16 @@ interface HistoryEntry {
   assessmentType: string;
   totalQuestions: number;
   answeredQuestions: number;
+  correctAnswers: number;
+  wrongAnswers: number;
   percentage: number;
   grade: string;
   passed: boolean;
-  timeSpent: number;
+  timeUsed: number;
+  timestamp: number;
   completedAt: string;
   abandoned?: boolean;
+  studentName?: string;
 }
 
 function formatTime(seconds: number): string {
@@ -63,7 +67,11 @@ export default function AssessmentHistory() {
       const raw = localStorage.getItem('assessment-history');
       if (raw) {
         const parsed = JSON.parse(raw) as HistoryEntry[];
-        setHistory(parsed.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()));
+        setHistory(parsed.sort((a, b) => {
+          const dateA = a.completedAt ? new Date(a.completedAt).getTime() : (a.timestamp || 0);
+          const dateB = b.completedAt ? new Date(b.completedAt).getTime() : (b.timestamp || 0);
+          return dateB - dateA;
+        }));
       }
     } catch {
       setHistory([]);
@@ -267,7 +275,8 @@ export default function AssessmentHistory() {
               {filtered.map((entry, i) => {
                 const classLabel = CLASS_META[entry.classLevel as JHSCategory]?.label ?? entry.classLevel;
                 const subjectLabel = entry.subject ? SUBJECT_META[entry.subject as SubjectId]?.label ?? entry.subject : 'All Subjects';
-                const date = new Date(entry.completedAt);
+                const dateVal = entry.completedAt || (entry.timestamp ? new Date(entry.timestamp).toISOString() : new Date().toISOString());
+                const date = new Date(dateVal);
                 const formattedDate = date.toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
@@ -321,9 +330,21 @@ export default function AssessmentHistory() {
                             <Target className="h-3 w-3" />
                             {entry.answeredQuestions}/{entry.totalQuestions} questions
                           </span>
+                          {entry.correctAnswers !== undefined && (
+                            <span className="flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3 w-3" />
+                              {entry.correctAnswers} correct
+                            </span>
+                          )}
+                          {entry.wrongAnswers !== undefined && entry.wrongAnswers > 0 && (
+                            <span className="flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400">
+                              <XCircle className="h-3 w-3" />
+                              {entry.wrongAnswers} wrong
+                            </span>
+                          )}
                           <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                             <Clock className="h-3 w-3" />
-                            {formatTime(entry.timeSpent)}
+                            {formatTime(entry.timeUsed)}
                           </span>
                         </div>
                       </div>
@@ -361,6 +382,17 @@ export default function AssessmentHistory() {
                       <Clock className="h-3 w-3" />
                       {formattedDate} at {formattedTime}
                     </div>
+                    {!entry.abandoned && (
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            entry.percentage >= 75 ? 'bg-emerald-500' : entry.percentage >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                          )}
+                          style={{ width: `${Math.min(entry.percentage, 100)}%` }}
+                        />
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}

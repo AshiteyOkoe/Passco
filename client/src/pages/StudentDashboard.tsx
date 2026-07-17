@@ -20,16 +20,16 @@ interface AssessmentResult {
   assessmentType: string;
   totalQuestions: number;
   answeredQuestions: number;
-  correctCount: number;
-  totalMarks: number;
-  obtainedMarks: number;
+  correctAnswers: number;
+  wrongAnswers: number;
   percentage: number;
   grade: string;
   passed: boolean;
-  timeSpent: number;
+  timeUsed: number;
   timestamp: number;
   completedAt?: string;
   abandoned?: boolean;
+  studentName?: string;
 }
 
 function getAssessmentHistory(): AssessmentResult[] {
@@ -434,36 +434,62 @@ export default function StudentDashboard() {
                     key={`${r.timestamp || r.completedAt || i}-${i}`}
                     variants={fadeUp}
                     custom={i}
-                    className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:shadow-sm sm:flex-row sm:items-center sm:gap-4 dark:border-slate-800 dark:bg-slate-900"
+                    className="rounded-xl border border-slate-200 bg-white p-4 transition hover:shadow-sm dark:border-slate-800 dark:bg-slate-900"
                   >
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                      r.abandoned
-                        ? 'bg-amber-100 dark:bg-amber-500/10'
-                        : r.passed
-                          ? 'bg-emerald-100 dark:bg-emerald-500/10'
-                          : 'bg-red-100 dark:bg-red-500/10'
-                    }`}>
-                      {r.abandoned ? (
-                        <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      ) : r.passed ? (
-                        <Trophy className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      ) : (
-                        <Brain className="h-5 w-5 text-red-600 dark:text-red-400" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">
-                        {classLabel} — {subjectMeta?.icon} {subjectMeta?.label || r.subject}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {r.difficulty} · {r.assessmentType} · {r.abandoned ? 'Abandoned' : `${r.answeredQuestions}/${r.totalQuestions} answered`}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className={`text-lg font-bold ${r.percentage >= 75 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {r.percentage}%
-                      </p>
-                      <p className="text-xs text-slate-400">{r.grade}</p>
+                    <div className="flex items-start gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        r.abandoned
+                          ? 'bg-amber-100 dark:bg-amber-500/10'
+                          : r.passed
+                            ? 'bg-emerald-100 dark:bg-emerald-500/10'
+                            : 'bg-red-100 dark:bg-red-500/10'
+                      }`}>
+                        {r.abandoned ? (
+                          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        ) : r.passed ? (
+                          <Trophy className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Brain className="h-5 w-5 text-red-600 dark:text-red-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                          {classLabel} — {subjectMeta?.icon} {subjectMeta?.label || r.subject}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{r.difficulty}</span>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{r.assessmentType}</span>
+                          {r.abandoned ? (
+                            <span className="text-amber-600 dark:text-amber-400 font-medium">Abandoned</span>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">{r.correctAnswers} correct</span>
+                              {r.wrongAnswers > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-0.5 text-red-700 dark:bg-red-500/10 dark:text-red-400">{r.wrongAnswers} wrong</span>
+                              )}
+                              <span>{r.answeredQuestions}/{r.totalQuestions} answered</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+                          <span>{r.timeUsed ? `${Math.floor(r.timeUsed / 60)}m ${r.timeUsed % 60}s` : '—'}</span>
+                          <span>•</span>
+                          <span>{r.completedAt ? new Date(r.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : r.timestamp ? new Date(r.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className={`text-xl font-bold ${r.percentage >= 75 ? 'text-emerald-600 dark:text-emerald-400' : r.percentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {r.percentage}%
+                        </p>
+                        <p className={`mt-0.5 inline-block rounded-md px-2 py-0.5 text-xs font-bold ${
+                          r.passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400'
+                        }`}>
+                          {r.grade}
+                        </p>
+                        <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          {r.passed ? 'Passed' : 'Failed'}
+                        </p>
+                      </div>
                     </div>
                   </motion.div>
                 );

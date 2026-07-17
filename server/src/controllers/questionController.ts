@@ -1,7 +1,5 @@
 import { Response } from 'express';
-import Question from '../models/Question';
-import Document from '../models/Document';
-import Quiz from '../models/Quiz';
+import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 
 export async function createQuestion(req: AuthRequest, res: Response): Promise<void> {
@@ -13,24 +11,30 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    const document = await Document.findById(documentId);
+    const { data: document } = await supabase.from('documents').select('id, topics').eq('id', documentId).single();
     if (!document) {
       res.status(404).json({ message: 'Document not found' });
       return;
     }
 
-    const newQuestion = await Question.create({
-      documentId,
-      createdBy: req.user!.id,
-      question,
-      type,
-      options: type === 'multiple-choice' ? options : undefined,
-      correctAnswer,
-      explanation,
-      difficulty: difficulty || 'intermediate',
-      topic: topic || document.topics[0] || 'General',
-      approved: req.user?.role === 'admin',
-    });
+    const { data: newQuestion, error } = await supabase
+      .from('questions')
+      .insert({
+        document_id: documentId,
+        created_by: req.user!.id,
+        question,
+        type,
+        options: type === 'multiple-choice' ? options : [],
+        correct_answer: correctAnswer,
+        explanation: explanation || '',
+        difficulty: difficulty || 'intermediate',
+        topic: topic || (document.topics && document.topics[0]) || 'General',
+        approved: req.user?.role === 'admin',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     res.status(201).json({
       message: 'Question created successfully',
@@ -47,7 +51,7 @@ export async function generateQuestionsFromDocument(req: AuthRequest, res: Respo
     const { documentId, difficulty, count } = req.body;
     const { generateQuestions } = await import('../services/aiService');
 
-    const document = await Document.findById(documentId);
+    const { data: document } = await supabase.from('documents').select('*').eq('id', documentId).single();
     if (!document) {
       res.status(404).json({ message: 'Document not found' });
       return;
@@ -59,45 +63,59 @@ export async function generateQuestionsFromDocument(req: AuthRequest, res: Respo
     }
 
     const questionData = generateQuestions(
-      document.extractedText,
-      document.topics,
+      document.extracted_text,
+      document.topics || [],
       difficulty || 'intermediate',
       count || 10
     );
 
-    const createdQuestions = [];
-    for (const qd of questionData) {
-      const question = await Question.create({
-        documentId: document._id,
-        createdBy: req.user!.id,
-        question: qd.question,
-        type: qd.type,
-        options: qd.type === 'multiple-choice' ? qd.options : undefined,
-        correctAnswer: qd.correctAnswer,
-        explanation: qd.explanation,
-        difficulty: qd.difficulty,
-        topic: qd.topic,
-        approved: req.user?.role === 'admin',
-      });
-      createdQuestions.push(question);
-    }
+    const insertRows = questionData.map((qd) => ({
+      document_id: document.id,
+      created_by: req.user!.id,
+      question: qd.question,
+      type: qd.type,
+      options: qd.type === 'multiple-choice' ? qd.options : [],
+      correct_answer: qd.correctAnswer,
+      explanation: qd.explanation,
+      difficulty: qd.difficulty,
+      topic: qd.topic,
+      approved: req.user?.role === 'admin',
+    }));
 
-    const quiz = await Quiz.create({
-      title: `${document.originalName} - ${difficulty || 'intermediate'} Quiz`,
-      description: `Auto-generated quiz from ${document.originalName}`,
-      documentId: document._id,
-      createdBy: req.user!.id,
-      assignedTo: [req.user!.id],
-      questions: createdQuestions.map(q => q._id),
-      difficulty: difficulty || 'intermediate',
-      timeLimit: Math.max(createdQuestions.length * 30, 300),
-    });
+    const { data: createdQuestions, error: qError } = await supabase
+      .from('questions')
+      .insert(insertRows)
+      .select('id');
+
+    if (qError) throw qError;
+
+    const questionIds = (createdQuestions || []).map((q) => q.id);
+
+    const { data: quiz, error: quizError } = await supabase
+      .from('quizzes')
+      .insert({
+        title: `${document.original_name} - ${difficulty || 'intermediate'} Quiz`,
+        description: `Auto-generated quiz from ${document.original_name}`,
+        document_id: document.id,
+        created_by: req.user!.id,
+        difficulty: difficulty || 'intermediate',
+        time_limit: Math.max(questionIds.length * 30, 300),
+      })
+      .select('id')
+      .single();
+
+    if (quizError) throw quizError;
+
+    const qqRows = questionIds.map((qId) => ({ quiz_id: quiz.id, question_id: qId }));
+    await supabase.from('quiz_questions').insert(qqRows);
+
+    await supabase.from('quiz_assigned_users').insert({ quiz_id: quiz.id, user_id: req.user!.id });
 
     res.status(201).json({
       message: 'Questions generated successfully',
-      count: createdQuestions.length,
+      count: createdQuestions?.length || 0,
       questions: createdQuestions,
-      quizId: quiz._id,
+      quizId: quiz.id,
     });
   } catch (error) {
     console.error('Generate questions error:', error);
@@ -107,20 +125,23 @@ export async function generateQuestionsFromDocument(req: AuthRequest, res: Respo
 
 export async function getQuestions(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const filter: Record<string, unknown> = {};
-    if (req.query.documentId) filter.documentId = req.query.documentId;
-    if (req.query.topic) filter.topic = req.query.topic;
-    if (req.query.difficulty) filter.difficulty = req.query.difficulty;
+    let query = supabase.from('questions').select('*').order('created_at', { ascending: false });
 
-    if (req.user?.role === 'student') {
-      filter.approved = true;
-    }
+    if (req.query.documentId) query = query.eq('document_id', req.query.documentId);
+    if (req.query.topic) query = query.eq('topic', req.query.topic);
+    if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty);
+    if (req.user?.role === 'student') query = query.eq('approved', true);
 
-    const questions = await Question.find(filter)
-      .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
+    const { data: questions } = await query;
 
-    res.json({ questions });
+    const enriched = await Promise.all(
+      (questions || []).map(async (q) => {
+        const { data: creator } = await supabase.from('users').select('name, email').eq('id', q.created_by).single();
+        return { ...q, createdBy: creator || { name: 'Unknown', email: '' } };
+      })
+    );
+
+    res.json({ questions: enriched });
   } catch (error) {
     console.error('Get questions error:', error);
     res.status(500).json({ message: 'Failed to fetch questions' });
@@ -132,26 +153,39 @@ export async function updateQuestion(req: AuthRequest, res: Response): Promise<v
     const { id } = req.params;
     const updates = req.body;
 
-    if (req.user?.role === 'admin') {
-      const question = await Question.findByIdAndUpdate(id, updates, { new: true });
-      if (!question) {
-        res.status(404).json({ message: 'Question not found' });
-        return;
-      }
-      res.json({ message: 'Question updated', question });
-    } else {
-      const question = await Question.findById(id);
-      if (!question) {
-        res.status(404).json({ message: 'Question not found' });
-        return;
-      }
-      if (question.createdBy.toString() !== req.user!.id) {
-        res.status(403).json({ message: 'Not authorized' });
-        return;
-      }
-      const updated = await Question.findByIdAndUpdate(id, updates, { new: true });
-      res.json({ message: 'Question updated', question: updated });
+    const { data: existing } = await supabase.from('questions').select('id, created_by').eq('id', id).single();
+    if (!existing) {
+      res.status(404).json({ message: 'Question not found' });
+      return;
     }
+
+    if (req.user?.role !== 'admin' && existing.created_by !== req.user!.id) {
+      res.status(403).json({ message: 'Not authorized' });
+      return;
+    }
+
+    const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (updates.question !== undefined) dbUpdates.question = updates.question;
+    if (updates.type !== undefined) dbUpdates.type = updates.type;
+    if (updates.options !== undefined) dbUpdates.options = updates.options;
+    if (updates.correctAnswer !== undefined) dbUpdates.correct_answer = updates.correctAnswer;
+    if (updates.explanation !== undefined) dbUpdates.explanation = updates.explanation;
+    if (updates.difficulty !== undefined) dbUpdates.difficulty = updates.difficulty;
+    if (updates.topic !== undefined) dbUpdates.topic = updates.topic;
+    if (updates.subject !== undefined) dbUpdates.subject = updates.subject;
+    if (updates.classLevel !== undefined) dbUpdates.class_level = updates.classLevel;
+    if (updates.approved !== undefined) dbUpdates.approved = updates.approved;
+
+    const { data: question, error } = await supabase
+      .from('questions')
+      .update(dbUpdates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ message: 'Question updated', question });
   } catch (error) {
     console.error('Update question error:', error);
     res.status(500).json({ message: 'Failed to update question' });
@@ -160,19 +194,19 @@ export async function updateQuestion(req: AuthRequest, res: Response): Promise<v
 
 export async function deleteQuestion(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const question = await Question.findById(req.params.id);
+    const { data: question } = await supabase.from('questions').select('id, created_by').eq('id', req.params.id).single();
 
     if (!question) {
       res.status(404).json({ message: 'Question not found' });
       return;
     }
 
-    if (question.createdBy.toString() !== req.user?.id && req.user?.role !== 'admin') {
+    if (question.created_by !== req.user?.id && req.user?.role !== 'admin') {
       res.status(403).json({ message: 'Not authorized' });
       return;
     }
 
-    await Question.findByIdAndDelete(req.params.id);
+    await supabase.from('questions').delete().eq('id', req.params.id);
     res.json({ message: 'Question deleted successfully' });
   } catch (error) {
     console.error('Delete question error:', error);
@@ -182,25 +216,26 @@ export async function deleteQuestion(req: AuthRequest, res: Response): Promise<v
 
 export async function getApprovedQuestions(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const filter: Record<string, unknown> = { approved: true };
-    if (req.query.subject) filter.subject = { $regex: `^${req.query.subject}$`, $options: 'i' };
-    if (req.query.classLevel) filter.classLevel = req.query.classLevel;
-    if (req.query.difficulty) filter.difficulty = req.query.difficulty;
-    if (req.query.type) filter.type = req.query.type;
+    let query = supabase.from('questions').select('*').eq('approved', true).order('created_at', { ascending: false });
 
-    const questions = await Question.find(filter).sort({ createdAt: -1 });
+    if (req.query.subject) query = query.ilike('subject', req.query.subject as string);
+    if (req.query.classLevel) query = query.eq('class_level', req.query.classLevel);
+    if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty);
+    if (req.query.type) query = query.eq('type', req.query.type);
+
+    const { data: questions } = await query;
 
     res.json({
-      questions: questions.map(q => ({
-        id: q._id,
+      questions: (questions || []).map((q) => ({
+        id: q.id,
         question: q.question,
         type: q.type,
         options: q.options,
-        correctAnswer: q.correctAnswer,
+        correctAnswer: q.correct_answer,
         explanation: q.explanation,
         difficulty: q.difficulty,
         subject: q.subject,
-        classLevel: q.classLevel,
+        classLevel: q.class_level,
         topic: q.topic,
       })),
     });
@@ -212,13 +247,14 @@ export async function getApprovedQuestions(req: AuthRequest, res: Response): Pro
 
 export async function approveQuestion(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const question = await Question.findByIdAndUpdate(
-      req.params.id,
-      { approved: true },
-      { new: true }
-    );
+    const { data: question, error } = await supabase
+      .from('questions')
+      .update({ approved: true, updated_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .select()
+      .single();
 
-    if (!question) {
+    if (error || !question) {
       res.status(404).json({ message: 'Question not found' });
       return;
     }
