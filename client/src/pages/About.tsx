@@ -151,7 +151,7 @@ export default function About() {
                 <motion.a
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  href="mailto:ashiteyokoe@example.com"
+                  href="mailto:oashitey8@gmail.com"
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
                 >
                   <Mail className="h-5 w-5" />
