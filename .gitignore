@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.env
+*.log
+.DS_Store
+uploads/*
+!uploads/.gitkeep
+server/uploads/*
+!server/uploads/.gitkeep
+server/uploads/avatars/*
+!server/uploads/avatars/.gitkeep
+client/public/videos/*
+!client/public/videos/.gitkeep
+*.tsbuildinfo
