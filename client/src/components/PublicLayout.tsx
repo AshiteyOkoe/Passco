@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthModal from './AuthModal';
 import { DefaultAvatar } from './DefaultAvatars';
+import { resolveUploadUrl } from '../services/api';
 
 export default function PublicLayout() {
   const { user, logout } = useAuth();
@@ -92,7 +93,7 @@ export default function PublicLayout() {
               <div className="hidden items-center gap-3 md:flex">
                 <Link to="/" className="flex items-center gap-2.5">
                   {user.avatar?.startsWith('/uploads/') ? (
-                    <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
+                    <img src={resolveUploadUrl(user.avatar)} alt={user.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
                   ) : (
                     <DefaultAvatar gender={user.gender || '' as any} size={32} className="rounded-full ring-2 ring-indigo-200 dark:ring-indigo-800" />
                   )}
@@ -169,7 +170,7 @@ export default function PublicLayout() {
                 <>
                   <div className="flex items-center gap-3 px-4 py-2">
                     {user.avatar?.startsWith('/uploads/') ? (
-                      <img src={user.avatar} alt={user.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
+                    <img src={resolveUploadUrl(user.avatar)} alt={user.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
                     ) : (
                       <DefaultAvatar gender={user.gender || '' as any} size={32} className="rounded-full ring-2 ring-indigo-200 dark:ring-indigo-800" />
                     )}

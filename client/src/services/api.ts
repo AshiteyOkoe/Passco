@@ -11,8 +11,18 @@ import type {
   AdminStats,
 } from '../types';
 
+const API_BASE = import.meta.env.DEV ? '/api' : 'https://passco-api.onrender.com/api';
+const UPLOADS_BASE = import.meta.env.DEV ? '' : 'https://passco-api.onrender.com';
+
+export function resolveUploadUrl(path: string): string {
+  if (!path) return path;
+  if (path.startsWith('http')) return path;
+  if (import.meta.env.DEV) return path;
+  return `${UPLOADS_BASE}${path}`;
+}
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
 

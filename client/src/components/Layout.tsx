@@ -9,6 +9,7 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DefaultAvatar } from './DefaultAvatars';
+import { resolveUploadUrl } from '../services/api';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -135,7 +136,7 @@ export default function Layout() {
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 {hasCustomAvatar ? (
-                  <img src={user!.avatar!} alt={user?.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700" />
+                  <img src={resolveUploadUrl(user!.avatar!)} alt={user?.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700" />
                 ) : (
                   <DefaultAvatar gender={avatarGender} size={32} className="rounded-full ring-2 ring-slate-200 dark:ring-slate-700" />
                 )}
@@ -156,7 +157,7 @@ export default function Layout() {
                     <div className="border-b border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-800/50">
                       <div className="flex items-center gap-3">
                         {hasCustomAvatar ? (
-                          <img src={user!.avatar!} alt={user?.name} className="h-12 w-12 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
+                          <img src={resolveUploadUrl(user!.avatar!)} alt={user?.name} className="h-12 w-12 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
                         ) : (
                           <DefaultAvatar gender={avatarGender} size={48} className="rounded-full ring-2 ring-indigo-200 dark:ring-indigo-800" />
                         )}

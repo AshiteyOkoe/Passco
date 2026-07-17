@@ -8,6 +8,7 @@ import {
   BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Target, Flame, Award, ClipboardCheck, TrendingUp, Clock
 } from 'lucide-react';
 import { HeroStudents } from '../components/icons/Illustrations';
+import { resolveUploadUrl } from '../services/api';
 import { DefaultAvatar } from '../components/DefaultAvatars';
 import { SUBJECT_META, type SubjectId } from '../data/questionBank';
 
@@ -160,7 +161,7 @@ export default function Landing() {
                   <div className="inline-flex items-center gap-4 rounded-2xl border border-white/20 bg-white/10 px-6 py-4 shadow-xl backdrop-blur-md">
                     <div className="relative">
                       {hasCustomAvatar ? (
-                        <img src={user.avatar!} alt={user.name} className="h-16 w-16 rounded-full object-cover ring-3 ring-white/30" />
+                        <img src={resolveUploadUrl(user.avatar!)} alt={user.name} className="h-16 w-16 rounded-full object-cover ring-3 ring-white/30" />
                       ) : (
                         <DefaultAvatar gender={resolveAvatarGender()} size={64} className="rounded-full ring-3 ring-white/30" />
                       )}

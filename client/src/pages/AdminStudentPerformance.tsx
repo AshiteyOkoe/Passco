@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { getAllAssessmentResults, getAssessmentStats, getStudents } from '../services/api';
+import { getAllAssessmentResults, getAssessmentStats, getStudents, resolveUploadUrl } from '../services/api';
 import type { AssessmentResult } from '../types';
 import {
   BarChart3, Users, TrendingUp, Trophy, Target, BookOpen, Download,
@@ -517,7 +517,7 @@ export default function AdminStudentPerformance() {
                           {(() => {
                             const profile = students[r.studentName?.toLowerCase().trim() ?? ''];
                             if (profile?.avatar) {
-                              return <img src={profile.avatar} alt={r.studentName} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
+                              return <img src={resolveUploadUrl(profile.avatar)} alt={r.studentName} className="h-7 w-7 shrink-0 rounded-full object-cover" />;
                             }
                             return <DefaultAvatar gender={profile?.gender as 'male' | 'female' | undefined} className="h-7 w-7 shrink-0" size={28} />;
                           })()}

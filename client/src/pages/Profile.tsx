@@ -7,6 +7,7 @@ import { DefaultAvatar, MaleAvatar, FemaleAvatar } from '../components/DefaultAv
 import ImageCropper from '../components/ImageCropper';
 import { cn } from '../utils';
 import { fadeUp } from '../utils/animations';
+import { resolveUploadUrl } from '../services/api';
 
 const classOptions = ['JHS 1', 'JHS 2', 'JHS 3'];
 
@@ -107,7 +108,7 @@ export default function Profile() {
             <div className="flex flex-col items-center gap-6 sm:flex-row">
               <div className="relative">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" className="h-24 w-24 rounded-full object-cover ring-4 ring-indigo-100 dark:ring-indigo-900" />
+                  <img src={resolveUploadUrl(avatarPreview)} alt="Avatar" className="h-24 w-24 rounded-full object-cover ring-4 ring-indigo-100 dark:ring-indigo-900" />
                 ) : (
                   <DefaultAvatar gender={gender} size={96} className="rounded-full ring-4 ring-indigo-100 dark:ring-indigo-900" />
                 )}
