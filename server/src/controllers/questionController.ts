@@ -2,9 +2,49 @@ import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 
+function normalizeText(text: string): string {
+  return text.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+async function findDuplicateQuestion(questionText: string, correctAnswer: string): Promise<{ isDuplicate: boolean; existingQuestion?: string }> {
+  const normalized = normalizeText(questionText);
+  const { data: existing } = await supabase
+    .from('questions')
+    .select('question, correct_answer')
+    .ilike('question', `%${normalized.substring(0, 50)}%`)
+    .limit(10);
+
+  if (!existing || existing.length === 0) return { isDuplicate: false };
+
+  for (const eq of existing) {
+    if (normalizeText(eq.question) === normalized) {
+      return { isDuplicate: true, existingQuestion: eq.question };
+    }
+  }
+
+  const words = normalized.split(' ').filter((w) => w.length > 3);
+  for (const eq of existing) {
+    const eqNorm = normalizeText(eq.question);
+    const eqWords = eqNorm.split(' ').filter((w: string) => w.length > 3);
+    if (words.length > 0 && eqWords.length > 0) {
+      const overlap = words.filter((w: string) => eqWords.includes(w)).length;
+      const similarity = overlap / Math.max(words.length, eqWords.length);
+      if (similarity >= 0.85) {
+        const ansNorm = normalizeText(String(correctAnswer));
+        const eqAnsNorm = normalizeText(String(eq.correct_answer));
+        if (ansNorm === eqAnsNorm) {
+          return { isDuplicate: true, existingQuestion: eq.question };
+        }
+      }
+    }
+  }
+
+  return { isDuplicate: false };
+}
+
 export async function createQuestion(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { documentId, question, type, options, correctAnswer, explanation, difficulty, topic } = req.body;
+    const { documentId, question, type, options, correctAnswer, explanation, difficulty, topic, subject, classLevel } = req.body;
 
     if (!documentId) {
       res.status(400).json({ message: 'Document ID is required' });
@@ -14,6 +54,17 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
     const { data: document } = await supabase.from('documents').select('id, topics').eq('id', documentId).single();
     if (!document) {
       res.status(404).json({ message: 'Document not found' });
+      return;
+    }
+
+    const { isDuplicate, existingQuestion } = await findDuplicateQuestion(question, correctAnswer);
+    if (isDuplicate) {
+      res.status(409).json({
+        message: 'Duplicate question detected',
+        duplicate: true,
+        existingQuestion,
+        question,
+      });
       return;
     }
 
@@ -29,6 +80,8 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
         explanation: explanation || '',
         difficulty: difficulty || 'intermediate',
         topic: topic || (document.topics && document.topics[0]) || 'General',
+        subject: subject || '',
+        class_level: classLevel || '',
         approved: req.user?.role === 'admin',
       })
       .select()
@@ -130,6 +183,8 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
     if (req.query.documentId) query = query.eq('document_id', req.query.documentId);
     if (req.query.topic) query = query.eq('topic', req.query.topic);
     if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty);
+    if (req.query.subject) query = query.ilike('subject', req.query.subject as string);
+    if (req.query.classLevel) query = query.eq('class_level', req.query.classLevel);
     if (req.user?.role === 'student') query = query.eq('approved', true);
 
     const { data: questions } = await query;
@@ -137,7 +192,15 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
     const enriched = await Promise.all(
       (questions || []).map(async (q) => {
         const { data: creator } = await supabase.from('users').select('name, email').eq('id', q.created_by).single();
-        return { ...q, createdBy: creator || { name: 'Unknown', email: '' } };
+        return {
+          ...q,
+          _id: q.id,
+          documentId: q.document_id,
+          correctAnswer: q.correct_answer,
+          createdBy: creator || { name: 'Unknown', email: '' },
+          subject: q.subject || '',
+          classLevel: q.class_level || '',
+        };
       })
     );
 

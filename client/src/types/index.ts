@@ -78,6 +78,8 @@ export interface Question {
   explanation: string;
   difficulty: Difficulty;
   topic: string;
+  subject?: string;
+  classLevel?: string;
   approved: boolean;
   createdAt: string;
 }

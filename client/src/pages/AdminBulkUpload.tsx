@@ -189,7 +189,7 @@ export default function AdminBulkUpload() {
     if (toSave.length === 0) return;
     setSavingMsg(`Saving ${toSave.length} questions to bank...`);
     try {
-      await api.post('/bulk-upload/save', {
+      const response = await api.post('/bulk-upload/save', {
         questions: toSave.map(q => ({
           question: q.question,
           type: q.type,
@@ -202,15 +202,20 @@ export default function AdminBulkUpload() {
           topic: q.topic,
         })),
       });
+      const { savedCount, skippedCount, skippedDuplicates } = response.data;
       setSaveResult(prev => {
-        const newCount = (prev?.count || 0) + toSave.length;
+        const newCount = (prev?.count || 0) + (savedCount || toSave.length);
         const newBreakdown = { ...(prev?.subjectBreakdown || {}) };
         for (const q of toSave) {
           newBreakdown[q.subject] = (newBreakdown[q.subject] || 0) + 1;
         }
         return { count: newCount, subjectBreakdown: newBreakdown };
       });
-      setSavingMsg('');
+      if (skippedCount > 0) {
+        setSavingMsg(`Saved ${savedCount} questions. Skipped ${skippedCount} duplicates.`);
+      } else {
+        setSavingMsg('');
+      }
     } catch {
       setSavingMsg('');
       setErrorMsg('Failed to save some questions to bank. They remain in preview.');

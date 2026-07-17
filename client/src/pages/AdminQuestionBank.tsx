@@ -9,8 +9,9 @@ import {
   Plus, Minus, ChevronDown, ChevronUp, Filter, Loader2, AlertCircle,
   CircleDot, ToggleLeft, FileText,
 } from 'lucide-react';
-import { fadeUp, scaleIn, slideUp, stagger, bounceIn } from '../utils/animations';
+import { fadeUp } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
+import { SUBJECT_META, CLASS_META, type SubjectId, type JHSCategory } from '../data/questionBank';
 import type { Question, UploadedDocument, Difficulty } from '../types';
 
 export default function AdminQuestionBank() {
@@ -20,6 +21,8 @@ export default function AdminQuestionBank() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'multiple-choice' | 'true-false'>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | Difficulty>('all');
+  const [subjectFilter, setSubjectFilter] = useState<'all' | SubjectId>('all');
+  const [classFilter, setClassFilter] = useState<'all' | JHSCategory>('all');
   const [search, setSearch] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
@@ -31,6 +34,8 @@ export default function AdminQuestionBank() {
   const [formExplanation, setFormExplanation] = useState('');
   const [formDifficulty, setFormDifficulty] = useState<Difficulty>('intermediate');
   const [formTopic, setFormTopic] = useState('');
+  const [formSubject, setFormSubject] = useState<SubjectId>('mathematics');
+  const [formClassLevel, setFormClassLevel] = useState<JHSCategory>('jhs1');
   const [formDocumentId, setFormDocumentId] = useState('');
   const [formAutoApprove, setFormAutoApprove] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -49,14 +54,24 @@ export default function AdminQuestionBank() {
   useEffect(() => { load(); }, []);
 
   const handleApprove = async (id: string) => {
-    await approveQuestion(id);
-    load();
+    try {
+      await approveQuestion(id);
+      load();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to approve question.');
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this question?')) return;
-    await deleteQuestion(id);
-    load();
+    try {
+      await deleteQuestion(id);
+      load();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete question.');
+    }
   };
 
   const handleBulkApprove = async () => {
@@ -64,17 +79,32 @@ export default function AdminQuestionBank() {
       const q = questions.find((qq) => qq._id === id);
       return q && !q.approved;
     });
-    if (pendingIds.length === 0) return;
-    await Promise.all(pendingIds.map((id) => approveQuestion(id)));
-    setSelectedQuestions(new Set());
-    load();
+    if (pendingIds.length === 0) {
+      alert('No pending questions to approve. All selected questions are already approved.');
+      return;
+    }
+    try {
+      await Promise.all(pendingIds.map((id) => approveQuestion(id)));
+      setSelectedQuestions(new Set());
+      load();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to approve some questions.');
+      load();
+    }
   };
 
   const handleBulkDelete = async () => {
     if (!confirm(`Delete ${selectedQuestions.size} selected questions?`)) return;
-    await Promise.all(Array.from(selectedQuestions).map((id) => deleteQuestion(id)));
-    setSelectedQuestions(new Set());
-    load();
+    try {
+      await Promise.all(Array.from(selectedQuestions).map((id) => deleteQuestion(id)));
+      setSelectedQuestions(new Set());
+      load();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete some questions.');
+      load();
+    }
   };
 
   const toggleSelectAll = () => {
@@ -113,18 +143,27 @@ export default function AdminQuestionBank() {
         explanation: formExplanation,
         difficulty: formDifficulty,
         topic: formTopic,
+        subject: SUBJECT_META[formSubject].label,
+        classLevel: formClassLevel,
       });
       setFormQuestion('');
       setFormOptions(['', '', '', '']);
       setFormCorrectAnswer('A');
       setFormExplanation('');
       setFormTopic('');
+      setFormSubject('mathematics');
+      setFormClassLevel('jhs1');
       setFormDocumentId('');
       setShowCreateForm(false);
       load();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      alert('Failed to create question.');
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string; existingQuestion?: string } } };
+      if (axiosErr?.response?.status === 409) {
+        alert(`Duplicate detected: ${axiosErr.response.data?.existingQuestion || 'This question already exists in the bank.'}`);
+      } else {
+        alert('Failed to create question.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -136,10 +175,12 @@ export default function AdminQuestionBank() {
       if (filter === 'approved' && !q.approved) return false;
       if (typeFilter !== 'all' && q.type !== typeFilter) return false;
       if (difficultyFilter !== 'all' && q.difficulty !== difficultyFilter) return false;
+      if (subjectFilter !== 'all' && q.subject && q.subject.toLowerCase() !== SUBJECT_META[subjectFilter].label.toLowerCase()) return false;
+      if (classFilter !== 'all' && q.classLevel && q.classLevel.toLowerCase() !== classFilter) return false;
       if (search && !q.question.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [questions, filter, typeFilter, difficultyFilter, search]);
+  }, [questions, filter, typeFilter, difficultyFilter, subjectFilter, classFilter, search]);
 
   if (loading) {
     return (
@@ -247,6 +288,41 @@ export default function AdminQuestionBank() {
                         )}
                       >
                         {d.charAt(0).toUpperCase() + d.slice(1)}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">Subject</label>
+                  <select
+                    value={formSubject}
+                    onChange={(e) => setFormSubject(e.target.value as SubjectId)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    {(Object.keys(SUBJECT_META) as SubjectId[]).map((s) => (
+                      <option key={s} value={s}>{SUBJECT_META[s].label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">Class Level</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['jhs1', 'jhs2', 'jhs3'] as const).map((c) => (
+                      <motion.button
+                        key={c}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setFormClassLevel(c)}
+                        className={cn(
+                          'rounded-lg border-2 px-3 py-2 text-sm font-medium transition',
+                          formClassLevel === c
+                            ? 'border-pink-500 bg-pink-50 text-pink-700 dark:bg-pink-500/10 dark:text-pink-400'
+                            : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400'
+                        )}
+                      >
+                        {CLASS_META[c].label}
                       </motion.button>
                     ))}
                   </div>
@@ -458,6 +534,40 @@ export default function AdminQuestionBank() {
               {f === 'all' ? 'All Diff.' : f.charAt(0).toUpperCase() + f.slice(1)}
             </motion.button>
           ))}
+          <div className="w-px bg-slate-200 dark:bg-slate-700" />
+          {(['all', ...Object.keys(SUBJECT_META)] as const).map((f) => (
+            <motion.button
+              key={f}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setSubjectFilter(f as 'all' | SubjectId)}
+              className={cn(
+                'rounded-lg px-3 py-2 text-xs font-medium transition',
+                subjectFilter === f
+                  ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              )}
+            >
+              {f === 'all' ? 'All Subjects' : SUBJECT_META[f as SubjectId]?.label ?? f}
+            </motion.button>
+          ))}
+          <div className="w-px bg-slate-200 dark:bg-slate-700" />
+          {(['all', 'jhs1', 'jhs2', 'jhs3'] as const).map((f) => (
+            <motion.button
+              key={f}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setClassFilter(f as 'all' | JHSCategory)}
+              className={cn(
+                'rounded-lg px-3 py-2 text-xs font-medium transition',
+                classFilter === f
+                  ? 'bg-pink-100 text-pink-700 dark:bg-pink-500/10 dark:text-pink-400'
+                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              )}
+            >
+              {f === 'all' ? 'All Classes' : CLASS_META[f as JHSCategory]?.label ?? f}
+            </motion.button>
+          ))}
         </div>
       </motion.div>
 
@@ -575,6 +685,22 @@ export default function AdminQuestionBank() {
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="text-xs text-slate-400 dark:text-slate-500">{q.topic}</span>
+                  {q.subject && (
+                    <>
+                      <span className="text-xs text-slate-300 dark:text-slate-600">·</span>
+                      <span className="rounded bg-cyan-100 px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400">
+                        {q.subject}
+                      </span>
+                    </>
+                  )}
+                  {q.classLevel && (
+                    <>
+                      <span className="text-xs text-slate-300 dark:text-slate-600">·</span>
+                      <span className="rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-medium text-pink-700 dark:bg-pink-500/10 dark:text-pink-400">
+                        {CLASS_META[q.classLevel as JHSCategory]?.label ?? q.classLevel}
+                      </span>
+                    </>
+                  )}
                   <span className="text-xs text-slate-300 dark:text-slate-600">·</span>
                   <span className={cn(
                     'rounded px-1.5 py-0.5 text-[10px] font-medium',
@@ -632,12 +758,12 @@ export default function AdminQuestionBank() {
           >
             <BookOpen className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
             <p className="mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
-              {search || filter !== 'all' || typeFilter !== 'all' || difficultyFilter !== 'all'
+              {search || filter !== 'all' || typeFilter !== 'all' || difficultyFilter !== 'all' || subjectFilter !== 'all' || classFilter !== 'all'
                 ? 'No questions match your filters.'
                 : 'No questions yet.'}
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500">
-              {search || filter !== 'all' || typeFilter !== 'all' || difficultyFilter !== 'all'
+              {search || filter !== 'all' || typeFilter !== 'all' || difficultyFilter !== 'all' || subjectFilter !== 'all' || classFilter !== 'all'
                 ? 'Try adjusting your search or filters.'
                 : 'Create a question or generate from a document.'}
             </p>

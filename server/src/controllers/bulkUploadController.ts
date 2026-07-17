@@ -2,6 +2,29 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { supabase } from '../config/supabase';
 
+function normalizeText(text: string): string {
+  return text.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function isDuplicate(newQuestion: string, newAnswer: string, existingNormalized: Map<string, string>): boolean {
+  const norm = normalizeText(newQuestion);
+  if (existingNormalized.has(norm)) {
+    return true;
+  }
+  const words = norm.split(' ').filter((w) => w.length > 3);
+  for (const [exNorm] of existingNormalized) {
+    const exWords = exNorm.split(' ').filter((w: string) => w.length > 3);
+    if (words.length > 0 && exWords.length > 0) {
+      const overlap = words.filter((w: string) => exWords.includes(w)).length;
+      const similarity = overlap / Math.max(words.length, exWords.length);
+      if (similarity >= 0.85) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export async function parseUploadedFile(req: AuthRequest, res: Response): Promise<void> {
   try {
     const file = req.file;
@@ -109,6 +132,55 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
       return;
     }
 
+    const { data: existingQuestions } = await supabase
+      .from('questions')
+      .select('question, correct_answer')
+      .limit(10000);
+
+    const existingNormalized = new Map<string, string>();
+    (existingQuestions || []).forEach((eq) => {
+      existingNormalized.set(normalizeText(eq.question), normalizeText(String(eq.correct_answer)));
+    });
+
+    const skippedDuplicates: string[] = [];
+    const filteredQuestions: Record<string, unknown>[] = [];
+
+    for (const q of questions) {
+      const qText = (q.question as string) || '';
+      const qAnswer = (q.correctAnswer as string) || '';
+
+      if (isDuplicate(qText, qAnswer, existingNormalized)) {
+        skippedDuplicates.push(qText);
+        continue;
+      }
+
+      const norm = normalizeText(qText);
+      existingNormalized.set(norm, normalizeText(qAnswer));
+      filteredQuestions.push(q);
+    }
+
+    if (filteredQuestions.length === 0) {
+      if (bulkUploadId) {
+        await supabase
+          .from('bulk_uploads')
+          .update({
+            status: 'completed',
+            total_questions: questions.length,
+            saved_questions: 0,
+            error_message: `All ${questions.length} questions were duplicates`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', bulkUploadId);
+      }
+      res.status(200).json({
+        message: 'All questions were duplicates — nothing saved',
+        savedCount: 0,
+        skippedCount: skippedDuplicates.length,
+        skippedDuplicates,
+      });
+      return;
+    }
+
     const { data: doc, error: docError } = await supabase
       .from('documents')
       .insert({
@@ -117,8 +189,8 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
         storage_path: `bulk-upload-${Date.now()}`,
         mime_type: 'application/bulk-upload',
         file_size: 0,
-        extracted_text: `Bulk upload of ${questions.length} questions`,
-        topics: [...new Set(questions.map((q: { topic?: string; subject?: string }) => q.topic || q.subject).filter(Boolean))] as string[],
+        extracted_text: `Bulk upload of ${filteredQuestions.length} questions`,
+        topics: [...new Set(filteredQuestions.map((q: Record<string, unknown>) => (q.topic as string) || (q.subject as string) || 'General'))] as string[],
         status: 'ready',
       })
       .select('id')
@@ -130,7 +202,7 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
     const classBreakdown: Record<string, number> = {};
     const difficultyBreakdown: Record<string, number> = {};
 
-    const insertRows = questions.map((q: Record<string, unknown>) => {
+    const insertRows = filteredQuestions.map((q: Record<string, unknown>) => {
       const subj = (q.subject as string) || 'General';
       subjectBreakdown[subj] = (subjectBreakdown[subj] || 0) + 1;
       const cls = (q.classLevel as string) || 'unknown';
@@ -163,7 +235,7 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
         .update({
           status: 'completed',
           total_questions: questions.length,
-          saved_questions: questions.length,
+          saved_questions: filteredQuestions.length,
           subject_breakdown: subjectBreakdown,
           class_breakdown: classBreakdown,
           difficulty_breakdown: difficultyBreakdown,
@@ -173,8 +245,13 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
     }
 
     res.status(201).json({
-      message: `${questions.length} questions saved successfully`,
-      count: questions.length,
+      message: skippedDuplicates.length > 0
+        ? `${filteredQuestions.length} questions saved, ${skippedDuplicates.length} duplicates skipped`
+        : `${filteredQuestions.length} questions saved successfully`,
+      count: filteredQuestions.length,
+      savedCount: filteredQuestions.length,
+      skippedCount: skippedDuplicates.length,
+      skippedDuplicates,
       documentId: doc.id,
       subjectBreakdown,
       classBreakdown,

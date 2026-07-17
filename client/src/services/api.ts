@@ -114,6 +114,8 @@ export async function getQuestions(params?: {
   documentId?: string;
   topic?: string;
   difficulty?: string;
+  subject?: string;
+  classLevel?: string;
 }): Promise<{ questions: Question[] }> {
   const res = await api.get('/questions', { params });
   return res.data;
@@ -149,6 +151,8 @@ export async function createQuestion(data: {
   explanation?: string;
   difficulty?: string;
   topic?: string;
+  subject?: string;
+  classLevel?: string;
 }): Promise<void> {
   await api.post('/questions', data);
 }
