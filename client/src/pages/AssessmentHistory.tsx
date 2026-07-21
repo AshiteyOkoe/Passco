@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Clock, Trophy, BarChart3, CheckCircle2, XCircle,
-  Filter, BookOpen, Target, AlertCircle, ClipboardList, ChevronDown,
+  Filter, BookOpen, Target, AlertCircle, ClipboardList, ChevronDown, ChevronUp, X,
 } from 'lucide-react';
 import { cn } from '../utils';
 import { bounceIn, fadeUp, stagger } from '../utils/animations';
@@ -61,6 +61,7 @@ export default function AssessmentHistory() {
   const [filterSubject, setFilterSubject] = useState<string>('all');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     try {
@@ -100,6 +101,31 @@ export default function AssessmentHistory() {
 
   const classOptions = useMemo(() => Object.keys(CLASS_META) as JHSCategory[], []);
   const subjectOptions = useMemo(() => Object.keys(SUBJECT_META) as SubjectId[], []);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterClass !== 'all') count++;
+    if (filterSubject !== 'all') count++;
+    if (filterDifficulty !== 'all') count++;
+    if (filterType !== 'all') count++;
+    return count;
+  }, [filterClass, filterSubject, filterDifficulty, filterType]);
+
+  const clearFilters = () => {
+    setFilterClass('all');
+    setFilterSubject('all');
+    setFilterDifficulty('all');
+    setFilterType('all');
+  };
+
+  const activeFilterLabels = useMemo(() => {
+    const labels: { key: string; label: string; clear: () => void }[] = [];
+    if (filterClass !== 'all') labels.push({ key: 'class', label: CLASS_META[filterClass as JHSCategory]?.label ?? filterClass, clear: () => setFilterClass('all') });
+    if (filterSubject !== 'all') labels.push({ key: 'subject', label: SUBJECT_META[filterSubject as SubjectId]?.label ?? filterSubject, clear: () => setFilterSubject('all') });
+    if (filterDifficulty !== 'all') labels.push({ key: 'difficulty', label: filterDifficulty.charAt(0).toUpperCase() + filterDifficulty.slice(1), clear: () => setFilterDifficulty('all') });
+    if (filterType !== 'all') labels.push({ key: 'type', label: filterType === 'mock' ? 'Mock Test' : filterType === 'examination' ? 'Examination' : 'Quiz', clear: () => setFilterType('all') });
+    return labels;
+  }, [filterClass, filterSubject, filterDifficulty, filterType]);
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 dark:bg-slate-950">
@@ -166,78 +192,121 @@ export default function AssessmentHistory() {
           )}
 
           {history.length > 0 && (
-            <motion.div
-              variants={fadeUp}
-              className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
-            >
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400">
-                <Filter className="h-4 w-4" />
-                Filters
-              </div>
-              <div className="relative">
-                <select
-                  value={filterClass}
-                  onChange={(e) => setFilterClass(e.target.value)}
-                  className={cn(
-                    'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
-                    'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                  )}
+            <motion.div variants={fadeUp}>
+              <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 >
-                  <option value="all">All Classes</option>
-                  {classOptions.map((c) => (
-                    <option key={c} value={c}>{CLASS_META[c].label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              </div>
-              <div className="relative">
-                <select
-                  value={filterSubject}
-                  onChange={(e) => setFilterSubject(e.target.value)}
-                  className={cn(
-                    'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
-                    'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-100 px-1.5 text-[10px] font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                      {activeFilterCount}
+                    </span>
                   )}
-                >
-                  <option value="all">All Subjects</option>
-                  {subjectOptions.map((s) => (
-                    <option key={s} value={s}>{SUBJECT_META[s].label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+                {activeFilterLabels.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {activeFilterLabels.map((f) => (
+                      <span
+                        key={f.key}
+                        className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+                      >
+                        {f.label}
+                        <button onClick={f.clear} className="rounded-full p-0.5 transition hover:bg-indigo-100 dark:hover:bg-indigo-500/20">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      onClick={clearFilters}
+                      className="text-xs font-medium text-slate-400 transition hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                )}
+                <span className="ml-auto text-xs text-slate-400 dark:text-slate-500">
+                  {filtered.length}/{history.length} results
+                </span>
               </div>
-              <div className="relative">
-                <select
-                  value={filterDifficulty}
-                  onChange={(e) => setFilterDifficulty(e.target.value)}
-                  className={cn(
-                    'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
-                    'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                  )}
+
+              {showFilters && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-2 flex flex-wrap items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <option value="all">All Difficulties</option>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="expert">Expert</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              </div>
-              <div className="relative">
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className={cn(
-                    'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
-                    'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                  )}
-                >
-                  <option value="all">All Types</option>
-                  <option value="quiz">Quiz</option>
-                  <option value="mock">Mock Test</option>
-                  <option value="examination">Examination</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              </div>
+                  <div className="relative">
+                    <select
+                      value={filterClass}
+                      onChange={(e) => setFilterClass(e.target.value)}
+                      className={cn(
+                        'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
+                        'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      )}
+                    >
+                      <option value="all">All Classes</option>
+                      {classOptions.map((c) => (
+                        <option key={c} value={c}>{CLASS_META[c].label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={filterSubject}
+                      onChange={(e) => setFilterSubject(e.target.value)}
+                      className={cn(
+                        'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
+                        'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      )}
+                    >
+                      <option value="all">All Subjects</option>
+                      {subjectOptions.map((s) => (
+                        <option key={s} value={s}>{SUBJECT_META[s].label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={filterDifficulty}
+                      onChange={(e) => setFilterDifficulty(e.target.value)}
+                      className={cn(
+                        'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
+                        'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      )}
+                    >
+                      <option value="all">All Difficulties</option>
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="expert">Expert</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      className={cn(
+                        'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
+                        'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      )}
+                    >
+                      <option value="all">All Types</option>
+                      <option value="quiz">Quiz</option>
+                      <option value="mock">Mock Test</option>
+                      <option value="examination">Examination</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           )}
 
@@ -266,9 +335,16 @@ export default function AssessmentHistory() {
             >
               <Filter className="mb-4 h-12 w-12 text-slate-300 dark:text-slate-600" />
               <h2 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">No matching results</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
                 Try adjusting your filters to find what you're looking for.
               </p>
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <X className="h-4 w-4" />
+                Clear All Filters
+              </button>
             </motion.div>
           ) : (
             <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-3">
