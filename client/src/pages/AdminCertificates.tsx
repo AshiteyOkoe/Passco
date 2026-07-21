@@ -349,7 +349,7 @@ export default function AdminCertificates() {
             </div>
 
             {/* Logo */}
-            <img src="/images/logos/yes.jpg" alt="Passco" className="mb-4 h-24 w-auto object-contain mix-blend-multiply drop-shadow-sm" />
+            <img src="/images/logos/passcologo.svg" alt="Passco" className="mb-4 h-24 w-auto object-contain mix-blend-multiply drop-shadow-sm" />
             <p className="text-sm font-semibold tracking-[0.35em] text-[#1e3a5f]">PASSCO EDUCATIONAL PLATFORM</p>
 
             <div className="my-5 h-px w-72 bg-gradient-to-r from-transparent via-yellow-600/40 to-transparent" />

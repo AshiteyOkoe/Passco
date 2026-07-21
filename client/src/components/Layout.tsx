@@ -98,7 +98,7 @@ export default function Layout() {
             </button>
             <Link to="/" className="flex items-center gap-2.5">
               <img
-                src="/images/logos/yes.jpg"
+                src="/images/logos/passcologo.svg"
                 alt="Passco"
                 className="h-12 w-auto object-contain mix-blend-multiply transition-transform hover:scale-110 dark:mix-blend-screen sm:h-14 md:h-16"
               />

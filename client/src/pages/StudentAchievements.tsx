@@ -702,7 +702,7 @@ export default function StudentAchievements() {
                   </div>
 
                   {/* Logo */}
-                  <img src="/images/logos/yes.jpg" alt="Passco" className="mb-3 h-16 w-auto object-contain mix-blend-multiply drop-shadow-sm sm:h-20 md:h-24" />
+                  <img src="/images/logos/passcologo.svg" alt="Passco" className="mb-3 h-16 w-auto object-contain mix-blend-multiply drop-shadow-sm sm:h-20 md:h-24" />
                   <p className="text-[10px] font-semibold tracking-[0.3em] text-[#1e3a5f] sm:text-xs">PASSCO EDUCATIONAL PLATFORM</p>
 
                   <div className="my-3 h-px w-48 bg-gradient-to-r from-transparent via-yellow-600/40 to-transparent sm:my-4 sm:w-64" />
