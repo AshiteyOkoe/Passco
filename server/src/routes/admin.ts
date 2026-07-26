@@ -8,6 +8,7 @@ import {
   getStudentResults,
   getAllQuizzes,
   getAllDocuments,
+  getSubjectQuestionCounts,
 } from '../controllers/adminController';
 import { authenticate, requireAdmin } from '../middleware/auth';
 
@@ -24,5 +25,6 @@ router.get('/documents', getAllDocuments);
 router.get('/dashboard', getDashboardStats);
 router.get('/students', getStudents);
 router.get('/analytics', getFullAnalytics);
+router.get('/subject-counts', getSubjectQuestionCounts);
 
 export default router;

@@ -11,14 +11,13 @@ import type {
   AdminStats,
 } from '../types';
 
-const API_BASE = import.meta.env.DEV ? '/api' : 'https://passco-api.onrender.com/api';
-const UPLOADS_BASE = import.meta.env.DEV ? '' : 'https://passco-api.onrender.com';
+const API_BASE = import.meta.env.DEV ? '/api' : '/api';
+const UPLOADS_BASE = import.meta.env.DEV ? '' : '';
 
 export function resolveUploadUrl(path: string): string {
   if (!path) return path;
   if (path.startsWith('http')) return path;
-  if (import.meta.env.DEV) return path;
-  return `${UPLOADS_BASE}${path}`;
+  return path;
 }
 
 const api = axios.create({
@@ -318,6 +317,11 @@ export async function getAdminAnalytics(): Promise<{
   resultsByDay: Array<{ date: string; count: number; avgScore: number }>;
 }> {
   const res = await api.get('/admin/analytics');
+  return res.data;
+}
+
+export async function getAdminSubjectCounts(): Promise<{ counts: Record<string, number> }> {
+  const res = await api.get('/admin/subject-counts');
   return res.data;
 }
 

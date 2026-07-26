@@ -10,7 +10,7 @@ import {
 import { HeroStudents } from '../components/icons/Illustrations';
 import { resolveUploadUrl } from '../services/api';
 import { DefaultAvatar } from '../components/DefaultAvatars';
-import { SUBJECT_META, type SubjectId } from '../data/questionBank';
+import { SUBJECT_META, getQuestions, shuffleArray, type SubjectId } from '../data/questionBank';
 
 const fadeUpFast = {
   hidden: { opacity: 0, y: 12 },
@@ -20,33 +20,21 @@ const fadeUpFast = {
   }),
 };
 
-const demoQuestions = [
-  {
-    q: 'What does CPU stand for?',
-    options: ['Central Processing Unit', 'Computer Personal Unit', 'Central Process Unit', 'Core Processing Unit'],
-    correct: 0,
-  },
-  {
-    q: 'Which data structure uses LIFO (Last In, First Out)?',
-    options: ['Queue', 'Stack', 'Array', 'Linked List'],
-    correct: 1,
-  },
-  {
-    q: 'What is the time complexity of binary search?',
-    options: ['O(n)', 'O(log n)', 'O(n²)', 'O(1)'],
-    correct: 1,
-  },
-  {
-    q: 'Which protocol is used for secure web browsing?',
-    options: ['FTP', 'SMTP', 'HTTPS', 'SSH'],
-    correct: 2,
-  },
-  {
-    q: 'What does RAM stand for?',
-    options: ['Read Access Memory', 'Random Access Memory', 'Run All Memory', 'Rapid Access Module'],
-    correct: 1,
-  },
-];
+const ALL_SUBJECTS: SubjectId[] = ['mathematics', 'science', 'english', 'social-studies', 'ict', 'rme', 'creative-arts', 'career-tech'];
+
+function generateDemoQuestions() {
+  const selected = shuffleArray(ALL_SUBJECTS).slice(0, 5);
+  return selected.map((subject) => {
+    const pool = getQuestions('jhs1', 'beginner', 10, subject).filter(
+      (q) => q.type === 'multiple-choice' && q.options && q.options.length >= 2,
+    );
+    if (pool.length === 0) return null;
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    const options = q.options!;
+    const correctIdx = options.findIndex((o) => o === String(q.correctAnswer));
+    return { q: q.question, options, correct: correctIdx >= 0 ? correctIdx : 0, subject };
+  }).filter(Boolean) as Array<{ q: string; options: string[]; correct: number; subject: SubjectId }>;
+}
 
 const encouragements = [
   "You're on a roll! Keep the momentum going.",
@@ -59,7 +47,8 @@ const encouragements = [
 export default function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [demoAnswers, setDemoAnswers] = useState<(number | null)[]>(new Array(demoQuestions.length).fill(null));
+  const [demoQuestions, setDemoQuestions] = useState(() => generateDemoQuestions());
+  const [demoAnswers, setDemoAnswers] = useState<(number | null)[]>(() => new Array(5).fill(null));
   const [demoSubmitted, setDemoSubmitted] = useState(false);
 
   const handleAction = (path: string) => {
@@ -73,7 +62,9 @@ export default function Landing() {
   );
 
   const resetDemo = () => {
-    setDemoAnswers(new Array(demoQuestions.length).fill(null));
+    const fresh = generateDemoQuestions();
+    setDemoQuestions(fresh);
+    setDemoAnswers(new Array(fresh.length).fill(null));
     setDemoSubmitted(false);
   };
 
@@ -596,7 +587,7 @@ export default function Landing() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-white" />
-                  <span className="font-semibold text-white">Sample Quiz: Computer Science</span>
+                  <span className="font-semibold text-white">Sample Quiz</span>
                 </div>
                 <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white">{demoQuestions.length} Questions</span>
               </div>
@@ -620,6 +611,9 @@ export default function Landing() {
                         <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-white">
                           {i + 1}. {item.q}
                         </p>
+                        <span className="mb-2 inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                          {SUBJECT_META[item.subject]?.icon} {SUBJECT_META[item.subject]?.label}
+                        </span>
                         <div className="space-y-2">
                           {item.options.map((opt, j) => (
                             <label

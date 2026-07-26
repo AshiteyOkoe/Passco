@@ -338,6 +338,27 @@ export async function getStudentResults(req: AuthRequest, res: Response): Promis
   }
 }
 
+export async function getSubjectQuestionCounts(_req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { data: questions } = await supabase
+      .from('questions')
+      .select('subject');
+
+    const counts: Record<string, number> = {};
+    for (const q of questions || []) {
+      const subj = (q.subject || '').trim();
+      if (subj) {
+        counts[subj] = (counts[subj] || 0) + 1;
+      }
+    }
+
+    res.json({ counts });
+  } catch (error) {
+    console.error('Get subject question counts error:', error);
+    res.status(500).json({ message: 'Failed to fetch subject question counts' });
+  }
+}
+
 export async function getAllQuizzes(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { data: quizzes } = await supabase

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -11,6 +11,7 @@ import {
   type JHSCategory, type SubjectId, type DifficultyLevel,
 } from '../data/questionBank';
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
+import { getAdminSubjectCounts } from '../services/api';
 
 const CLASS_KEYS: JHSCategory[] = ['jhs1', 'jhs2', 'jhs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
@@ -35,10 +36,18 @@ const DIFF_COLOR_MAP: Record<DifficultyLevel, string> = {
 
 export default function AdminSubjects() {
   const [filterClass, setFilterClass] = useState<JHSCategory | 'all'>('all');
+  const [serverCounts, setServerCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    getAdminSubjectCounts()
+      .then((res) => setServerCounts(res.counts))
+      .catch(() => {});
+  }, []);
 
   const subjectData = useMemo(() => {
     return SUBJECT_KEYS.map((sub) => {
       const meta = SUBJECT_META[sub];
+      const serverCount = serverCounts[meta.label] || 0;
 
       const perClass = CLASS_KEYS.map((cls) => ({
         key: cls,
@@ -51,7 +60,8 @@ export default function AdminSubjects() {
         count: CLASS_KEYS.reduce((sum, cls) => sum + getSubjectQuestionCount(cls, sub, d), 0),
       }));
 
-      const totalQuestions = perClass.reduce((sum, c) => sum + c.count, 0);
+      const bankTotal = perClass.reduce((sum, c) => sum + c.count, 0);
+      const totalQuestions = bankTotal + serverCount;
 
       return {
         key: sub,
@@ -59,15 +69,16 @@ export default function AdminSubjects() {
         perClass,
         perDifficulty,
         totalQuestions,
+        serverCount,
       };
     });
-  }, []);
+  }, [serverCounts]);
 
   const filtered = useMemo(() => {
     if (filterClass === 'all') return subjectData;
     return subjectData.map((s) => ({
       ...s,
-      totalQuestions: getSubjectQuestionCount(filterClass, s.key),
+      totalQuestions: getSubjectQuestionCount(filterClass, s.key) + (s.serverCount || 0),
       perClass: s.perClass.map((c) => ({
         ...c,
         count: c.key === filterClass ? getSubjectQuestionCount(filterClass, s.key) : 0,
@@ -188,6 +199,11 @@ export default function AdminSubjects() {
                   <h3 className="truncate text-sm font-bold text-slate-800 dark:text-white">{sub.label}</h3>
                   <p className={cn('text-lg font-extrabold', colors.text)}>{sub.totalQuestions}</p>
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Questions</p>
+                  {sub.serverCount ? (
+                    <p className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                      +{sub.serverCount} uploaded
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
