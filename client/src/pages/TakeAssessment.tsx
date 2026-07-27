@@ -284,6 +284,9 @@ export default function TakeAssessment() {
       timestamp: Date.now(),
       completedAt: new Date().toISOString(),
       studentName: user?.name || 'Student',
+      gender: user?.gender || '',
+      institution: user?.institution || '',
+      avatar: user?.avatar || '',
     };
 
     const existingHistory = JSON.parse(localStorage.getItem('assessment-history') || '[]');

@@ -5,11 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import { stagger, fadeUp } from '../utils/animations';
 import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
-  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight
+  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight, Landmark
 } from 'lucide-react';
 import { resolveUploadUrl } from '../services/api';
 import { DefaultAvatar } from '../components/DefaultAvatars';
-import { SUBJECT_META, getQuestions, shuffleArray, type SubjectId } from '../data/questionBank';
+import { SUBJECT_META, getQuestions, shuffleArray, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
 
 const fadeUpFast = {
   hidden: { opacity: 0, y: 12 },
@@ -112,11 +112,6 @@ export default function Landing() {
   }, [heroData]);
 
   const leaderboardEntries = useMemo(() => {
-    const map = new Map<string, { name: string; scores: number[]; badges: number; gender?: string; avatar?: string }>();
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key === 'assessment-history' || !key) continue;
-    }
     const raw = localStorage.getItem('assessment-history');
     if (!raw) return [];
     try {
@@ -131,7 +126,18 @@ export default function Landing() {
         const avg = Math.round(results.reduce((s: number, r: any) => s + r.percentage, 0) / results.length);
         const passed = results.filter((r: any) => r.passed).length;
         const badges = Math.floor(passed / 3);
-        return { name, scores: results.map((r: any) => r.percentage), badges, avg, total: results.length };
+        const latest = results[0] || {};
+        return {
+          name,
+          scores: results.map((r: any) => r.percentage),
+          badges,
+          avg,
+          total: results.length,
+          gender: latest.gender || '',
+          institution: latest.institution || '',
+          classLevel: latest.classLevel || '',
+          avatar: latest.avatar || '',
+        };
       }).sort((a: any, b: any) => b.avg - a.avg);
       return entries;
     } catch { return []; }
@@ -482,10 +488,10 @@ export default function Landing() {
                         : 'border-slate-200 dark:border-slate-800'
                     } ${isCurrentUser ? 'ring-2 ring-indigo-500/30 dark:ring-indigo-400/30' : ''}`}
                   >
-                    {/* Top Row: Rank + Name + Score */}
+                    {/* Top Row: Rank + Profile + Name + Score */}
                     <div className="flex items-center gap-3 sm:gap-4">
                       {/* Rank Badge */}
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold sm:h-12 sm:w-12 sm:text-base ${
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold sm:h-10 sm:w-10 sm:text-sm ${
                         rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/20' :
                         rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-md shadow-slate-500/20' :
                         rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/20' :
@@ -494,7 +500,27 @@ export default function Landing() {
                         {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
                       </div>
 
-                      {/* Name + Meta */}
+                      {/* Profile Image */}
+                      <div className="relative shrink-0">
+                        {entry.avatar && entry.avatar.startsWith('/uploads/') ? (
+                          <img
+                            src={resolveUploadUrl(entry.avatar)}
+                            alt={entry.name}
+                            className="h-11 w-11 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 sm:h-12 sm:w-12"
+                          />
+                        ) : (
+                          <DefaultAvatar
+                            gender={entry.gender as 'male' | 'female' || undefined}
+                            size={48}
+                            className="h-11 w-11 rounded-full ring-2 ring-white dark:ring-slate-800 sm:h-12 sm:w-12"
+                          />
+                        )}
+                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-950 ${
+                          entry.gender === 'female' ? 'bg-pink-400' : 'bg-blue-400'
+                        }`} />
+                      </div>
+
+                      {/* Name + Profile Info */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className={`text-sm font-bold truncate sm:text-base ${
@@ -508,7 +534,21 @@ export default function Landing() {
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          {entry.classLevel && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                              <GraduationCap className="h-2.5 w-2.5" />
+                              {CLASS_META[entry.classLevel as ClassLevel]?.label || entry.classLevel}
+                            </span>
+                          )}
+                          {entry.institution && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
+                              <Landmark className="h-2.5 w-2.5 shrink-0" />
+                              <span className="truncate max-w-[120px] sm:max-w-[200px]">{entry.institution}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
                           <div className="flex items-center gap-1">
                             <RewardIcon className={`h-3 w-3 ${reward.color}`} />
                             <span className="text-xs text-slate-500 dark:text-slate-400">{reward.label}</span>
