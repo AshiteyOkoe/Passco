@@ -16,6 +16,7 @@ import subscriptionRoutes from './routes/subscriptions';
 import paymentRoutes from './routes/payments';
 import aiGenerationRoutes from './routes/aiGeneration';
 import announcementRoutes from './routes/announcements';
+import leaderboardRoutes from './routes/leaderboard';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -55,6 +56,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ai-generation', aiGenerationRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);

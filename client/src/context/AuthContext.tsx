@@ -15,6 +15,8 @@ interface AuthContextType {
     institution?: string;
     gradeLevel?: string;
     dateOfBirth: string;
+    gender?: string;
+    classLevel?: string;
   }) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -65,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     institution?: string;
     gradeLevel?: string;
     dateOfBirth: string;
+    gender?: string;
+    classLevel?: string;
   }) => {
     const res = await api.register(data);
     localStorage.setItem('passco-token', res.token);

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { BookOpen, User, Mail, Lock, Building2, GraduationCap, UserPlus, Eye, EyeOff, Check, Calendar } from 'lucide-react';
 import { HeroStudents } from '../components/icons/Illustrations';
 import { slideUp, stagger, fadeUp } from '../utils/animations';
+import { cn } from '../utils';
 
 export default function Register() {
   const { register } = useAuth();
@@ -14,6 +15,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [institution, setInstitution] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
+  const [classLevel, setClassLevel] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,7 +26,7 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      await register({ name, email, password, institution, gradeLevel, dateOfBirth });
+      await register({ name, email, password, institution, gradeLevel, dateOfBirth, gender, classLevel });
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
         ? (err as { response: { data: { message: string } } }).response?.data?.message
@@ -154,6 +157,14 @@ export default function Register() {
             </motion.div>
 
             <motion.div className="mb-4" variants={slideUp} custom={4}>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Gender</label>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setGender('male')} className={cn('flex-1 rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition', gender === 'male' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400')}>Male</button>
+                <button type="button" onClick={() => setGender('female')} className={cn('flex-1 rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition', gender === 'female' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400')}>Female</button>
+              </div>
+            </motion.div>
+
+            <motion.div className="mb-4" variants={slideUp} custom={4}>
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Date of Birth *</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -178,11 +189,28 @@ export default function Register() {
               </div>
             </motion.div>
 
+            <motion.div className="mb-6" variants={slideUp} custom={6}>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Class Level</label>
+              <div className="relative">
+                <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <select value={classLevel} onChange={(e) => setClassLevel(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                  <option value="">Select class level</option>
+                  <option value="JHS 1">JHS 1</option>
+                  <option value="JHS 2">JHS 2</option>
+                  <option value="JHS 3">JHS 3</option>
+                  <option value="SHS 1">SHS 1</option>
+                  <option value="SHS 2">SHS 2</option>
+                  <option value="SHS 3">SHS 3</option>
+                </select>
+              </div>
+            </motion.div>
+
             <motion.button
               type="submit"
               disabled={loading}
               variants={fadeUp}
-              custom={5}
+              custom={7}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50"

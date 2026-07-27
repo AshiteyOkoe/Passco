@@ -59,6 +59,8 @@ export async function register(data: {
   institution?: string;
   gradeLevel?: string;
   dateOfBirth: string;
+  gender?: string;
+  classLevel?: string;
 }): Promise<AuthResponse> {
   const res = await api.post('/auth/register', data);
   return res.data;
@@ -426,6 +428,25 @@ export async function createAnnouncement(data: {
   targetAudience?: string;
 }): Promise<{ announcement: Announcement }> {
   const res = await api.post('/announcements', data);
+  return res.data;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  institution: string;
+  classLevel: string;
+  avatar: string;
+  gender: string;
+  avg: number;
+  total: number;
+  badges: number;
+  scores: number[];
+  joinedAt: string;
+}
+
+export async function getLeaderboard(): Promise<{ leaderboard: LeaderboardEntry[] }> {
+  const res = await api.get('/leaderboard');
   return res.data;
 }
 

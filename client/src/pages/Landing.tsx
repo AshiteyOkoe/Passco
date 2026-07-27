@@ -7,7 +7,7 @@ import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
   BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight, Landmark
 } from 'lucide-react';
-import { resolveUploadUrl } from '../services/api';
+import { resolveUploadUrl, getLeaderboard, type LeaderboardEntry } from '../services/api';
 import { DefaultAvatar } from '../components/DefaultAvatars';
 import { SUBJECT_META, getQuestions, shuffleArray, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
 
@@ -111,36 +111,48 @@ export default function Landing() {
     return sorted.map((r: any) => ({ score: r.percentage }));
   }, [heroData]);
 
-  const leaderboardEntries = useMemo(() => {
-    const raw = localStorage.getItem('assessment-history');
-    if (!raw) return [];
-    try {
-      const all: any[] = JSON.parse(raw);
-      const byName = new Map<string, any[]>();
-      all.filter((r: any) => !r.abandoned).forEach((r: any) => {
-        const name = r.studentName || 'Student';
-        if (!byName.has(name)) byName.set(name, []);
-        byName.get(name)!.push(r);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLeaderboard()
+      .then(({ leaderboard }) => {
+        if (!cancelled) setLeaderboardEntries(leaderboard);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        try {
+          const raw = localStorage.getItem('assessment-history');
+          if (!raw) return;
+          const all: any[] = JSON.parse(raw);
+          const byName = new Map<string, any[]>();
+          all.filter((r: any) => !r.abandoned).forEach((r: any) => {
+            const name = r.studentName || 'Student';
+            if (!byName.has(name)) byName.set(name, []);
+            byName.get(name)!.push(r);
+          });
+          const entries: LeaderboardEntry[] = Array.from(byName.entries()).map(([name, results]) => {
+            const avg = Math.round(results.reduce((s: number, r: any) => s + r.percentage, 0) / results.length);
+            const passed = results.filter((r: any) => r.passed).length;
+            const latest = results[0] || {};
+            return {
+              id: name,
+              name,
+              scores: results.map((r: any) => r.percentage),
+              badges: Math.floor(passed / 3),
+              avg,
+              total: results.length,
+              gender: latest.gender || '',
+              institution: latest.institution || '',
+              classLevel: latest.classLevel || '',
+              avatar: latest.avatar || '',
+              joinedAt: '',
+            };
+          }).sort((a, b) => b.avg - a.avg);
+          setLeaderboardEntries(entries);
+        } catch { /* ignore */ }
       });
-      const entries = Array.from(byName.entries()).map(([name, results]) => {
-        const avg = Math.round(results.reduce((s: number, r: any) => s + r.percentage, 0) / results.length);
-        const passed = results.filter((r: any) => r.passed).length;
-        const badges = Math.floor(passed / 3);
-        const latest = results[0] || {};
-        return {
-          name,
-          scores: results.map((r: any) => r.percentage),
-          badges,
-          avg,
-          total: results.length,
-          gender: latest.gender || '',
-          institution: latest.institution || '',
-          classLevel: latest.classLevel || '',
-          avatar: latest.avatar || '',
-        };
-      }).sort((a: any, b: any) => b.avg - a.avg);
-      return entries;
-    } catch { return []; }
+    return () => { cancelled = true; };
   }, []);
 
   const getRewardLabel = (avg: number) => {

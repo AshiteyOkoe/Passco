@@ -37,7 +37,7 @@ function userResponse(user: DbUser) {
 
 export async function register(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { name, email, password, role, institution, gradeLevel, dateOfBirth } = req.body;
+    const { name, email, password, role, institution, gradeLevel, dateOfBirth, gender, classLevel } = req.body;
 
     if (!dateOfBirth) {
       res.status(400).json({ message: 'Date of birth is required' });
@@ -66,6 +66,8 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
         role: role || 'student',
         institution: institution || '',
         grade_level: gradeLevel || '',
+        gender: gender || '',
+        class_level: classLevel || '',
         date_of_birth: dateOfBirth ? new Date(dateOfBirth).toISOString() : null,
       })
       .select()
