@@ -5,7 +5,7 @@ export async function getLeaderboard(_req: Request, res: Response): Promise<void
   try {
     const { data: students, error } = await supabase
       .from('users')
-      .select('id, name, institution, class_level, avatar, gender, created_at')
+      .select('id, name, institution, grade_level, avatar, created_at')
       .eq('role', 'student');
 
     if (error) throw error;
@@ -31,9 +31,9 @@ export async function getLeaderboard(_req: Request, res: Response): Promise<void
           id: student.id,
           name: student.name || 'Student',
           institution: student.institution || '',
-          classLevel: student.class_level || '',
+          classLevel: student.grade_level || '',
           avatar: student.avatar || '',
-          gender: student.gender || '',
+          gender: '',
           avg,
           total,
           badges,
@@ -42,6 +42,20 @@ export async function getLeaderboard(_req: Request, res: Response): Promise<void
         };
       })
     );
+
+    // Try to enrich with gender if the column exists
+    try {
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('id, gender')
+        .eq('role', 'student');
+      if (allUsers) {
+        const genderMap = new Map(allUsers.map((u) => [u.id, u.gender || '']));
+        for (const entry of entries) {
+          if (entry) entry.gender = genderMap.get(entry.id) || '';
+        }
+      }
+    } catch { /* gender column may not exist */ }
 
     const leaderboard = entries
       .filter(Boolean)

@@ -65,9 +65,7 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
         password_hash: hashedPassword,
         role: role || 'student',
         institution: institution || '',
-        grade_level: gradeLevel || '',
-        gender: gender || '',
-        class_level: classLevel || '',
+        grade_level: gradeLevel || classLevel || '',
         date_of_birth: dateOfBirth ? new Date(dateOfBirth).toISOString() : null,
       })
       .select()
@@ -80,6 +78,14 @@ export async function register(req: AuthRequest, res: Response): Promise<void> {
       role: user.role,
       email: user.email,
     });
+
+    // Try updating optional fields separately — they may not exist in the DB yet
+    const optionalUpdates: Record<string, unknown> = {};
+    if (gender) optionalUpdates.gender = gender;
+    if (classLevel) optionalUpdates.class_level = classLevel;
+    if (Object.keys(optionalUpdates).length > 0) {
+      await supabase.from('users').update(optionalUpdates).eq('id', user.id);
+    }
 
     res.status(201).json({ token, user: userResponse(user as DbUser) });
   } catch (error) {
@@ -126,7 +132,7 @@ export async function getProfile(req: AuthRequest, res: Response): Promise<void>
   try {
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, name, email, role, institution, grade_level, avatar, gender, date_of_birth, class_level, created_at')
+      .select('*')
       .eq('id', req.user?.id)
       .single();
 
@@ -148,11 +154,9 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (name !== undefined) updates.name = name;
-    if (gender !== undefined) updates.gender = gender;
     if (dateOfBirth !== undefined) updates.date_of_birth = dateOfBirth ? new Date(dateOfBirth).toISOString() : null;
     if (institution !== undefined) updates.institution = institution;
     if (gradeLevel !== undefined) updates.grade_level = gradeLevel;
-    if (classLevel !== undefined) updates.class_level = classLevel;
     if (avatar !== undefined) updates.avatar = avatar;
 
     const { data: user, error } = await supabase
@@ -165,6 +169,14 @@ export async function updateProfile(req: AuthRequest, res: Response): Promise<vo
     if (error || !user) {
       res.status(401).json({ message: 'Session expired. Please log in again.' });
       return;
+    }
+
+    // Try updating optional fields separately — they may not exist in the DB yet
+    const optionalUpdates: Record<string, unknown> = {};
+    if (gender !== undefined) optionalUpdates.gender = gender;
+    if (classLevel !== undefined) optionalUpdates.class_level = classLevel;
+    if (Object.keys(optionalUpdates).length > 0) {
+      await supabase.from('users').update(optionalUpdates).eq('id', req.user?.id);
     }
 
     res.json({ user: userResponse(user as DbUser) });
