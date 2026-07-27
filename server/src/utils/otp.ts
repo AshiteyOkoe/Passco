@@ -48,6 +48,11 @@ export function verifyOTP(email: string, code: string): boolean {
 }
 
 export async function sendOTPEmail(email: string, code: string): Promise<void> {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
+    return;
+  }
+
   const transporter = getTransporter();
   await transporter.sendMail({
     from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@passco.app',
