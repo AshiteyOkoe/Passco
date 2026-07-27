@@ -11,10 +11,10 @@ import {
 import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { StudentStats } from '../types';
-import { CLASS_META, SUBJECT_META, type JHSCategory, type SubjectId } from '../data/questionBank';
+import { CLASS_META, SUBJECT_META, type ClassLevel, type SubjectId } from '../data/questionBank';
 
 interface AssessmentResult {
-  classLevel: JHSCategory;
+  classLevel: ClassLevel;
   subject: SubjectId;
   difficulty: string;
   assessmentType: string;

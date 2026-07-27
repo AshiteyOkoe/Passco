@@ -16,11 +16,11 @@ import { cn } from '../utils';
 import { useAuth } from '../context/AuthContext';
 import { fadeUp, slideUp, stagger, bounceIn } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
-import { SUBJECT_META, CLASS_META, DIFFICULTY_META, type JHSCategory, type SubjectId } from '../data/questionBank';
+import { SUBJECT_META, CLASS_META, DIFFICULTY_META, type ClassLevel, type SubjectId } from '../data/questionBank';
 import type { StudentStats } from '../types';
 
 interface LocalAssessment {
-  classLevel: JHSCategory;
+  classLevel: ClassLevel;
   subject: string;
   difficulty: string;
   assessmentType: string;
@@ -198,7 +198,7 @@ export default function StudentPerformanceAnalytics() {
       map.set(key, existing);
     });
     return Array.from(map.entries()).map(([cls, data]) => ({
-      class: CLASS_META[cls as JHSCategory]?.label || cls,
+      class: CLASS_META[cls as ClassLevel]?.label || cls,
       score: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
       attempts: data.count,
     }));

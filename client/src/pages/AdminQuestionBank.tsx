@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { fadeUp } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
-import { SUBJECT_META, CLASS_META, type SubjectId, type JHSCategory } from '../data/questionBank';
+import { SUBJECT_META, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
 import type { Question, UploadedDocument, Difficulty } from '../types';
 
 export default function AdminQuestionBank() {
@@ -22,7 +22,7 @@ export default function AdminQuestionBank() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'multiple-choice' | 'true-false'>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | Difficulty>('all');
   const [subjectFilter, setSubjectFilter] = useState<'all' | SubjectId>('all');
-  const [classFilter, setClassFilter] = useState<'all' | JHSCategory>('all');
+  const [classFilter, setClassFilter] = useState<'all' | ClassLevel>('all');
   const [search, setSearch] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
@@ -35,7 +35,7 @@ export default function AdminQuestionBank() {
   const [formDifficulty, setFormDifficulty] = useState<Difficulty>('intermediate');
   const [formTopic, setFormTopic] = useState('');
   const [formSubject, setFormSubject] = useState<SubjectId>('mathematics');
-  const [formClassLevel, setFormClassLevel] = useState<JHSCategory>('jhs1');
+  const [formClassLevel, setFormClassLevel] = useState<ClassLevel>('jhs1');
   const [formDocumentId, setFormDocumentId] = useState('');
   const [formAutoApprove, setFormAutoApprove] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -557,7 +557,7 @@ export default function AdminQuestionBank() {
               key={f}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => setClassFilter(f as 'all' | JHSCategory)}
+              onClick={() => setClassFilter(f as 'all' | ClassLevel)}
               className={cn(
                 'rounded-lg px-3 py-2 text-xs font-medium transition',
                 classFilter === f
@@ -565,7 +565,7 @@ export default function AdminQuestionBank() {
                   : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
               )}
             >
-              {f === 'all' ? 'All Classes' : CLASS_META[f as JHSCategory]?.label ?? f}
+              {f === 'all' ? 'All Classes' : CLASS_META[f as ClassLevel]?.label ?? f}
             </motion.button>
           ))}
         </div>
@@ -697,7 +697,7 @@ export default function AdminQuestionBank() {
                     <>
                       <span className="text-xs text-slate-300 dark:text-slate-600">·</span>
                       <span className="rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-medium text-pink-700 dark:bg-pink-500/10 dark:text-pink-400">
-                        {CLASS_META[q.classLevel as JHSCategory]?.label ?? q.classLevel}
+                        {CLASS_META[q.classLevel as ClassLevel]?.label ?? q.classLevel}
                       </span>
                     </>
                   )}

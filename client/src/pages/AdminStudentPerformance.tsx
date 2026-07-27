@@ -12,7 +12,7 @@ import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
 import { DefaultAvatar } from '../components/DefaultAvatars';
 import { CLASS_META, SUBJECT_META, DIFFICULTY_META } from '../data/questionBank';
-import type { JHSCategory, SubjectId, DifficultyLevel, AssessmentType } from '../data/questionBank';
+import type { ClassLevel, SubjectId, DifficultyLevel, AssessmentType } from '../data/questionBank';
 
 type FlatResult = AssessmentResult & { source: 'api' | 'local' };
 
@@ -76,9 +76,9 @@ function buildSubjectLabel(raw: string): string {
 
 function buildClassLabel(raw: string): string {
   if (!raw) return '—';
-  const key = raw.toLowerCase().replace(/\s+/g, '') as JHSCategory;
+  const key = raw.toLowerCase().replace(/\s+/g, '') as ClassLevel;
   if (CLASS_META[key]) return CLASS_META[key].label;
-  if (CLASS_META[raw as JHSCategory]) return CLASS_META[raw as JHSCategory].label;
+  if (CLASS_META[raw as ClassLevel]) return CLASS_META[raw as ClassLevel].label;
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
@@ -274,7 +274,7 @@ export default function AdminStudentPerformance() {
   }, []);
 
   const subjectFilterKey = subjectFilter.toLowerCase().replace(/\s+/g, '-') as SubjectId;
-  const classFilterKey = classFilter.toLowerCase().replace(/\s+/g, '') as JHSCategory;
+  const classFilterKey = classFilter.toLowerCase().replace(/\s+/g, '') as ClassLevel;
   const difficultyFilterKey = difficultyFilter.toLowerCase() as DifficultyLevel;
 
   const filtered = useMemo(() => {

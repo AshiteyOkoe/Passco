@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { jhs1Beginner, jhs1Intermediate, jhs1Expert } from '../data/jhs1Questions';
 import { jhs2Beginner, jhs2Intermediate, jhs2Expert } from '../data/jhs2Questions';
 import { jhs3Beginner, jhs3Intermediate, jhs3Expert } from '../data/jhs3Questions';
-import { CLASS_META, SUBJECT_META, type JHSCategory, type BankQuestion } from '../data/questionBank';
+import { CLASS_META, SUBJECT_META, type ClassLevel, type BankQuestion } from '../data/questionBank';
 import { getApprovedBankQuestions } from '../services/api';
 import {
   Search, BookOpen, ChevronLeft, ChevronRight,
@@ -14,7 +14,7 @@ import { fadeUp } from '../utils/animations';
 import { cn } from '../utils';
 
 interface QuestionWithMeta extends BankQuestion {
-  classLevel: JHSCategory;
+  classLevel: ClassLevel;
   difficulty: string;
   source?: 'static' | 'bank';
 }
@@ -31,10 +31,13 @@ const allStaticQuestions: QuestionWithMeta[] = [
   ...jhs3Expert.map((q) => ({ ...q, classLevel: 'jhs3' as const, difficulty: 'expert' })),
 ];
 
-const CLASS_COLORS: Record<JHSCategory, string> = {
+const CLASS_COLORS: Record<ClassLevel, string> = {
   jhs1: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
   jhs2: 'bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400',
   jhs3: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400',
+  shs1: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
+  shs2: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
+  shs3: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -57,9 +60,11 @@ const SUBJECT_COLORS: Record<string, string> = {
 const SUBJECT_NAMES = Object.keys(SUBJECT_META) as (keyof typeof SUBJECT_META)[];
 const ITEMS_PER_PAGE = 20;
 
-const CLASS_MAP: Record<string, JHSCategory> = {
+const CLASS_MAP: Record<string, ClassLevel> = {
   'JHS 1': 'jhs1', 'JHS 2': 'jhs2', 'JHS 3': 'jhs3',
+  'SHS 1': 'shs1', 'SHS 2': 'shs2', 'SHS 3': 'shs3',
   'jhs1': 'jhs1', 'jhs2': 'jhs2', 'jhs3': 'jhs3',
+  'shs1': 'shs1', 'shs2': 'shs2', 'shs3': 'shs3',
 };
 
 const SUBJECT_MAP: Record<string, string> = {
@@ -70,7 +75,7 @@ const SUBJECT_MAP: Record<string, string> = {
 };
 
 export default function AdminJHSQuestions() {
-  const [classFilter, setClassFilter] = useState<'all' | JHSCategory>('all');
+  const [classFilter, setClassFilter] = useState<'all' | ClassLevel>('all');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'multiple-choice' | 'true-false'>('all');

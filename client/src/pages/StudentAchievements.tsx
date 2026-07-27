@@ -10,10 +10,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../utils';
 import { fadeUp, slideUp, stagger, bounceIn } from '../utils/animations';
-import { SUBJECT_META, CLASS_META, DIFFICULTY_META, type JHSCategory, type SubjectId } from '../data/questionBank';
+import { SUBJECT_META, CLASS_META, DIFFICULTY_META, type ClassLevel, type SubjectId } from '../data/questionBank';
 
 interface LocalAssessment {
-  classLevel: JHSCategory;
+  classLevel: ClassLevel;
   subject: string;
   difficulty: string;
   assessmentType: string;
@@ -185,7 +185,7 @@ export default function StudentAchievements() {
     const b: Badge[] = [];
 
     // Class badges
-    const classLevels: JHSCategory[] = ['jhs1', 'jhs2', 'jhs3'];
+    const classLevels: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3', 'shs1', 'shs2', 'shs3'];
     classLevels.forEach(cls => {
       const hasPassed = completed.some(r => r.classLevel === cls);
       const classCount = completed.filter(r => r.classLevel === cls).length;

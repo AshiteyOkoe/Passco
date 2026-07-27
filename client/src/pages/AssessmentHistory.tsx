@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils';
 import { bounceIn, fadeUp, stagger } from '../utils/animations';
-import { CLASS_META, SUBJECT_META, type JHSCategory, type SubjectId } from '../data/questionBank';
+import { CLASS_META, SUBJECT_META, type ClassLevel, type SubjectId } from '../data/questionBank';
 
 interface HistoryEntry {
   classLevel: string;
@@ -99,7 +99,7 @@ export default function AssessmentHistory() {
     return { total, avgScore, passRate, bestGrade };
   }, [history]);
 
-  const classOptions = useMemo(() => Object.keys(CLASS_META) as JHSCategory[], []);
+  const classOptions = useMemo(() => Object.keys(CLASS_META) as ClassLevel[], []);
   const subjectOptions = useMemo(() => Object.keys(SUBJECT_META) as SubjectId[], []);
 
   const activeFilterCount = useMemo(() => {
@@ -120,7 +120,7 @@ export default function AssessmentHistory() {
 
   const activeFilterLabels = useMemo(() => {
     const labels: { key: string; label: string; clear: () => void }[] = [];
-    if (filterClass !== 'all') labels.push({ key: 'class', label: CLASS_META[filterClass as JHSCategory]?.label ?? filterClass, clear: () => setFilterClass('all') });
+    if (filterClass !== 'all') labels.push({ key: 'class', label: CLASS_META[filterClass as ClassLevel]?.label ?? filterClass, clear: () => setFilterClass('all') });
     if (filterSubject !== 'all') labels.push({ key: 'subject', label: SUBJECT_META[filterSubject as SubjectId]?.label ?? filterSubject, clear: () => setFilterSubject('all') });
     if (filterDifficulty !== 'all') labels.push({ key: 'difficulty', label: filterDifficulty.charAt(0).toUpperCase() + filterDifficulty.slice(1), clear: () => setFilterDifficulty('all') });
     if (filterType !== 'all') labels.push({ key: 'type', label: filterType === 'mock' ? 'Mock Test' : filterType === 'examination' ? 'Examination' : 'Quiz', clear: () => setFilterType('all') });
@@ -349,7 +349,7 @@ export default function AssessmentHistory() {
           ) : (
             <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-3">
               {filtered.map((entry, i) => {
-                const classLabel = CLASS_META[entry.classLevel as JHSCategory]?.label ?? entry.classLevel;
+                const classLabel = CLASS_META[entry.classLevel as ClassLevel]?.label ?? entry.classLevel;
                 const subjectLabel = entry.subject ? SUBJECT_META[entry.subject as SubjectId]?.label ?? entry.subject : 'All Subjects';
                 const dateVal = entry.completedAt || (entry.timestamp ? new Date(entry.timestamp).toISOString() : new Date().toISOString());
                 const date = new Date(dateVal);

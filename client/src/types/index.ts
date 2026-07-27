@@ -166,3 +166,71 @@ export interface AdminStats {
     completedAt: string;
   }>;
 }
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan: 'free' | 'basic' | 'premium';
+  status: 'active' | 'cancelled' | 'expired' | 'past_due';
+  amount: number;
+  currency: string;
+  payment_provider: string;
+  payment_reference: string;
+  starts_at: string;
+  expires_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+}
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  subscription_id: string | null;
+  amount: number;
+  currency: string;
+  provider: string;
+  provider_ref: string;
+  status: 'pending' | 'success' | 'failed' | 'refunded';
+  plan: string;
+  paid_at: string | null;
+  created_at: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface AIUsageStatus {
+  plan: string;
+  used: number;
+  limit: number;
+  month: string;
+}
+
+export interface AIGeneratedQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+  difficulty: string;
+  subject: string;
+  type: 'multiple-choice' | 'true-false';
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  target_audience: 'all' | 'students' | 'admins';
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface PlanLimits {
+  aiQuestions: number;
+  label: string;
+  quizzes: boolean;
+  mocks: boolean;
+  examinations: boolean;
+  price: number;
+}

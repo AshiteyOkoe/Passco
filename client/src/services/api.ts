@@ -9,6 +9,12 @@ import type {
   Result,
   StudentStats,
   AdminStats,
+  Subscription,
+  Payment,
+  AIUsageStatus,
+  AIGeneratedQuestion,
+  Announcement,
+  PlanLimits,
 } from '../types';
 
 const API_BASE = import.meta.env.DEV ? '/api' : '/api';
@@ -323,6 +329,108 @@ export async function getAdminAnalytics(): Promise<{
 export async function getAdminSubjectCounts(): Promise<{ counts: Record<string, number> }> {
   const res = await api.get('/admin/subject-counts');
   return res.data;
+}
+
+// Subscription API
+export async function getMySubscription(): Promise<{
+  subscription: Subscription;
+  aiUsage: { used: number; limit: number; month: string };
+  planLimits: PlanLimits;
+}> {
+  const res = await api.get('/subscriptions/me');
+  return res.data;
+}
+
+export async function getAllSubscriptions(): Promise<{ subscriptions: Array<Subscription & { userName: string; userEmail: string }> }> {
+  const res = await api.get('/subscriptions/admin/all');
+  return res.data;
+}
+
+export async function suspendUserSubscription(userId: string): Promise<void> {
+  await api.post(`/subscriptions/admin/suspend/${userId}`);
+}
+
+// Payment API
+export async function initializePayment(data: { plan: string; email: string }): Promise<{
+  authorization_url: string;
+  reference: string;
+  access_code: string;
+}> {
+  const res = await api.post('/payments/initialize', data);
+  return res.data;
+}
+
+export async function verifyPayment(reference: string): Promise<{ message: string; plan: string }> {
+  const res = await api.get(`/payments/verify/${reference}`);
+  return res.data;
+}
+
+export async function getPaymentHistory(): Promise<{ payments: Payment[] }> {
+  const res = await api.get('/payments/history');
+  return res.data;
+}
+
+export async function getAllPayments(): Promise<{ payments: Payment[]; totalRevenue: number }> {
+  const res = await api.get('/payments/admin/all');
+  return res.data;
+}
+
+// AI Generation API
+export async function getAIGenerationStatus(): Promise<AIUsageStatus & { limit: number }> {
+  const res = await api.get('/ai-generation/status');
+  return res.data;
+}
+
+export async function generateQuestionsAI(data: {
+  text: string;
+  subject: string;
+  difficulty?: string;
+  count?: number;
+}): Promise<{ questions: AIGeneratedQuestion[]; usage: { used: number; limit: number; remaining: number; month: string } }> {
+  const res = await api.post('/ai-generation/generate', data);
+  return res.data;
+}
+
+export async function saveAIGeneratedQuestions(data: {
+  questions: AIGeneratedQuestion[];
+  documentId?: string;
+}): Promise<{ message: string; count: number; documentId: string }> {
+  const res = await api.post('/ai-generation/save', data);
+  return res.data;
+}
+
+export async function getAIUsageStats(): Promise<{
+  totalGenerated: number;
+  activeUsers: number;
+  monthlyBreakdown: Array<{ user_id: string; month: string; questions_generated: number }>;
+}> {
+  const res = await api.get('/ai-generation/admin/usage');
+  return res.data;
+}
+
+// Announcement API
+export async function getAnnouncements(): Promise<{ announcements: Announcement[] }> {
+  const res = await api.get('/announcements');
+  return res.data;
+}
+
+export async function getAllAnnouncements(): Promise<{ announcements: Announcement[] }> {
+  const res = await api.get('/announcements/admin/all');
+  return res.data;
+}
+
+export async function createAnnouncement(data: {
+  title: string;
+  body: string;
+  priority?: string;
+  targetAudience?: string;
+}): Promise<{ announcement: Announcement }> {
+  const res = await api.post('/announcements', data);
+  return res.data;
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await api.delete(`/announcements/${id}`);
 }
 
 // Assessment Results API

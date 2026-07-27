@@ -18,13 +18,13 @@ import {
   EyeOff,
   Navigation,
 } from 'lucide-react';
-import { getQuestions, ASSESSMENT_META, JHSCategory, DifficultyLevel, AssessmentType, BankQuestion } from '../data/questionBank';
+import { getQuestions, ASSESSMENT_META, ClassLevel, DifficultyLevel, AssessmentType, BankQuestion } from '../data/questionBank';
 import { saveAssessmentResult, getApprovedBankQuestions } from '../services/api';
 import { cn } from '../utils';
 import { cardFlip, fadeUp, bounceIn } from '../utils/animations';
 
 interface LocationState {
-  classLevel: JHSCategory;
+  classLevel: ClassLevel;
   subject?: string;
   difficulty: DifficultyLevel;
   assessmentType: AssessmentType;
