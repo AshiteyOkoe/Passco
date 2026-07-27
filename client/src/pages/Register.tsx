@@ -180,11 +180,8 @@ export default function Register() {
                 <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)}
                   className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                   <option value="">Select grade level</option>
-                  <option value="Primary">Primary School</option>
                   <option value="JHS">Junior High School</option>
                   <option value="SHS">Senior High School</option>
-                  <option value="Undergraduate">Undergraduate</option>
-                  <option value="Graduate">Graduate</option>
                 </select>
               </div>
             </motion.div>
