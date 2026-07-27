@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import PublicLayout from './components/PublicLayout';
@@ -59,20 +59,22 @@ export default function App() {
   const navigate = useNavigate();
   const [authModal, setAuthModal] = useState<{ open: boolean; tab: 'login' | 'register' }>({ open: false, tab: 'login' });
 
+  const location = useLocation();
+
   // Check URL params for auth trigger
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const auth = params.get('auth');
     const register = params.get('register');
     if (auth === 'login') {
       setAuthModal({ open: true, tab: 'login' });
       // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
+      window.history.replaceState({}, '', location.pathname);
     } else if (register || auth === 'register') {
       setAuthModal({ open: true, tab: 'register' });
-      window.history.replaceState({}, '', window.location.pathname);
+      window.history.replaceState({}, '', location.pathname);
     }
-  }, []);
+  }, [location.search]);
 
   const requireAuth = useCallback((tab: 'login' | 'register' = 'login') => {
     if (!user) {
