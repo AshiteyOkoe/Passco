@@ -4,12 +4,13 @@ import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, AreaChart, Area, ComposedChart,
 } from 'recharts';
 import {
   BarChart3, TrendingUp, TrendingDown, Target, Trophy, BookOpen,
   ArrowRight, Brain, Zap, Flame, Medal, Star, Award, AlertTriangle,
   CheckCircle2, Clock, ArrowUpRight, ArrowDownRight, Sparkles,
+  GraduationCap, School, Calendar, Timer, TrendingUpIcon,
 } from 'lucide-react';
 import { getStudentAnalytics } from '../services/api';
 import { cn } from '../utils';
@@ -84,10 +85,15 @@ function getRank(score: number): { label: string; icon: string; color: string } 
   return { label: 'D Keep Going', icon: '💪', color: 'text-rose-500' };
 }
 
+function isSHSClass(level: ClassLevel): boolean {
+  return level.startsWith('shs');
+}
+
 export default function StudentPerformanceAnalytics() {
   const { user } = useAuth();
   const [analytics, setAnalytics] = useState<StudentStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState<'overview' | 'jhs' | 'shs'>('overview');
 
   useEffect(() => {
     getStudentAnalytics()
@@ -109,31 +115,40 @@ export default function StudentPerformanceAnalytics() {
       .sort((a, b) => b.timestamp - a.timestamp);
   }, [localAssessments]);
 
-  const kpis = useMemo(() => {
-    const totalAssessments = allResults.length;
-    const avgScore = totalAssessments > 0
-      ? Math.round(allResults.reduce((s, r) => s + r.percentage, 0) / totalAssessments) : 0;
-    const totalCorrect = allResults.reduce((s, r) => s + r.correctCount, 0);
-    const totalAnswered = allResults.reduce((s, r) => s + r.answeredQuestions, 0);
-    const passRate = totalAssessments > 0
-      ? Math.round((allResults.filter(r => r.passed).length / totalAssessments) * 100) : 0;
-    const rank = getRank(avgScore);
-    const uniqueSubjects = new Set(allResults.map(r => r.subject)).size;
-    const avgTime = totalAssessments > 0
-      ? Math.round(allResults.reduce((s, r) => s + r.timeSpent, 0) / totalAssessments) : 0;
+  const filteredResults = useMemo(() => {
+    if (activeView === 'jhs') return allResults.filter(r => !isSHSClass(r.classLevel));
+    if (activeView === 'shs') return allResults.filter(r => isSHSClass(r.classLevel));
+    return allResults;
+  }, [allResults, activeView]);
 
-    const recent5 = allResults.slice(0, 5);
-    const older5 = allResults.slice(5, 10);
+  const hasJHS = useMemo(() => allResults.some(r => !isSHSClass(r.classLevel)), [allResults]);
+  const hasSHS = useMemo(() => allResults.some(r => isSHSClass(r.classLevel)), [allResults]);
+
+  const kpis = useMemo(() => {
+    const totalAssessments = filteredResults.length;
+    const avgScore = totalAssessments > 0
+      ? Math.round(filteredResults.reduce((s, r) => s + r.percentage, 0) / totalAssessments) : 0;
+    const totalCorrect = filteredResults.reduce((s, r) => s + r.correctCount, 0);
+    const totalAnswered = filteredResults.reduce((s, r) => s + r.answeredQuestions, 0);
+    const passRate = totalAssessments > 0
+      ? Math.round((filteredResults.filter(r => r.passed).length / totalAssessments) * 100) : 0;
+    const rank = getRank(avgScore);
+    const uniqueSubjects = new Set(filteredResults.map(r => r.subject)).size;
+    const avgTime = totalAssessments > 0
+      ? Math.round(filteredResults.reduce((s, r) => s + r.timeSpent, 0) / totalAssessments) : 0;
+
+    const recent5 = filteredResults.slice(0, 5);
+    const older5 = filteredResults.slice(5, 10);
     const recentAvg = recent5.length > 0 ? Math.round(recent5.reduce((s, r) => s + r.percentage, 0) / recent5.length) : 0;
     const olderAvg = older5.length > 0 ? Math.round(older5.reduce((s, r) => s + r.percentage, 0) / older5.length) : 0;
     const trend = olderAvg > 0 ? recentAvg - olderAvg : 0;
 
     return { totalAssessments, avgScore, totalCorrect, totalAnswered, passRate, rank, uniqueSubjects, avgTime, trend };
-  }, [allResults]);
+  }, [filteredResults]);
 
   const subjectPerformance = useMemo(() => {
     const map = new Map<string, { total: number; correct: number; count: number }>();
-    allResults.forEach(r => {
+    filteredResults.forEach(r => {
       const key = r.subject;
       const existing = map.get(key) || { total: 0, correct: 0, count: 0 };
       existing.total += r.answeredQuestions;
@@ -153,7 +168,7 @@ export default function StudentPerformanceAnalytics() {
         color: meta?.color || 'slate',
       };
     }).sort((a, b) => b.score - a.score);
-  }, [allResults]);
+  }, [filteredResults]);
 
   const radarData = useMemo(() => {
     return subjectPerformance.map(sp => ({
@@ -164,18 +179,18 @@ export default function StudentPerformanceAnalytics() {
   }, [subjectPerformance]);
 
   const scoreOverTime = useMemo(() => {
-    const sorted = [...allResults].sort((a, b) => a.timestamp - b.timestamp);
+    const sorted = [...filteredResults].sort((a, b) => a.timestamp - b.timestamp);
     return sorted.map((r, i) => ({
       index: i + 1,
       score: r.percentage,
       label: `${SUBJECT_META[r.subject as SubjectId]?.icon || ''} ${r.assessmentType}`,
       date: new Date(r.timestamp || r.completedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     }));
-  }, [allResults]);
+  }, [filteredResults]);
 
   const gradeDistribution = useMemo(() => {
     const map = new Map<string, number>();
-    allResults.forEach(r => {
+    filteredResults.forEach(r => {
       const grade = getGradeLabel(r.percentage);
       map.set(grade, (map.get(grade) || 0) + 1);
     });
@@ -185,11 +200,11 @@ export default function StudentPerformanceAnalytics() {
         const order = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'];
         return order.indexOf(a.name) - order.indexOf(b.name);
       });
-  }, [allResults]);
+  }, [filteredResults]);
 
   const classPerformance = useMemo(() => {
     const map = new Map<string, { total: number; correct: number; count: number }>();
-    allResults.forEach(r => {
+    filteredResults.forEach(r => {
       const key = r.classLevel;
       const existing = map.get(key) || { total: 0, correct: 0, count: 0 };
       existing.total += r.answeredQuestions;
@@ -201,12 +216,64 @@ export default function StudentPerformanceAnalytics() {
       class: CLASS_META[cls as ClassLevel]?.label || cls,
       score: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
       attempts: data.count,
+      level: isSHSClass(cls as ClassLevel) ? 'shs' : 'jhs',
     }));
-  }, [allResults]);
+  }, [filteredResults]);
+
+  const jhsVsShsData = useMemo(() => {
+    if (activeView !== 'overview') return [];
+    const jhsResults = allResults.filter(r => !isSHSClass(r.classLevel));
+    const shsResults = allResults.filter(r => isSHSClass(r.classLevel));
+
+    const jhsAvg = jhsResults.length > 0
+      ? Math.round(jhsResults.reduce((s, r) => s + r.percentage, 0) / jhsResults.length) : 0;
+    const shsAvg = shsResults.length > 0
+      ? Math.round(shsResults.reduce((s, r) => s + r.percentage, 0) / shsResults.length) : 0;
+
+    const subjects = new Set([...jhsResults.map(r => r.subject), ...shsResults.map(r => r.subject)]);
+    const data: Array<{ subject: string; jhs: number; shs: number }> = [];
+
+    subjects.forEach(sub => {
+      const jhsSub = jhsResults.filter(r => r.subject === sub);
+      const shsSub = shsResults.filter(r => r.subject === sub);
+      const meta = SUBJECT_META[sub as SubjectId];
+      data.push({
+        subject: meta?.label?.split(' ')[0] || sub.split('-')[0],
+        jhs: jhsSub.length > 0 ? Math.round(jhsSub.reduce((s, r) => s + r.percentage, 0) / jhsSub.length) : 0,
+        shs: shsSub.length > 0 ? Math.round(shsSub.reduce((s, r) => s + r.percentage, 0) / shsSub.length) : 0,
+      });
+    });
+
+    return [
+      { subject: 'Overall', jhs: jhsAvg, shs: shsAvg },
+      ...data.slice(0, 7),
+    ];
+  }, [allResults, activeView]);
+
+  const timeOfDayData = useMemo(() => {
+    const hourMap = new Map<number, { total: number; count: number }>();
+    for (let h = 0; h < 24; h++) hourMap.set(h, { total: 0, count: 0 });
+
+    filteredResults.forEach(r => {
+      const hour = new Date(r.timestamp || r.completedAt || Date.now()).getHours();
+      const entry = hourMap.get(hour)!;
+      entry.total += r.percentage;
+      entry.count += 1;
+    });
+
+    return Array.from(hourMap.entries())
+      .filter(([, v]) => v.count > 0)
+      .map(([hour, v]) => ({
+        time: `${hour.toString().padStart(2, '0')}:00`,
+        score: Math.round(v.total / v.count),
+        attempts: v.count,
+      }))
+      .sort((a, b) => parseInt(a.time) - parseInt(b.time));
+  }, [filteredResults]);
 
   const difficultyBreakdown = useMemo(() => {
     const map = new Map<string, { total: number; correct: number; count: number }>();
-    allResults.forEach(r => {
+    filteredResults.forEach(r => {
       const key = r.difficulty;
       const existing = map.get(key) || { total: 0, correct: 0, count: 0 };
       existing.total += r.answeredQuestions;
@@ -220,7 +287,7 @@ export default function StudentPerformanceAnalytics() {
       attempts: data.count,
       color: DIFFICULTY_META[diff as keyof typeof DIFFICULTY_META]?.color || 'slate',
     }));
-  }, [allResults]);
+  }, [filteredResults]);
 
   const strengths = useMemo(() => subjectPerformance.filter(s => s.score >= 75), [subjectPerformance]);
   const weaknesses = useMemo(() => subjectPerformance.filter(s => s.score < 60 && s.attempts > 0), [subjectPerformance]);
@@ -273,16 +340,73 @@ export default function StudentPerformanceAnalytics() {
 
         {/* Header */}
         <motion.div variants={fadeUp} initial="hidden" animate="visible">
-          <div className="flex items-center gap-3">
-            <BarChart3 className="h-7 w-7 text-blue-500" />
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white">Performance Analytics</h1>
-              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                {user?.name?.split(' ')[0] || 'Your'}'s comprehensive performance overview
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-7 w-7 text-blue-500" />
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white">Performance Analytics</h1>
+                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                  {user?.name?.split(' ')[0] || 'Your'}'s comprehensive performance overview
+                </p>
+              </div>
             </div>
+            <Link
+              to="/results-dashboard"
+              className="hidden items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 sm:inline-flex"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Results Dashboard
+            </Link>
           </div>
         </motion.div>
+
+        {/* View Toggle */}
+        {(hasJHS || hasSHS) && (
+          <motion.div
+            className="flex gap-2 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 w-fit"
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <button
+              onClick={() => setActiveView('overview')}
+              className={cn(
+                'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
+                activeView === 'overview'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+              )}
+            >
+              📊 Overview
+            </button>
+            {hasJHS && (
+              <button
+                onClick={() => setActiveView('jhs')}
+                className={cn(
+                  'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
+                  activeView === 'jhs'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                )}
+              >
+                📚 JHS
+              </button>
+            )}
+            {hasSHS && (
+              <button
+                onClick={() => setActiveView('shs')}
+                className={cn(
+                  'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
+                  activeView === 'shs'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                )}
+              >
+                🎓 SHS
+              </button>
+            )}
+          </motion.div>
+        )}
 
         {/* KPI Cards */}
         <motion.div
@@ -337,6 +461,34 @@ export default function StudentPerformanceAnalytics() {
           />
         </motion.div>
 
+        {/* JHS vs SHS Comparison (Overview only) */}
+        {activeView === 'overview' && jhsVsShsData.length > 0 && (
+          <motion.div
+            className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+            variants={slideUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+              <GraduationCap className="h-4 w-4 text-indigo-500" /> JHS vs SHS Comparison
+            </h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={jhsVsShsData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="subject" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  wrapperStyle={{ fontSize: '12px' }}
+                  formatter={(value: string) => value === 'jhs' ? 'JHS' : 'SHS'}
+                />
+                <Bar dataKey="jhs" name="jhs" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="shs" name="shs" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
+
         {/* Score Trend + Grade Distribution */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Score Trend Line */}
@@ -351,21 +503,28 @@ export default function StudentPerformanceAnalytics() {
             </h2>
             {scoreOverTime.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={scoreOverTime} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <AreaChart data={scoreOverTime} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="score"
                     stroke="#3b82f6"
                     strokeWidth={3}
+                    fill="url(#scoreGradient)"
                     dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
                     activeDot={{ r: 6, fill: '#3b82f6' }}
                     name="Score"
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex h-[280px] items-center justify-center text-sm text-slate-400">No data points</div>
@@ -419,6 +578,36 @@ export default function StudentPerformanceAnalytics() {
             </div>
           </motion.div>
         </div>
+
+        {/* Time of Day Analysis */}
+        {timeOfDayData.length > 2 && (
+          <motion.div
+            className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+            variants={slideUp}
+            initial="hidden"
+            animate="visible"
+          >
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+              <Timer className="h-4 w-4 text-violet-500" /> Performance by Time of Day
+            </h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={timeOfDayData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={(value: number, name: string) => [`${value}%`, 'Avg Score']}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                />
+                <Bar dataKey="score" radius={[6, 6, 0, 0]} maxBarSize={36}>
+                  {timeOfDayData.map((entry, index) => (
+                    <Cell key={index} fill={entry.score >= 70 ? '#10b981' : entry.score >= 50 ? '#f59e0b' : '#ef4444'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
 
         {/* Subject Performance Bar Chart + Radar */}
         <div className="grid gap-6 lg:grid-cols-5">
@@ -476,7 +665,7 @@ export default function StudentPerformanceAnalytics() {
           </motion.div>
         </div>
 
-        {/* Strengths + Weaknesses + Class/Difficulty */}
+        {/* Strengths + Weaknesses */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Strengths */}
           <motion.div
@@ -564,14 +753,19 @@ export default function StudentPerformanceAnalytics() {
             animate="visible"
           >
             <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-              <BookOpen className="h-4 w-4 text-blue-500" /> Performance by Class
+              <School className="h-4 w-4 text-blue-500" /> Performance by Class Level
             </h2>
             {classPerformance.length > 0 ? (
               <div className="space-y-3">
                 {classPerformance.map((c, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
-                      <span className="text-lg font-bold text-blue-500">{i + 1}</span>
+                    <div className={cn(
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                      c.level === 'shs' ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-blue-50 dark:bg-blue-500/10'
+                    )}>
+                      <span className={cn('text-lg font-bold', c.level === 'shs' ? 'text-emerald-500' : 'text-blue-500')}>
+                        {c.level === 'shs' ? '🎓' : '📚'}
+                      </span>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-800 dark:text-white">{c.class}</p>
@@ -640,7 +834,7 @@ export default function StudentPerformanceAnalytics() {
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
               <Clock className="h-4 w-4 text-indigo-500" /> Recent Results
             </h2>
-            {allResults.length > 5 && (
+            {filteredResults.length > 5 && (
               <Link to="/assessment/history" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
                 View All
               </Link>
@@ -653,15 +847,15 @@ export default function StudentPerformanceAnalytics() {
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800">
                   <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Subject</th>
+                  <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Class</th>
                   <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Type</th>
-                  <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Difficulty</th>
                   <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Score</th>
                   <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Grade</th>
                   <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                {allResults.slice(0, 10).map((r, i) => {
+                {filteredResults.slice(0, 10).map((r, i) => {
                   const meta = SUBJECT_META[r.subject as SubjectId];
                   const grade = getGradeLabel(r.percentage);
                   return (
@@ -677,18 +871,18 @@ export default function StudentPerformanceAnalytics() {
                         </span>
                       </td>
                       <td className="py-3 pr-4">
-                        <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                          {r.assessmentType}
+                        <span className={cn(
+                          'rounded-lg px-2 py-1 text-xs font-medium',
+                          isSHSClass(r.classLevel)
+                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                            : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                        )}>
+                          {CLASS_META[r.classLevel]?.label || r.classLevel}
                         </span>
                       </td>
                       <td className="py-3 pr-4">
-                        <span className={cn(
-                          'rounded-lg px-2 py-1 text-xs font-medium',
-                          r.difficulty === 'beginner' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-                            : r.difficulty === 'intermediate' ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
-                            : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
-                        )}>
-                          {r.difficulty}
+                        <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          {r.assessmentType}
                         </span>
                       </td>
                       <td className="py-3 pr-4">
@@ -718,7 +912,7 @@ export default function StudentPerformanceAnalytics() {
 
           {/* Mobile Cards */}
           <div className="space-y-2 md:hidden">
-            {allResults.slice(0, 10).map((r, i) => {
+            {filteredResults.slice(0, 10).map((r, i) => {
               const meta = SUBJECT_META[r.subject as SubjectId];
               const grade = getGradeLabel(r.percentage);
               return (
@@ -738,7 +932,7 @@ export default function StudentPerformanceAnalytics() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>{r.assessmentType} · {r.difficulty}</span>
+                    <span>{r.classLevel} · {r.assessmentType}</span>
                     <span>{new Date(r.timestamp || r.completedAt || Date.now()).toLocaleDateString()}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-2">

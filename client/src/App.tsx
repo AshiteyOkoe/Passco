@@ -14,6 +14,7 @@ import TakeQuiz from './pages/TakeQuiz';
 import QuizResults from './pages/QuizResults';
 import StudentAnalytics from './pages/StudentAnalytics';
 import StudentPerformanceAnalytics from './pages/StudentPerformanceAnalytics';
+import ResultsDashboard from './pages/ResultsDashboard';
 import StudentAchievements from './pages/StudentAchievements';
 import AssessmentSetup from './pages/AssessmentSetup';
 import TakeAssessment from './pages/TakeAssessment';
@@ -113,6 +114,7 @@ export default function App() {
           <Route path="/quiz/:id/results" element={<QuizResults />} />
           <Route path="/analytics" element={<StudentAnalytics />} />
           <Route path="/analytics/performance" element={<StudentPerformanceAnalytics />} />
+          <Route path="/results-dashboard" element={<ResultsDashboard />} />
           <Route path="/achievements" element={<StudentAchievements />} />
           <Route path="/assessment/setup" element={<AssessmentSetup />} />
           <Route path="/assessment/take" element={<TakeAssessment />} />

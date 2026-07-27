@@ -5,7 +5,7 @@ import {
   BookOpen, Home, BarChart3, FileText, Library, PlusCircle,
   Users, LogOut, Menu, X, GraduationCap, Sun, Moon, ClipboardCheck, History,
   Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, ChevronDown, Award, Crown,
-  Sparkles, CreditCard
+  Sparkles, CreditCard, LayoutDashboard
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,6 +38,7 @@ export default function Layout() {
     { to: '/assessment/setup', label: 'Assessment', icon: ClipboardCheck },
     { to: '/analytics', label: 'My Analytics', icon: BarChart3 },
     { to: '/analytics/performance', label: 'Performance', icon: TrendingUp },
+    { to: '/results-dashboard', label: 'Results Dashboard', icon: LayoutDashboard },
     { to: '/achievements', label: 'Achievements', icon: Award },
     { to: '/assessment/history', label: 'Results History', icon: History },
     { to: '/ai-generator', label: 'AI Generator', icon: Sparkles },
