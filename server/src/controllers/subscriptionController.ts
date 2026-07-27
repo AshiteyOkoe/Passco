@@ -3,9 +3,9 @@ import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 
 export const PLAN_LIMITS = {
-  free: { aiQuestions: 20, label: 'Free Trial', quizzes: true, mocks: true, examinations: false, price: 0 },
-  basic: { aiQuestions: 500, label: 'Basic', quizzes: true, mocks: true, examinations: false, price: 29 },
-  premium: { aiQuestions: -1, label: 'Premium', quizzes: true, mocks: true, examinations: true, price: 59 },
+  free: { aiQuestions: 10, label: 'Free Trial', quizzes: true, mocks: true, examinations: false, price: 0 },
+  basic: { aiQuestions: 30, label: 'Basic', quizzes: true, mocks: true, examinations: false, price: 29 },
+  premium: { aiQuestions: 50, label: 'Premium', quizzes: true, mocks: true, examinations: true, price: 59 },
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;

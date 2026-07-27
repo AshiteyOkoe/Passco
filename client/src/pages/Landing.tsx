@@ -1,11 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { slideUp, stagger, fadeUp } from '../utils/animations';
 import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
-  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Target, Flame, Award, ClipboardCheck, TrendingUp, Clock
+  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Target, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { HeroStudents } from '../components/icons/Illustrations';
 import { resolveUploadUrl } from '../services/api';
@@ -111,6 +111,50 @@ export default function Landing() {
       .slice(-8);
     return sorted.map((r: any) => ({ score: r.percentage }));
   }, [heroData]);
+
+  const [leaderboardIndex, setLeaderboardIndex] = useState(0);
+
+  const leaderboardEntries = useMemo(() => {
+    const map = new Map<string, { name: string; scores: number[]; badges: number; gender?: string; avatar?: string }>();
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key === 'assessment-history' || !key) continue;
+    }
+    const raw = localStorage.getItem('assessment-history');
+    if (!raw) return [];
+    try {
+      const all: any[] = JSON.parse(raw);
+      const byName = new Map<string, any[]>();
+      all.filter((r: any) => !r.abandoned).forEach((r: any) => {
+        const name = r.studentName || 'Student';
+        if (!byName.has(name)) byName.set(name, []);
+        byName.get(name)!.push(r);
+      });
+      const entries = Array.from(byName.entries()).map(([name, results]) => {
+        const avg = Math.round(results.reduce((s: number, r: any) => s + r.percentage, 0) / results.length);
+        const passed = results.filter((r: any) => r.passed).length;
+        const badges = Math.floor(passed / 3);
+        return { name, scores: results.map((r: any) => r.percentage), badges, avg, total: results.length };
+      }).sort((a: any, b: any) => b.avg - a.avg);
+      return entries;
+    } catch { return []; }
+  }, []);
+
+  useEffect(() => {
+    if (leaderboardEntries.length <= 1) return;
+    const interval = setInterval(() => {
+      setLeaderboardIndex(prev => (prev + 1) % leaderboardEntries.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [leaderboardEntries.length]);
+
+  const getRewardLabel = (avg: number) => {
+    if (avg >= 90) return { label: 'Champion', icon: Crown, color: 'text-amber-400' };
+    if (avg >= 80) return { label: 'Star Performer', icon: Star, color: 'text-emerald-400' };
+    if (avg >= 70) return { label: 'Achiever', icon: Medal, color: 'text-blue-400' };
+    if (avg >= 60) return { label: 'Rising Star', icon: TrendingUp, color: 'text-violet-400' };
+    return { label: 'Learner', icon: BookOpen, color: 'text-slate-400' };
+  };
 
   const resolveAvatarGender = (): 'male' | 'female' | '' => {
     if (user?.avatar === 'avatar:male') return 'male';
@@ -226,8 +270,8 @@ export default function Landing() {
               </motion.h1>
               <motion.p variants={fadeUp} className="mt-4 max-w-lg text-lg text-white/70">
                 {user
-                  ? "Jump right back in — take an assessment, review your progress, or try a new subject. You're making great progress!"
-                  : 'Prepare for your exams with JHS assessments across 8 subjects. Track your progress, earn badges, and improve your scores.'}
+                  ? "Jump right back in — take an assessment, review your progress, or try a new subject. See how you rank among fellow students!"
+                  : 'Prepare for your exams with JHS & SHS assessments across multiple subjects. Track your progress, earn badges, and improve your scores.'}
               </motion.p>
               <motion.div variants={fadeUp} className="mt-8 flex flex-wrap gap-3">
                 {user ? (
@@ -319,94 +363,174 @@ export default function Landing() {
               <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-emerald-500/10 blur-2xl" />
 
               {user ? (
-                /* Functional Mini Dashboard for logged-in users */
+                /* Rotating Student Leaderboard for logged-in users */
                 <div className="relative rounded-2xl border border-white/20 bg-white/10 p-5 shadow-xl backdrop-blur-md">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4 text-indigo-300" />
-                      <p className="text-xs font-semibold text-white/80">Your Performance</p>
+                      <Trophy className="h-4 w-4 text-amber-300" />
+                      <p className="text-xs font-semibold text-white/80">Student Rankings</p>
                     </div>
-                    <Link to="/analytics/performance" className="text-[10px] font-semibold text-indigo-300 hover:text-indigo-200">
-                      View All →
-                    </Link>
+                    {leaderboardEntries.length > 1 && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setLeaderboardIndex(prev => (prev - 1 + leaderboardEntries.length) % leaderboardEntries.length)}
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/60 transition hover:bg-white/20 hover:text-white"
+                        >
+                          <ChevronLeft className="h-3 w-3" />
+                        </button>
+                        <span className="text-[10px] text-white/40">
+                          {leaderboardIndex + 1}/{leaderboardEntries.length}
+                        </span>
+                        <button
+                          onClick={() => setLeaderboardIndex(prev => (prev + 1) % leaderboardEntries.length)}
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/60 transition hover:bg-white/20 hover:text-white"
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Stats Row */}
-                  <div className="mb-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-lg bg-white/10 p-2 text-center">
-                      <p className="text-lg font-bold text-white">{heroStats.totalCompleted}</p>
-                      <p className="text-[9px] text-white/50">Completed</p>
-                    </div>
-                    <div className="rounded-lg bg-white/10 p-2 text-center">
-                      <p className="text-lg font-bold text-emerald-300">{heroStats.avgScore}%</p>
-                      <p className="text-[9px] text-white/50">Avg Score</p>
-                    </div>
-                    <div className="rounded-lg bg-white/10 p-2 text-center">
-                      <p className="text-lg font-bold text-amber-300">{heroStats.rank}</p>
-                      <p className="text-[9px] text-white/50">Rank</p>
-                    </div>
-                  </div>
+                  {leaderboardEntries.length > 0 ? (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={leaderboardIndex}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {(() => {
+                          const entry = leaderboardEntries[leaderboardIndex];
+                          if (!entry) return null;
+                          const rank = leaderboardIndex + 1;
+                          const reward = getRewardLabel(entry.avg);
+                          const RewardIcon = reward.icon;
+                          const isCurrentUser = entry.name === user?.name;
 
-                  {/* Mini Score Trend */}
-                  {heroScoreTrend.length > 0 && (
-                    <div className="mb-4 rounded-lg bg-white/10 p-3">
-                      <div className="mb-1 flex items-center justify-between">
-                        <p className="text-[10px] font-semibold text-white/60">Score Trend</p>
-                        <div className="flex items-center gap-1">
-                          {heroStats.trend > 0 && <TrendingUp className="h-3 w-3 text-emerald-400" />}
-                          {heroStats.trend !== 0 && (
-                            <span className={`text-[10px] font-bold ${heroStats.trend > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {heroStats.trend > 0 ? '+' : ''}{heroStats.trend}%
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-end gap-1">
-                        {heroScoreTrend.map((s, i) => (
-                          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                            <div
-                              className="w-full rounded-sm transition-all"
-                              style={{
-                                height: `${Math.max((s.score / 100) * 40, 4)}px`,
-                                backgroundColor: s.score >= 75 ? '#34d399' : s.score >= 50 ? '#fbbf24' : '#f87171',
-                                opacity: 0.8,
-                              }}
-                            />
-                            <span className="text-[7px] text-white/40">{s.score}</span>
-                          </div>
-                        ))}
-                      </div>
+                          return (
+                            <div className="space-y-3">
+                              {/* Rank Badge + Name */}
+                              <div className="flex items-center gap-3">
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
+                                  rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' :
+                                  rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white' :
+                                  rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' :
+                                  'bg-white/10 text-white/60'
+                                }`}>
+                                  #{rank}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className={`text-sm font-bold ${isCurrentUser ? 'text-indigo-300' : 'text-white'}`}>
+                                    {entry.name} {isCurrentUser && <span className="text-[10px] text-indigo-300/60">(You)</span>}
+                                  </p>
+                                  <p className="flex items-center gap-1 text-[10px] text-white/50">
+                                    <RewardIcon className={`h-3 w-3 ${reward.color}`} />
+                                    {reward.label} · {entry.total} assessments
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-emerald-300">{entry.avg}%</p>
+                                  <p className="text-[9px] text-white/40">avg score</p>
+                                </div>
+                              </div>
+
+                              {/* Performance Bar */}
+                              <div className="rounded-lg bg-white/10 p-2.5">
+                                <div className="mb-1 flex items-center justify-between">
+                                  <p className="text-[10px] font-semibold text-white/60">Performance</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-white/40">
+                                      {entry.scores.filter((s: number) => s >= 70).length}/{entry.scores.length} passed
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-end gap-0.5">
+                                  {entry.scores.slice(-8).map((s: number, i: number) => (
+                                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                                      <div
+                                        className="w-full rounded-sm"
+                                        style={{
+                                          height: `${Math.max((s / 100) * 32, 3)}px`,
+                                          backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
+                                          opacity: 0.8,
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Achievement + Reward */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg bg-white/10 p-2.5 text-center">
+                                  <Award className="mx-auto mb-1 h-4 w-4 text-amber-300" />
+                                  <p className="text-sm font-bold text-white">{entry.badges}</p>
+                                  <p className="text-[9px] text-white/40">Badges Earned</p>
+                                </div>
+                                <div className="rounded-lg bg-white/10 p-2.5 text-center">
+                                  <RewardIcon className={`mx-auto mb-1 h-4 w-4 ${reward.color}`} />
+                                  <p className="text-sm font-bold text-white">{reward.label}</p>
+                                  <p className="text-[9px] text-white/40">Reward Tier</p>
+                                </div>
+                              </div>
+
+                              {/* Mini Score Sparkline */}
+                              {entry.scores.length > 1 && (
+                                <div className="rounded-lg bg-white/5 p-2">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <p className="text-[10px] font-semibold text-white/50">Score Trend</p>
+                                    {entry.scores.length >= 2 && (
+                                      <span className={`text-[10px] font-bold ${
+                                        entry.scores[0] >= entry.scores[1] ? 'text-emerald-400' : 'text-rose-400'
+                                      }`}>
+                                        {entry.scores[0] >= entry.scores[1] ? '↑' : '↓'} {Math.abs(entry.scores[0] - entry.scores[1])}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-end gap-px">
+                                    {entry.scores.slice(-10).map((s: number, i: number) => (
+                                      <div
+                                        key={i}
+                                        className="flex-1 rounded-sm"
+                                        style={{
+                                          height: `${Math.max((s / 100) * 20, 2)}px`,
+                                          backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
+                                          opacity: 0.6 + (i / 10) * 0.4,
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </motion.div>
+                    </AnimatePresence>
+                  ) : (
+                    <div className="rounded-lg bg-white/5 p-6 text-center">
+                      <Trophy className="mx-auto mb-2 h-8 w-8 text-white/20" />
+                      <p className="text-xs text-white/40">No student data yet</p>
+                      <p className="text-[10px] text-white/30">Rankings appear as students complete assessments</p>
                     </div>
                   )}
 
-                  {/* Recent Results */}
-                  {heroRecent.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-semibold text-white/60">Recent Assessments</p>
-                      {heroRecent.map((r: any, i: number) => {
-                        const meta = SUBJECT_META[r.subject as SubjectId];
-                        return (
-                          <div key={i} className="flex items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5">
-                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold ${
-                              r.passed ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-                            }`}>
-                              {r.percentage}%
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-[10px] font-medium text-white/80">{meta?.icon} {meta?.label || r.subject}</p>
-                              <p className="text-[8px] text-white/40">{r.difficulty} · {r.assessmentType}</p>
-                            </div>
-                            <span className="text-[8px] text-white/30">{new Date(r.timestamp || r.completedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {heroRecent.length === 0 && (
-                    <div className="rounded-lg bg-white/5 p-4 text-center">
-                      <Clock className="mx-auto mb-1 h-6 w-6 text-white/20" />
-                      <p className="text-[10px] text-white/40">No assessments yet — start your journey!</p>
+                  {/* Navigation Dots */}
+                  {leaderboardEntries.length > 1 && (
+                    <div className="mt-3 flex items-center justify-center gap-1.5">
+                      {leaderboardEntries.slice(0, Math.min(leaderboardEntries.length, 10)).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setLeaderboardIndex(i)}
+                          className={`h-1.5 rounded-full transition-all ${
+                            i === leaderboardIndex ? 'w-4 bg-indigo-400' : 'w-1.5 bg-white/20'
+                          }`}
+                        />
+                      ))}
+                      {leaderboardEntries.length > 10 && (
+                        <span className="text-[10px] text-white/30">+{leaderboardEntries.length - 10}</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -555,7 +679,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Demo Quiz Preview */}
+      {/* Demo Quiz Preview - Only for non-logged-in users */}
+      {!user && (
       <section id="demo" className="border-t border-slate-200 bg-slate-50/50 py-20 dark:border-slate-800 dark:bg-slate-950/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -744,6 +869,7 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
+      )}
 
       {/* How It Works Summary */}
       <section className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
