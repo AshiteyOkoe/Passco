@@ -4,7 +4,8 @@ import { useTheme } from '../context/ThemeContext';
 import {
   BookOpen, Home, BarChart3, FileText, Library, PlusCircle,
   Users, LogOut, Menu, X, GraduationCap, Sun, Moon, ClipboardCheck, History,
-  Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, ChevronDown, Award, Crown
+  Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, ChevronDown, Award, Crown,
+  Sparkles, CreditCard
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,6 +40,8 @@ export default function Layout() {
     { to: '/analytics/performance', label: 'Performance', icon: TrendingUp },
     { to: '/achievements', label: 'Achievements', icon: Award },
     { to: '/assessment/history', label: 'Results History', icon: History },
+    { to: '/ai-generator', label: 'AI Generator', icon: Sparkles },
+    { to: '/subscription', label: 'Subscription', icon: CreditCard },
     { to: '/profile', label: 'My Profile', icon: User },
   ];
 
@@ -54,6 +57,7 @@ export default function Layout() {
     { to: '/admin/create-quiz', label: 'Create Quiz', icon: PlusCircle },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/admin/certificates', label: 'Certificates', icon: Crown },
+    { to: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
     { to: '/profile', label: 'My Profile', icon: User },
   ];
 

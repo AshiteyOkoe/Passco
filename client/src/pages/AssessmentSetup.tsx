@@ -2,18 +2,24 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, GraduationCap, Trophy, Brain, Zap, Target, Shield, ChevronRight, ChevronLeft, Clock, CheckCircle2, ArrowLeft, Sparkles } from 'lucide-react';
-import { CLASS_META, DIFFICULTY_META, ASSESSMENT_META, SUBJECT_META, getSubjectQuestionCount, type SubjectId, type JHSCategory, type DifficultyLevel, type AssessmentType } from '../data/questionBank';
+import { CLASS_META, DIFFICULTY_META, ASSESSMENT_META, SUBJECT_META, getSubjectQuestionCount, isSHSClassLevel, getSubjectsForClassLevel, type SubjectId, type ClassLevel, type DifficultyLevel, type AssessmentType } from '../data/questionBank';
 
-const classIcons: Record<JHSCategory, React.ReactNode> = {
+const classIcons: Record<ClassLevel, React.ReactNode> = {
   jhs1: <BookOpen className="h-8 w-8" />,
   jhs2: <GraduationCap className="h-8 w-8" />,
   jhs3: <Trophy className="h-8 w-8" />,
+  shs1: <BookOpen className="h-8 w-8" />,
+  shs2: <GraduationCap className="h-8 w-8" />,
+  shs3: <Trophy className="h-8 w-8" />,
 };
 
-const classDescriptions: Record<JHSCategory, string> = {
+const classDescriptions: Record<ClassLevel, string> = {
   jhs1: 'Build a strong foundation in core subjects and develop essential study skills.',
   jhs2: 'Strengthen your knowledge and tackle more advanced concepts with confidence.',
   jhs3: 'Master challenging topics and prepare thoroughly for your final examinations.',
+  shs1: 'Core and introductory elective subjects for Senior High School students.',
+  shs2: 'Deeper elective subject mastery and WASSCE preparation.',
+  shs3: 'Final preparation for WASSCE examinations across all subjects.',
 };
 
 const difficultyIcons: Record<DifficultyLevel, React.ReactNode> = {
@@ -61,7 +67,7 @@ export default function AssessmentSetup() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const [classLevel, setClassLevel] = useState<JHSCategory | null>(null);
+  const [classLevel, setClassLevel] = useState<ClassLevel | null>(null);
   const [subject, setSubject] = useState<SubjectId | null>(null);
   const [difficulty, setDifficulty] = useState<DifficultyLevel | null>(null);
   const [assessmentType, setAssessmentType] = useState<AssessmentType | null>(null);
@@ -114,26 +120,51 @@ export default function AssessmentSetup() {
         <div className="relative min-h-[320px] overflow-hidden">
           <AnimatePresence mode="wait" custom={direction}>
             {currentStep === 1 && (
-              <motion.div key="step1" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {(Object.keys(CLASS_META) as JHSCategory[]).map(cls => {
+              <motion.div key="step1" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: 'spring', stiffness: 300, damping: 30 }}>
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Junior High School (JHS)</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">BECE preparation for JHS students</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-3">
+                {(['jhs1', 'jhs2', 'jhs3'] as ClassLevel[]).map(cls => {
                   const meta = CLASS_META[cls];
                   const isSelected = classLevel === cls;
                   return (
-                    <motion.button key={cls} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setClassLevel(cls)} className={`relative cursor-pointer rounded-2xl border-2 p-6 text-left transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-200 ring-2 ring-indigo-400/50 dark:border-indigo-400 dark:bg-indigo-950/50 dark:shadow-indigo-900/40' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
-                      {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-6 w-6 text-indigo-500 dark:text-indigo-400" /></motion.div>}
-                      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${isSelected ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{classIcons[cls]}</div>
-                      <h3 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">{meta.label}</h3>
-                      <p className="mb-2 text-sm font-medium text-indigo-600 dark:text-indigo-400">{meta.icon}</p>
-                      <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{classDescriptions[cls]}</p>
+                    <motion.button key={cls} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => { setClassLevel(cls); setSubject(null); }} className={`relative cursor-pointer rounded-2xl border-2 p-5 text-left transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-200 ring-2 ring-indigo-400/50 dark:border-indigo-400 dark:bg-indigo-950/50 dark:shadow-indigo-900/40' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
+                      {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" /></motion.div>}
+                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${isSelected ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{classIcons[cls]}</div>
+                      <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-white">{meta.label}</h3>
+                      <p className="mb-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">{meta.icon}</p>
+                      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{classDescriptions[cls]}</p>
                     </motion.button>
                   );
                 })}
+                </div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Senior High School (SHS)</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">WASSCE preparation for SHS students</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {(['shs1', 'shs2', 'shs3'] as ClassLevel[]).map(cls => {
+                  const meta = CLASS_META[cls];
+                  const isSelected = classLevel === cls;
+                  return (
+                    <motion.button key={cls} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => { setClassLevel(cls); setSubject(null); }} className={`relative cursor-pointer rounded-2xl border-2 p-5 text-left transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-200 ring-2 ring-indigo-400/50 dark:border-indigo-400 dark:bg-indigo-950/50 dark:shadow-indigo-900/40' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
+                      {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" /></motion.div>}
+                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${isSelected ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{classIcons[cls]}</div>
+                      <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-white">{meta.label}</h3>
+                      <p className="mb-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">{meta.icon}</p>
+                      <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{classDescriptions[cls]}</p>
+                    </motion.button>
+                  );
+                })}
+                </div>
               </motion.div>
             )}
 
             {currentStep === 2 && (
               <motion.div key="step2" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-                {(Object.keys(SUBJECT_META) as SubjectId[]).map(subId => {
+                {classLevel && getSubjectsForClassLevel(classLevel).map(subId => {
                   const meta = SUBJECT_META[subId];
                   const colors = subjectColorMap[meta.color] || subjectColorMap.blue;
                   const isSelected = subject === subId;

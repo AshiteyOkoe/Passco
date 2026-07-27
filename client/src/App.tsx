@@ -31,6 +31,9 @@ import AdminStudentPerformance from './pages/AdminStudentPerformance';
 import AdminBulkUpload from './pages/AdminBulkUpload';
 import AdminCertificates from './pages/AdminCertificates';
 import Profile from './pages/Profile';
+import Subscription from './pages/Subscription';
+import AIGenerator from './pages/AIGenerator';
+import AdminSubscriptions from './pages/AdminSubscriptions';
 import { useState, useCallback, useEffect } from 'react';
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
@@ -116,6 +119,8 @@ export default function App() {
           <Route path="/assessment/result" element={<AssessmentResult />} />
           <Route path="/assessment/history" element={<AssessmentHistory />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/subscription" element={<Subscription />} />
+          <Route path="/ai-generator" element={<AIGenerator />} />
         </Route>
 
         {/* Protected admin routes */}
@@ -138,6 +143,7 @@ export default function App() {
           <Route path="create-quiz" element={<AdminCreateQuiz />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="certificates" element={<AdminCertificates />} />
+          <Route path="subscriptions" element={<AdminSubscriptions />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

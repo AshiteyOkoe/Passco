@@ -1,5 +1,5 @@
 export type SubjectId = 'mathematics' | 'science' | 'english' | 'social-studies' | 'ict' | 'rme' | 'creative-arts' | 'career-tech';
-export type JHSCategory = 'jhs1' | 'jhs2' | 'jhs3';
+export type ClassLevel = 'jhs1' | 'jhs2' | 'jhs3' | 'shs1' | 'shs2' | 'shs3';
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'expert';
 export type QuestionType = 'multiple-choice' | 'true-false';
 
@@ -11,7 +11,7 @@ export interface ExtractedQuestion {
   correctAnswer: string;
   explanation: string;
   subject: SubjectId;
-  classLevel: JHSCategory;
+  classLevel: ClassLevel;
   difficulty: DifficultyLevel;
   topic: string;
   confidence: number;
@@ -119,7 +119,7 @@ const SUBJECT_KEYWORDS: Record<SubjectId, string[]> = {
   ],
 };
 
-const CLASS_TOPIC_COMPLEXITY: Record<JHSCategory, string[]> = {
+const CLASS_TOPIC_COMPLEXITY: Record<ClassLevel, string[]> = {
   jhs1: [
     'introduction', 'basic', 'fundamental', 'simple', 'what is', 'define',
     'name the', 'list', 'mention', 'identify', 'state', 'true or false',
@@ -138,6 +138,21 @@ const CLASS_TOPIC_COMPLEXITY: Record<JHSCategory, string[]> = {
     'application', 'synthesis', 'higher order', 'advanced', 'interpret',
     'compare and contrast', 'implications', 'significance', 'theoretical',
     'advanced mathematics', 'equations', 'simultaneous', 'quadratic',
+  ],
+  shs1: [
+    'core mathematics', 'elective mathematics', 'integrated science', 'biology',
+    'chemistry', 'physics', 'introduction to', 'basic concepts', 'foundational',
+    'wassce', 'shs', 'senior high', 'introduction', 'basic', 'fundamental',
+  ],
+  shs2: [
+    'intermediate', 'organic chemistry', 'calculus', 'differentiation', 'integration',
+    'elective', 'advanced', 'apply', 'analyse', 'compare', 'explain in detail',
+    'wassce preparation', 'mock examination', 'past questions',
+  ],
+  shs3: [
+    'wassce', 'examination', 'past paper', 'comprehensive', 'synthesis',
+    'critical thinking', 'essay', 'advanced analysis', 'complex problem',
+    'final examination', 'revision', 'complete', 'mastery',
   ],
 };
 
@@ -171,7 +186,7 @@ export function detectSubject(text: string): SubjectId {
   return best;
 }
 
-export function detectClassLevel(text: string): JHSCategory {
+export function detectClassLevel(text: string): ClassLevel {
   const lower = text.toLowerCase();
 
   const jhs3Indicators = ['simultaneous', 'quadratic', 'trigonometry', 'logarithm',
@@ -191,7 +206,7 @@ export function detectClassLevel(text: string): JHSCategory {
 
   for (const [cls, topics] of Object.entries(CLASS_TOPIC_COMPLEXITY)) {
     for (const t of topics) {
-      if (lower.includes(t)) return cls as JHSCategory;
+      if (lower.includes(t)) return cls as ClassLevel;
     }
   }
   return 'jhs2';
@@ -546,10 +561,13 @@ function mapSubject(val: string): SubjectId {
   return detectSubject(val);
 }
 
-function mapClass(val: string): JHSCategory {
+function mapClass(val: string): ClassLevel {
   const lower = val.toLowerCase().trim();
-  if (lower.includes('1') || lower.includes('jhs 1') || lower.includes('jhs1') || lower === '7') return 'jhs1';
-  if (lower.includes('3') || lower.includes('jhs 3') || lower.includes('jhs3') || lower === '9') return 'jhs3';
+  if (lower.includes('shs 1') || lower.includes('shs1') || lower === '10') return 'shs1';
+  if (lower.includes('shs 2') || lower.includes('shs2') || lower === '11') return 'shs2';
+  if (lower.includes('shs 3') || lower.includes('shs3') || lower === '12') return 'shs3';
+  if (lower.includes('jhs 1') || lower.includes('jhs1') || lower === '7') return 'jhs1';
+  if (lower.includes('jhs 3') || lower.includes('jhs3') || lower === '9') return 'jhs3';
   return 'jhs2';
 }
 
@@ -659,8 +677,12 @@ export function getSubjectLabel(subject: SubjectId): string {
   return labels[subject] || subject;
 }
 
-export function getClassLabel(cls: JHSCategory): string {
-  return cls === 'jhs1' ? 'JHS 1' : cls === 'jhs2' ? 'JHS 2' : 'JHS 3';
+export function getClassLabel(cls: ClassLevel): string {
+  const labels: Record<ClassLevel, string> = {
+    jhs1: 'JHS 1', jhs2: 'JHS 2', jhs3: 'JHS 3',
+    shs1: 'SHS 1', shs2: 'SHS 2', shs3: 'SHS 3',
+  };
+  return labels[cls] || cls;
 }
 
 export function getDifficultyLabel(diff: DifficultyLevel): string {

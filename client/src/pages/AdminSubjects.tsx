@@ -8,12 +8,12 @@ import {
 import { cn } from '../utils';
 import {
   CLASS_META, SUBJECT_META, getSubjectQuestionCount,
-  type JHSCategory, type SubjectId, type DifficultyLevel,
+  type ClassLevel, type SubjectId, type DifficultyLevel,
 } from '../data/questionBank';
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 import { getAdminSubjectCounts } from '../services/api';
 
-const CLASS_KEYS: JHSCategory[] = ['jhs1', 'jhs2', 'jhs3'];
+const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3', 'shs1', 'shs2', 'shs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
 const DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
 
@@ -35,7 +35,7 @@ const DIFF_COLOR_MAP: Record<DifficultyLevel, string> = {
 };
 
 export default function AdminSubjects() {
-  const [filterClass, setFilterClass] = useState<JHSCategory | 'all'>('all');
+  const [filterClass, setFilterClass] = useState<ClassLevel | 'all'>('all');
   const [serverCounts, setServerCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function AdminSubjects() {
           <Filter className="h-4 w-4 text-slate-400" />
           <select
             value={filterClass}
-            onChange={(e) => setFilterClass(e.target.value as JHSCategory | 'all')}
+            onChange={(e) => setFilterClass(e.target.value as ClassLevel | 'all')}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none ring-indigo-500/20 transition focus:border-indigo-500 focus:ring-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-indigo-400"
           >
             <option value="all">All Classes</option>

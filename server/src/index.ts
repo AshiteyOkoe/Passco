@@ -12,6 +12,10 @@ import quizRoutes from './routes/quizzes';
 import adminRoutes from './routes/admin';
 import assessmentRoutes from './routes/assessment';
 import bulkUploadRoutes from './routes/bulkUpload';
+import subscriptionRoutes from './routes/subscriptions';
+import paymentRoutes from './routes/payments';
+import aiGenerationRoutes from './routes/aiGeneration';
+import announcementRoutes from './routes/announcements';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -47,6 +51,10 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/assessment', assessmentRoutes);
 app.use('/api/bulk-upload', bulkUploadRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/ai-generation', aiGenerationRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);

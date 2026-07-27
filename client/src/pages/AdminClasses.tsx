@@ -8,11 +8,11 @@ import {
 import { cn } from '../utils';
 import {
   CLASS_META, SUBJECT_META, getSubjectQuestionCount,
-  type JHSCategory, type SubjectId, type DifficultyLevel,
+  type ClassLevel, type SubjectId, type DifficultyLevel,
 } from '../data/questionBank';
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 
-const CLASS_KEYS: JHSCategory[] = ['jhs1', 'jhs2', 'jhs3'];
+const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3', 'shs1', 'shs2', 'shs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
 const DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
 

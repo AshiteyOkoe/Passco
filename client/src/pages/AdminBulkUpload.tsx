@@ -10,26 +10,27 @@ import {
 import {
   extractQuestionsFromText, readFileAsText, isTextBasedFile, isServerParsedFile,
   isImageFile, getSubjectLabel, getClassLabel, getDifficultyLabel,
-  type ExtractedQuestion, type SubjectId, type JHSCategory, type DifficultyLevel, type QuestionType,
+  type ExtractedQuestion, type SubjectId, type DifficultyLevel, type QuestionType,
 } from '../utils/questionExtractor';
 import api from '../services/api';
 import { cn } from '../utils';
 import { fadeUp, stagger, bounceIn } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
+import type { ClassLevel } from '../data/questionBank';
 
 type Step = 'upload' | 'processing' | 'preview';
 
 const ALL_SUBJECTS: SubjectId[] = [
   'mathematics', 'science', 'english', 'social-studies', 'ict', 'rme', 'creative-arts', 'career-tech',
 ];
-const ALL_CLASSES: JHSCategory[] = ['jhs1', 'jhs2', 'jhs3'];
+const ALL_CLASSES: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3', 'shs1', 'shs2', 'shs3'];
 const ALL_DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
 const ALL_TYPES: QuestionType[] = ['multiple-choice', 'true-false'];
 
 export default function AdminBulkUpload() {
   const [searchParams] = useSearchParams();
   const presetSubject = searchParams.get('subject') as SubjectId | null;
-  const presetClass = searchParams.get('class') as JHSCategory | null;
+  const presetClass = searchParams.get('class') as ClassLevel | null;
 
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -48,7 +49,7 @@ export default function AdminBulkUpload() {
   const [errorMsg, setErrorMsg] = useState('');
   const [savingMsg, setSavingMsg] = useState('');
   const [targetSubject, setTargetSubject] = useState<SubjectId | ''>(presetSubject || '');
-  const [targetClass, setTargetClass] = useState<JHSCategory | ''>(presetClass || '');
+  const [targetClass, setTargetClass] = useState<ClassLevel | ''>(presetClass || '');
   const [targetDifficulty, setTargetDifficulty] = useState<DifficultyLevel | ''>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -113,7 +114,7 @@ export default function AdminBulkUpload() {
       return qs.map(q => ({
         ...q,
         subject: (targetSubject || presetSubject || '') as SubjectId || q.subject,
-        classLevel: (targetClass || presetClass || '') as JHSCategory || q.classLevel,
+        classLevel: (targetClass || presetClass || '') as ClassLevel || q.classLevel,
         difficulty: (targetDifficulty || '') as DifficultyLevel || q.difficulty,
         status: (targetSubject || presetSubject || targetClass || presetClass || targetDifficulty) ? 'approved' as const : q.status,
       }));
@@ -391,7 +392,7 @@ export default function AdminBulkUpload() {
                 </label>
                 <select
                   value={targetClass}
-                  onChange={e => setTargetClass(e.target.value as JHSCategory | '')}
+                           onChange={e => setTargetClass(e.target.value as ClassLevel | '')}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="">Auto-detect</option>
@@ -708,7 +709,7 @@ export default function AdminBulkUpload() {
                               (targetSubject || presetSubject) && "opacity-60 cursor-not-allowed")}>
                             {ALL_SUBJECTS.map(s => <option key={s} value={s}>{getSubjectLabel(s)}</option>)}
                           </select>
-                          <select value={editData.classLevel} onChange={e => updateEditField('classLevel', e.target.value as JHSCategory)}
+                           <select value={editData.classLevel} onChange={e => updateEditField('classLevel', e.target.value as ClassLevel)}
                             disabled={!!(targetClass || presetClass)}
                             className={cn("rounded-lg border border-slate-200 bg-slate-50 p-1.5 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white",
                               (targetClass || presetClass) && "opacity-60 cursor-not-allowed")}>
