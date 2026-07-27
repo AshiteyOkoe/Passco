@@ -9,7 +9,7 @@ import { cn } from '../utils';
 import { fadeUp } from '../utils/animations';
 import { resolveUploadUrl } from '../services/api';
 
-const classOptions = ['JHS 1', 'JHS 2', 'JHS 3', 'SHS 1', 'SHS 2', 'SHS 3'];
+const classOptions = ['JHS', 'SHS'];
 
 export default function Profile() {
   const { user, updateProfile, updateAvatar } = useAuth();
