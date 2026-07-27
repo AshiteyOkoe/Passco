@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ClipboardEvent, type KeyboardEvent, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, UserPlus, Mail, Lock, User, Building2, GraduationCap, Eye, EyeOff, AlertCircle, X, BookOpen, Chrome, Github, Calendar } from 'lucide-react';
+import { sendOTP, verifyOTPAndRegister } from '../services/api';
+import { LogIn, UserPlus, Mail, Lock, User, Building2, GraduationCap, Eye, EyeOff, AlertCircle, X, BookOpen, Chrome, Github, Calendar, Shield, Loader2 } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -22,11 +23,19 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
   const [name, setName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [institution, setInstitution] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [classLevel, setClassLevel] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+
+  // OTP state
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpResending, setOtpResending] = useState(false);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,23 +60,100 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (regPassword !== regConfirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     setLoading(true);
     try {
-      await register({ name, email: regEmail, password: regPassword, institution, dateOfBirth, gender, classLevel });
-      onClose();
+      await sendOTP(regEmail);
+      setOtpStep(true);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
         ? (err as { response: { data: { message: string } } }).response?.data?.message
-        : 'Registration failed';
-      setError(msg || 'Registration failed');
+        : 'Failed to send verification code';
+      setError(msg || 'Failed to send verification code');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOTPChange = (index: number, value: string) => {
+    if (value.length > 1) return;
+    const newCode = [...otpCode];
+    newCode[index] = value;
+    setOtpCode(newCode);
+    setError('');
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOTPKeyDown = (index: number, e: KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOTPPaste = (e: ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newCode = pasted.split('').concat(Array(6 - pasted.length).fill(''));
+    setOtpCode(newCode);
+    if (pasted.length > 0) {
+      otpInputRefs.current[Math.min(pasted.length, 5)]?.focus();
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    const code = otpCode.join('');
+    if (code.length !== 6) {
+      setError('Please enter the 6-digit code');
+      return;
+    }
+    setOtpLoading(true);
+    setError('');
+    try {
+      const res = await verifyOTPAndRegister({
+        email: regEmail,
+        code,
+        name,
+        password: regPassword,
+        institution,
+        gender,
+        classLevel,
+        dateOfBirth,
+      });
+      localStorage.setItem('passco-token', res.token);
+      localStorage.setItem('passco-user', JSON.stringify(res.user));
+      window.location.reload();
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response: { data: { message: string } } }).response?.data?.message
+        : 'Verification failed';
+      setError(msg || 'Invalid code. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setOtpResending(true);
+    setError('');
+    try {
+      await sendOTP(regEmail);
+    } catch {
+      setError('Failed to resend code');
+    } finally {
+      setOtpResending(false);
     }
   };
 
   const switchTab = (t: 'login' | 'register') => {
     setTab(t);
     setError('');
+    setOtpStep(false);
+    setOtpCode(['', '', '', '', '', '']);
   };
 
   return (
@@ -200,6 +286,53 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                       {loading ? 'Signing in...' : 'Sign In'}
                     </motion.button>
                   </motion.form>
+                ) : otpStep ? (
+                  <motion.div
+                    key="otp"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="mb-4 text-center">
+                      <Shield className="mx-auto mb-2 h-8 w-8 text-indigo-500" />
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        We sent a 6-digit code to<br />
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{regEmail}</span>
+                      </p>
+                    </div>
+                    <div className="mb-4 flex justify-center gap-2" onPaste={handleOTPPaste}>
+                      {otpCode.map((digit, i) => (
+                        <input
+                          key={i}
+                          ref={(el) => { otpInputRefs.current[i] = el; }}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOTPChange(i, e.target.value)}
+                          onKeyDown={(e) => handleOTPKeyDown(i, e)}
+                          className="h-11 w-11 rounded-xl border border-slate-300 bg-white text-center text-lg font-bold text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleVerifyOTP}
+                      disabled={otpLoading || otpCode.join('').length !== 6}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50"
+                    >
+                      {otpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                      {otpLoading ? 'Verifying...' : 'Verify & Create Account'}
+                    </button>
+                    <div className="mt-3 flex items-center justify-between text-sm">
+                      <button onClick={() => { setOtpStep(false); setOtpCode(['', '', '', '', '', '']); }} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300">
+                        Back
+                      </button>
+                      <button onClick={handleResendOTP} disabled={otpResending} className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 disabled:opacity-50">
+                        {otpResending ? 'Sending...' : 'Resend code'}
+                      </button>
+                    </div>
+                  </motion.div>
                 ) : (
                   <motion.form
                     key="register"
@@ -258,6 +391,21 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                         >
                           {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Confirm Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type={showRegPassword ? 'text' : 'password'}
+                          value={regConfirmPassword}
+                          onChange={(e) => setRegConfirmPassword(e.target.value)}
+                          required
+                          minLength={6}
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          placeholder="Re-enter your password"
+                        />
                       </div>
                     </div>
                     <div className="mb-3">

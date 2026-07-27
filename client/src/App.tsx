@@ -35,6 +35,7 @@ import Profile from './pages/Profile';
 import Subscription from './pages/Subscription';
 import AIGenerator from './pages/AIGenerator';
 import AdminSubscriptions from './pages/AdminSubscriptions';
+import VerifyOTP from './pages/VerifyOTP';
 import { useState, useCallback, useEffect } from 'react';
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
@@ -107,6 +108,7 @@ export default function App() {
         {/* Legacy direct login/register pages redirect to home */}
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/?auth=login" replace />} />
         <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/?auth=register" replace />} />
+        <Route path="/verify-otp" element={<VerifyOTP />} />
 
         {/* Protected student routes */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

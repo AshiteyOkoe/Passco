@@ -70,6 +70,26 @@ export async function login(data: { email: string; password: string }): Promise<
   return res.data;
 }
 
+export async function sendOTP(email: string): Promise<{ message: string }> {
+  const res = await api.post('/otp/send', { email });
+  return res.data;
+}
+
+export async function verifyOTPAndRegister(data: {
+  email: string;
+  code: string;
+  name: string;
+  password: string;
+  role?: string;
+  institution?: string;
+  dateOfBirth: string;
+  gender?: string;
+  classLevel?: string;
+}): Promise<AuthResponse> {
+  const res = await api.post('/otp/verify', data);
+  return res.data;
+}
+
 export async function getProfile(): Promise<User> {
   const res = await api.get('/auth/profile');
   return res.data;

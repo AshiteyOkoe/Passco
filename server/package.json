@@ -33,6 +33,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^1.4.12",
     "@types/node": "^22",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "^5"
   }
 }

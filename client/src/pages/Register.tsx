@@ -1,17 +1,20 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { sendOTP } from '../services/api';
 import { BookOpen, User, Mail, Lock, Building2, GraduationCap, UserPlus, Eye, EyeOff, Check, Calendar } from 'lucide-react';
 import { HeroStudents } from '../components/icons/Illustrations';
 import { slideUp, stagger, fadeUp } from '../utils/animations';
 import { cn } from '../utils';
 
 export default function Register() {
-  const { register } = useAuth();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [institution, setInstitution] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
@@ -20,17 +23,36 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  if (user) {
+    navigate('/dashboard');
+    return null;
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     setLoading(true);
     try {
-      await register({ name, email, password, institution, dateOfBirth, gender, classLevel });
+      await sendOTP(email);
+      const params = new URLSearchParams({
+        name,
+        email,
+        password,
+        institution,
+        gender,
+        classLevel,
+        dateOfBirth,
+      });
+      navigate(`/verify-otp?${params.toString()}`);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
         ? (err as { response: { data: { message: string } } }).response?.data?.message
-        : 'Registration failed';
-      setError(msg || 'Registration failed');
+        : 'Failed to send verification code';
+      setError(msg || 'Failed to send verification code');
     } finally {
       setLoading(false);
     }
@@ -142,6 +164,19 @@ export default function Register() {
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label={showPassword ? 'Hide password' : 'Show password'}>
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
+              </div>
+            </motion.div>
+
+            <motion.div className="mb-4" variants={slideUp} custom={3}>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Confirm Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6}
+                  className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-10 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  placeholder="Re-enter your password" />
+                {confirmPassword && confirmPassword === password && (
+                  <Check className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
+                )}
               </div>
             </motion.div>
 
