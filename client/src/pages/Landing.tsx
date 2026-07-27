@@ -1,11 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { slideUp, stagger, fadeUp } from '../utils/animations';
+import { stagger, fadeUp } from '../utils/animations';
 import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
-  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight, ChevronLeft
+  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight
 } from 'lucide-react';
 import { resolveUploadUrl } from '../services/api';
 import { DefaultAvatar } from '../components/DefaultAvatars';
@@ -111,8 +111,6 @@ export default function Landing() {
     return sorted.map((r: any) => ({ score: r.percentage }));
   }, [heroData]);
 
-  const [leaderboardIndex, setLeaderboardIndex] = useState(0);
-
   const leaderboardEntries = useMemo(() => {
     const map = new Map<string, { name: string; scores: number[]; badges: number; gender?: string; avatar?: string }>();
     for (let i = 0; i < localStorage.length; i++) {
@@ -138,14 +136,6 @@ export default function Landing() {
       return entries;
     } catch { return []; }
   }, []);
-
-  useEffect(() => {
-    if (leaderboardEntries.length <= 1) return;
-    const interval = setInterval(() => {
-      setLeaderboardIndex(prev => (prev + 1) % leaderboardEntries.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [leaderboardEntries.length]);
 
   const getRewardLabel = (avg: number) => {
     if (avg >= 90) return { label: 'Champion', icon: Crown, color: 'text-amber-400' };
@@ -306,7 +296,7 @@ export default function Landing() {
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </Link>
                     <button
-                      onClick={() => navigate('/features#demo')}
+                      onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
                       className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
                     >
                       <motion.span
@@ -362,273 +352,86 @@ export default function Landing() {
               <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-emerald-500/10 blur-2xl" />
 
               {user ? (
-                /* Rotating Student Leaderboard for logged-in users */
+                /* Stats Card for logged-in users */
                 <div className="relative rounded-2xl border border-white/20 bg-white/10 p-5 shadow-xl backdrop-blur-md">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-4 w-4 text-amber-300" />
-                      <p className="text-xs font-semibold text-white/80">Student Rankings</p>
-                    </div>
-                    {leaderboardEntries.length > 1 && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setLeaderboardIndex(prev => (prev - 1 + leaderboardEntries.length) % leaderboardEntries.length)}
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/60 transition hover:bg-white/20 hover:text-white"
-                        >
-                          <ChevronLeft className="h-3 w-3" />
-                        </button>
-                        <span className="text-[10px] text-white/40">
-                          {leaderboardIndex + 1}/{leaderboardEntries.length}
-                        </span>
-                        <button
-                          onClick={() => setLeaderboardIndex(prev => (prev + 1) % leaderboardEntries.length)}
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/60 transition hover:bg-white/20 hover:text-white"
-                        >
-                          <ChevronRight className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
+                  <div className="mb-4 flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-amber-300" />
+                    <p className="text-xs font-semibold text-white/80">Your Stats</p>
                   </div>
-
-                  {leaderboardEntries.length > 0 ? (
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={leaderboardIndex}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        {(() => {
-                          const entry = leaderboardEntries[leaderboardIndex];
-                          if (!entry) return null;
-                          const rank = leaderboardIndex + 1;
-                          const reward = getRewardLabel(entry.avg);
-                          const RewardIcon = reward.icon;
-                          const isCurrentUser = entry.name === user?.name;
-
-                          return (
-                            <div className="space-y-3">
-                              {/* Rank Badge + Name */}
-                              <div className="flex items-center gap-3">
-                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
-                                  rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' :
-                                  rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white' :
-                                  rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' :
-                                  'bg-white/10 text-white/60'
-                                }`}>
-                                  #{rank}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className={`text-sm font-bold ${isCurrentUser ? 'text-indigo-300' : 'text-white'}`}>
-                                    {entry.name} {isCurrentUser && <span className="text-[10px] text-indigo-300/60">(You)</span>}
-                                  </p>
-                                  <p className="flex items-center gap-1 text-[10px] text-white/50">
-                                    <RewardIcon className={`h-3 w-3 ${reward.color}`} />
-                                    {reward.label} · {entry.total} assessments
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-lg font-bold text-emerald-300">{entry.avg}%</p>
-                                  <p className="text-[9px] text-white/40">avg score</p>
-                                </div>
-                              </div>
-
-                              {/* Performance Bar */}
-                              <div className="rounded-lg bg-white/10 p-2.5">
-                                <div className="mb-1 flex items-center justify-between">
-                                  <p className="text-[10px] font-semibold text-white/60">Performance</p>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] text-white/40">
-                                      {entry.scores.filter((s: number) => s >= 70).length}/{entry.scores.length} passed
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-end gap-0.5">
-                                  {entry.scores.slice(-8).map((s: number, i: number) => (
-                                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                                      <div
-                                        className="w-full rounded-sm"
-                                        style={{
-                                          height: `${Math.max((s / 100) * 32, 3)}px`,
-                                          backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
-                                          opacity: 0.8,
-                                        }}
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Achievement + Reward */}
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="rounded-lg bg-white/10 p-2.5 text-center">
-                                  <Award className="mx-auto mb-1 h-4 w-4 text-amber-300" />
-                                  <p className="text-sm font-bold text-white">{entry.badges}</p>
-                                  <p className="text-[9px] text-white/40">Badges Earned</p>
-                                </div>
-                                <div className="rounded-lg bg-white/10 p-2.5 text-center">
-                                  <RewardIcon className={`mx-auto mb-1 h-4 w-4 ${reward.color}`} />
-                                  <p className="text-sm font-bold text-white">{reward.label}</p>
-                                  <p className="text-[9px] text-white/40">Reward Tier</p>
-                                </div>
-                              </div>
-
-                              {/* Mini Score Sparkline */}
-                              {entry.scores.length > 1 && (
-                                <div className="rounded-lg bg-white/5 p-2">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <p className="text-[10px] font-semibold text-white/50">Score Trend</p>
-                                    {entry.scores.length >= 2 && (
-                                      <span className={`text-[10px] font-bold ${
-                                        entry.scores[0] >= entry.scores[1] ? 'text-emerald-400' : 'text-rose-400'
-                                      }`}>
-                                        {entry.scores[0] >= entry.scores[1] ? '↑' : '↓'} {Math.abs(entry.scores[0] - entry.scores[1])}%
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-end gap-px">
-                                    {entry.scores.slice(-10).map((s: number, i: number) => (
-                                      <div
-                                        key={i}
-                                        className="flex-1 rounded-sm"
-                                        style={{
-                                          height: `${Math.max((s / 100) * 20, 2)}px`,
-                                          backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
-                                          opacity: 0.6 + (i / 10) * 0.4,
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </motion.div>
-                    </AnimatePresence>
-                  ) : (
-                    <div className="rounded-lg bg-white/5 p-6 text-center">
-                      <Trophy className="mx-auto mb-2 h-8 w-8 text-white/20" />
-                      <p className="text-xs text-white/40">No student data yet</p>
-                      <p className="text-[10px] text-white/30">Rankings appear as students complete assessments</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-white/10 p-3 text-center">
+                      <p className="text-2xl font-bold text-white">{heroStats.totalCompleted}</p>
+                      <p className="text-[10px] text-white/50">Quizzes Taken</p>
+                    </div>
+                    <div className="rounded-xl bg-white/10 p-3 text-center">
+                      <p className="text-2xl font-bold text-emerald-300">{heroStats.avgScore}%</p>
+                      <p className="text-[10px] text-white/50">Avg Score</p>
+                    </div>
+                    <div className="rounded-xl bg-white/10 p-3 text-center">
+                      <p className="text-2xl font-bold text-amber-300">{heroStats.rank}</p>
+                      <p className="text-[10px] text-white/50">Grade Rank</p>
+                    </div>
+                    <div className="rounded-xl bg-white/10 p-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <p className="text-2xl font-bold text-indigo-300">{leaderboardEntries.findIndex((e: any) => e.name === user?.name) + 1 || '-'}</p>
+                      </div>
+                      <p className="text-[10px] text-white/50">Leaderboard Rank</p>
+                    </div>
+                  </div>
+                  {heroScoreTrend.length > 1 && (
+                    <div className="mt-3 rounded-xl bg-white/5 p-3">
+                      <p className="mb-2 text-[10px] font-semibold text-white/50">Score Trend</p>
+                      <div className="flex items-end gap-1">
+                        {heroScoreTrend.map((pt: any, idx: number) => (
+                          <div key={idx} className="flex-1 rounded-sm" style={{
+                            height: `${Math.max((pt.score / 100) * 32, 3)}px`,
+                            backgroundColor: pt.score >= 75 ? '#34d399' : pt.score >= 50 ? '#fbbf24' : '#f87171',
+                            opacity: 0.6 + (idx / heroScoreTrend.length) * 0.4,
+                          }} />
+                        ))}
+                      </div>
                     </div>
                   )}
-
-                  {/* Navigation Dots */}
-                  {leaderboardEntries.length > 1 && (
-                    <div className="mt-3 flex items-center justify-center gap-1.5">
-                      {leaderboardEntries.slice(0, Math.min(leaderboardEntries.length, 10)).map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setLeaderboardIndex(i)}
-                          className={`h-1.5 rounded-full transition-all ${
-                            i === leaderboardIndex ? 'w-4 bg-indigo-400' : 'w-1.5 bg-white/20'
-                          }`}
-                        />
-                      ))}
-                      {leaderboardEntries.length > 10 && (
-                        <span className="text-[10px] text-white/30">+{leaderboardEntries.length - 10}</span>
-                      )}
-                    </div>
-                  )}
+                  <button
+                    onClick={() => navigate('/results-dashboard')}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-semibold text-white/80 transition hover:bg-white/20 hover:text-white"
+                  >
+                    View Full Results
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               ) : (
-                /* Top 10 Student Rankings for non-logged-in users */
+                /* Stats Card for non-logged-in users */
                 <div className="relative rounded-2xl border border-white/20 bg-white/10 p-5 shadow-xl backdrop-blur-md">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-4 w-4 text-amber-300" />
-                      <p className="text-xs font-semibold text-white/80">Top Performing Students</p>
-                    </div>
-                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-white/60">
-                      Live Rankings
-                    </span>
+                  <div className="mb-4 flex items-center gap-2">
+                    <Rocket className="h-4 w-4 text-indigo-300" />
+                    <p className="text-xs font-semibold text-white/80">Why Passco?</p>
                   </div>
-
-                  {leaderboardEntries.length > 0 ? (
-                    <div className="space-y-2">
-                      {leaderboardEntries.slice(0, 10).map((entry: any, i: number) => {
-                        const rank = i + 1;
-                        const reward = getRewardLabel(entry.avg);
-                        const RewardIcon = reward.icon;
-                        return (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.06, duration: 0.3 }}
-                            className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5 transition hover:bg-white/10"
-                          >
-                            {/* Rank */}
-                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                              rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' :
-                              rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white' :
-                              rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' :
-                              'bg-white/10 text-white/50'
-                            }`}>
-                              {rank <= 3 ? (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉') : `#${rank}`}
-                            </div>
-
-                            {/* Name + Reward */}
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-white truncate">{entry.name}</p>
-                              <div className="flex items-center gap-1.5">
-                                <RewardIcon className={`h-3 w-3 ${reward.color}`} />
-                                <span className="text-[10px] text-white/50">{reward.label}</span>
-                                <span className="text-[10px] text-white/30">·</span>
-                                <span className="text-[10px] text-white/40">{entry.total} quiz{entry.total !== 1 ? 'zes' : ''}</span>
-                              </div>
-                            </div>
-
-                            {/* Mini Performance Bar */}
-                            <div className="hidden w-16 sm:block">
-                              <div className="flex items-end gap-px h-5">
-                                {entry.scores.slice(-5).map((s: number, j: number) => (
-                                  <div
-                                    key={j}
-                                    className="flex-1 rounded-sm"
-                                    style={{
-                                      height: `${Math.max((s / 100) * 20, 2)}px`,
-                                      backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
-                                      opacity: 0.7,
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Score + Badges */}
-                            <div className="text-right">
-                              <p className={`text-sm font-bold ${entry.avg >= 75 ? 'text-emerald-300' : entry.avg >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>
-                                {entry.avg}%
-                              </p>
-                              <div className="flex items-center justify-end gap-1">
-                                <Award className="h-2.5 w-2.5 text-amber-400/60" />
-                                <span className="text-[9px] text-white/40">{entry.badges}</span>
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl bg-white/5 p-8 text-center">
-                      <Trophy className="mx-auto mb-3 h-10 w-10 text-white/15" />
-                      <p className="text-sm text-white/40">No rankings yet</p>
-                      <p className="mt-1 text-[10px] text-white/25">Be the first to take an assessment!</p>
-                    </div>
-                  )}
-
-                  {/* CTA */}
-                  <div className="mt-4 rounded-xl bg-gradient-to-r from-indigo-500/20 to-emerald-500/20 p-3 text-center">
-                    <p className="text-xs font-semibold text-white/80">
-                      {leaderboardEntries.length > 0
-                        ? `Join ${leaderboardEntries.length} student${leaderboardEntries.length !== 1 ? 's' : ''} already competing!`
-                        : 'Start competing and climb the leaderboard!'}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-white/50">Sign up free to claim your spot</p>
+                  <div className="space-y-3">
+                    {[
+                      { icon: ClipboardCheck, label: 'JHS & SHS Assessments', desc: 'Quizzes, mocks & exams across 15+ subjects' },
+                      { icon: BarChart3, label: 'Track Your Progress', desc: 'Analytics, trends & performance insights' },
+                      { icon: Award, label: 'Earn Badges & Rewards', desc: 'Unlock achievements as you improve' },
+                      { icon: Zap, label: 'AI-Powered Questions', desc: 'Generate custom practice questions' },
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-start gap-3 rounded-xl bg-white/5 p-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                          <item.icon className="h-4 w-4 text-indigo-300" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-white">{item.label}</p>
+                          <p className="text-[10px] text-white/50">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-emerald-500 py-2.5 text-xs font-bold text-white shadow-lg transition hover:from-indigo-600 hover:to-emerald-600"
+                  >
+                    Get Started Free
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               )}
             </motion.div>
@@ -636,101 +439,196 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* Top 10 Student Leaderboard */}
+      <section id="leaderboard" className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <motion.div
-            className="mx-auto mb-16 max-w-2xl text-center"
+            className="mx-auto mb-12 max-w-2xl text-center"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-              <Sparkles className="h-3.5 w-3.5" />
-              Features
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-1.5 text-xs font-semibold text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
+              <Trophy className="h-3.5 w-3.5" />
+              Leaderboard
             </span>
             <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
-              Everything You Need to Ace Your Exams
+              Top Performing Students
             </h2>
             <p className="mt-3 text-slate-500 dark:text-slate-400">
-              From taking assessments to tracking your progress, Passco provides a complete learning toolkit for JHS students.
+              See who's leading the pack. Click on any student to view their achievements, performance, and results.
             </p>
           </motion.div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                icon: ClipboardCheck,
-                title: 'JHS Assessments',
-                desc: 'Take quizzes, mock tests, and examinations across 8 subjects — Mathematics, Science, English, and more.',
-                gradient: 'from-indigo-500 to-indigo-600',
-                bg: 'bg-indigo-100 dark:bg-indigo-500/10',
-                color: 'text-indigo-600 dark:text-indigo-400',
-              },
-              {
-                icon: BarChart3,
-                title: 'Track Progress',
-                desc: 'Detailed analytics show your strengths and weaknesses. Identify topics that need more practice.',
-                gradient: 'from-emerald-500 to-emerald-600',
-                bg: 'bg-emerald-100 dark:bg-emerald-500/10',
-                color: 'text-emerald-600 dark:text-emerald-400',
-              },
-              {
-                icon: Award,
-                title: 'Earn Badges',
-                desc: 'Unlock achievement badges as you complete assessments — First Step, High Achiever, Class Champion, and more.',
-                gradient: 'from-amber-500 to-amber-600',
-                bg: 'bg-amber-100 dark:bg-amber-500/10',
-                color: 'text-amber-600 dark:text-amber-400',
-              },
-              {
-                icon: Shield,
-                title: 'Secure & Private',
-                desc: 'Your data is protected and never shared. Full control over your profile and results.',
-                gradient: 'from-violet-500 to-violet-600',
-                bg: 'bg-violet-100 dark:bg-violet-500/10',
-                color: 'text-violet-600 dark:text-violet-400',
-              },
-              {
-                icon: Zap,
-                title: 'Instant Results',
-                desc: 'Get immediate feedback on your answers with detailed explanations and grade breakdowns.',
-                gradient: 'from-rose-500 to-rose-600',
-                bg: 'bg-rose-100 dark:bg-rose-500/10',
-                color: 'text-rose-600 dark:text-rose-400',
-              },
-              {
-                icon: GraduationCap,
-                title: 'Multi-Level Support',
-                desc: 'From JHS 1 to JHS 3 — content adapted to your class level with 3 difficulty modes.',
-                gradient: 'from-cyan-500 to-cyan-600',
-                bg: 'bg-cyan-100 dark:bg-cyan-500/10',
-                color: 'text-cyan-600 dark:text-cyan-400',
-              },
-            ].map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                variants={slideUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-40px' }}
-                custom={i}
-                whileHover={{ y: -4 }}
-                className="group rounded-2xl border border-slate-200 bg-white p-6 transition-shadow hover:shadow-lg dark:border-slate-800 dark:bg-slate-950"
-              >
-                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${feature.bg}`}>
+          {leaderboardEntries.length > 0 ? (
+            <div className="space-y-3">
+              {leaderboardEntries.slice(0, 10).map((entry: any, i: number) => {
+                const rank = i + 1;
+                const reward = getRewardLabel(entry.avg);
+                const RewardIcon = reward.icon;
+                const isCurrentUser = user && entry.name === user.name;
+
+                return (
                   <motion.div
-                    animate={{ rotate: [-5, 5, -5] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.3 }}
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.05, duration: 0.3 }}
+                    whileHover={{ scale: 1.01, y: -2 }}
+                    className={`group rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-slate-950 sm:p-5 ${
+                      rank <= 3
+                        ? 'border-amber-200 dark:border-amber-800/50'
+                        : 'border-slate-200 dark:border-slate-800'
+                    } ${isCurrentUser ? 'ring-2 ring-indigo-500/30 dark:ring-indigo-400/30' : ''}`}
                   >
-                    <feature.icon className={`h-6 w-6 ${feature.color}`} />
+                    {/* Top Row: Rank + Name + Score */}
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {/* Rank Badge */}
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold sm:h-12 sm:w-12 sm:text-base ${
+                        rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/20' :
+                        rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-md shadow-slate-500/20' :
+                        rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/20' :
+                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+                      </div>
+
+                      {/* Name + Meta */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-bold truncate sm:text-base ${
+                            isCurrentUser ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'
+                          }`}>
+                            {entry.name}
+                          </p>
+                          {isCurrentUser && (
+                            <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <RewardIcon className={`h-3 w-3 ${reward.color}`} />
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{reward.label}</span>
+                          </div>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500">{entry.total} quiz{entry.total !== 1 ? 'zes' : ''}</span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
+                          <div className="flex items-center gap-1">
+                            <Award className="h-3 w-3 text-amber-400" />
+                            <span className="text-xs text-slate-400 dark:text-slate-500">{entry.badges} badge{entry.badges !== 1 ? 's' : ''}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Score */}
+                      <div className="text-right shrink-0">
+                        <p className={`text-xl font-bold sm:text-2xl ${
+                          entry.avg >= 75 ? 'text-emerald-600 dark:text-emerald-400' :
+                          entry.avg >= 50 ? 'text-amber-600 dark:text-amber-400' :
+                          'text-rose-600 dark:text-rose-400'
+                        }`}>
+                          {entry.avg}%
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">avg score</p>
+                      </div>
+                    </div>
+
+                    {/* Performance Bar */}
+                    <div className="mt-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:mt-4 sm:p-4">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Recent Performance</p>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          {entry.scores.filter((s: number) => s >= 70).length}/{entry.scores.length} passed
+                        </span>
+                      </div>
+                      <div className="flex items-end gap-1">
+                        {entry.scores.slice(-10).map((s: number, j: number) => (
+                          <div key={j} className="flex-1 flex flex-col items-center gap-0.5">
+                            <div
+                              className="w-full rounded-sm transition-all"
+                              style={{
+                                height: `${Math.max((s / 100) * 40, 4)}px`,
+                                backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
+                                opacity: 0.7 + (j / 10) * 0.3,
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Click Actions — visible on hover, always visible on mobile */}
+                    <div className="mt-3 flex items-center gap-2 sm:mt-4 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+                      <button
+                        onClick={() => user ? navigate('/achievements') : navigate('/login')}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
+                      >
+                        <Award className="h-3.5 w-3.5" />
+                        Achievements
+                      </button>
+                      <button
+                        onClick={() => user ? navigate('/analytics/performance') : navigate('/login')}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
+                      >
+                        <BarChart3 className="h-3.5 w-3.5" />
+                        Performance
+                      </button>
+                      <button
+                        onClick={() => user ? navigate('/results-dashboard') : navigate('/login')}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                      >
+                        <TrendingUp className="h-3.5 w-3.5" />
+                        Results
+                      </button>
+                    </div>
                   </motion.div>
-                </div>
-                <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">{feature.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{feature.desc}</p>
-              </motion.div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-12 text-center dark:border-slate-800 dark:bg-slate-950"
+            >
+              <Trophy className="mx-auto mb-4 h-12 w-12 text-slate-300 dark:text-slate-700" />
+              <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">No rankings yet</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Be the first to take an assessment and claim the top spot!</p>
+              <button
+                onClick={() => user ? navigate('/assessment/setup') : navigate('/login')}
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                <Play className="h-4 w-4" />
+                Take an Assessment
+              </button>
+            </motion.div>
+          )}
+
+          {/* CTA */}
+          {!user && leaderboardEntries.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mt-8 rounded-2xl bg-gradient-to-r from-indigo-500 to-emerald-500 p-6 text-center shadow-lg sm:p-8"
+            >
+              <p className="text-lg font-bold text-white sm:text-xl">
+                Join {leaderboardEntries.length} student{leaderboardEntries.length !== 1 ? 's' : ''} already competing!
+              </p>
+              <p className="mt-1 text-sm text-white/80">Sign up free to claim your spot on the leaderboard</p>
+              <button
+                onClick={() => navigate('/register')}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-indigo-600 shadow-lg transition hover:bg-slate-50"
+              >
+                Get Started Free
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </motion.div>
+          )}
         </div>
       </section>
 
