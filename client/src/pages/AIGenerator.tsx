@@ -9,10 +9,17 @@ import {
   Save, ChevronDown, ChevronUp, Brain, Zap, Clock, Crown,
   BookOpen, X, Loader2,
 } from 'lucide-react';
-import { fadeUp, stagger } from '../utils/animations';
+import { fadeUp } from '../utils/animations';
 import { SUBJECT_META, type SubjectId } from '../data/questionBank';
 import AnimatedSpinner from '../components/AnimatedSpinner';
 import type { AIGeneratedQuestion } from '../types';
+import * as mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url,
+).toString();
 
 const ACCEPTED_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv', 'image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE = 20 * 1024 * 1024;
@@ -71,17 +78,44 @@ export default function AIGenerator() {
     if (f) handleFile(f);
   };
 
+  const extractTextFromFile = async (f: File): Promise<string> => {
+    if (f.type === 'application/pdf') {
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pages: string[] = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+      }
+      return pages.join('\n\n');
+    }
+
+    if (f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      const arrayBuffer = await f.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      return result.value;
+    }
+
+    return await f.text();
+  };
+
   const processFile = async () => {
     if (!file) return;
     setStep('generating');
     setError('');
 
     try {
-      const textContent = await file.text();
+      const textContent = await extractTextFromFile(file);
+      if (!textContent.trim()) {
+        setError('Could not extract text from this file. Please try a different file.');
+        setStep('upload');
+        return;
+      }
       setExtractedText(textContent);
       setStep('configure');
     } catch {
-      setError('Failed to read file. Please try again.');
+      setError('Failed to read file. Please try a different file.');
       setStep('upload');
     }
   };
