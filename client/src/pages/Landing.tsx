@@ -43,6 +43,62 @@ const encouragements = [
   "Knowledge is your superpower. Keep building it!",
 ];
 
+const landingPlans = [
+  {
+    id: 'free',
+    name: 'Free Trial',
+    price: 10,
+    period: '/week',
+    description: 'Get started with basic features',
+    icon: Zap,
+    color: 'from-slate-500 to-slate-600',
+    bg: 'bg-slate-50 dark:bg-slate-800/50',
+    border: 'border-slate-200 dark:border-slate-700',
+    features: [
+      'Access to all JHS & SHS subjects',
+      'Quizzes (10 questions)',
+      'Mock exams (20 questions)',
+      '20 AI-generated questions/month',
+    ],
+  },
+  {
+    id: 'basic',
+    name: 'Basic Plan',
+    price: 35,
+    period: '/month',
+    description: 'Unlock more practice tools',
+    icon: Star,
+    color: 'from-indigo-500 to-indigo-600',
+    bg: 'bg-indigo-50 dark:bg-indigo-500/10',
+    border: 'border-indigo-200 dark:border-indigo-800',
+    features: [
+      'Unlimited quizzes',
+      'Unlimited mock exams',
+      '500 AI-generated questions/month',
+      'Detailed progress tracking',
+    ],
+  },
+  {
+    id: 'premium',
+    name: 'Premium Plan',
+    price: 50,
+    period: '/month',
+    description: 'Everything you need to ace your exams',
+    icon: Crown,
+    color: 'from-amber-500 to-orange-500',
+    bg: 'bg-amber-50 dark:bg-amber-500/10',
+    border: 'border-amber-200 dark:border-amber-800',
+    popular: true,
+    features: [
+      'Unlimited quizzes & exams',
+      'Unlimited examinations',
+      'Unlimited AI-generated questions',
+      'Advanced analytics & reports',
+      'Priority support',
+    ],
+  },
+];
+
 export default function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -964,49 +1020,78 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
-              {user ? "Don't Stop Now — Keep Growing!" : 'Ready to Start Learning Smarter?'}
-            </h2>
-            <p className="mx-auto mt-4 max-w-lg text-slate-500 dark:text-slate-400">
-              {user
-                ? `${user.name}, you're doing great. Take your next assessment and keep pushing your limits!`
-                : 'Join thousands of students who are already using Passco to prepare for their exams.'}
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link
-                to={user ? '/assessment/setup' : '/register'}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700"
-              >
-                {user ? (
-                  <>
-                    <Rocket className="h-4 w-4" />
-                    Take an Assessment
-                  </>
-                ) : (
-                  'Get Started Free'
-                )}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              {!user && (
-                <Link
-                  to="/contact"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+      {/* Subscription Plans */}
+      {!user && (
+        <section className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
+                Choose a Plan That Fits Your Goals
+              </h2>
+              <p className="mx-auto mt-4 max-w-lg text-slate-500 dark:text-slate-400">
+                Start free or upgrade for unlimited practice and AI-powered questions.
+              </p>
+            </motion.div>
+
+            <div className="mt-12 grid gap-6 sm:grid-cols-3">
+              {landingPlans.map((plan, i) => (
+                <motion.div
+                  key={plan.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`relative rounded-2xl border p-6 ${plan.border} ${plan.bg} ${
+                    plan.popular ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''
+                  }`}
                 >
-                  Contact Sales
-                </Link>
-              )}
+                  {plan.popular && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-bold text-white">
+                      MOST POPULAR
+                    </span>
+                  )}
+                  <div className={`mb-4 inline-flex rounded-xl p-2.5 bg-gradient-to-br ${plan.color} text-white`}>
+                    <plan.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{plan.name}</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{plan.description}</p>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white">
+                      {plan.price === 0 ? 'Free' : `GH₵${plan.price}`}
+                    </span>
+                    {plan.price > 0 && (
+                      <span className="text-sm text-slate-500 dark:text-slate-400">{plan.period}</span>
+                    )}
+                  </div>
+                  <ul className="mt-4 space-y-2">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    to="/register"
+                    className={`mt-6 block w-full rounded-xl py-2.5 text-center text-sm font-semibold transition ${
+                      plan.popular
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-orange-600'
+                        : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    Get Started
+                  </Link>
+                </motion.div>
+              ))}
             </div>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
