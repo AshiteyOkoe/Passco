@@ -14,7 +14,6 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [institution, setInstitution] = useState('');
-  const [gradeLevel, setGradeLevel] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [classLevel, setClassLevel] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -26,7 +25,7 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      await register({ name, email, password, institution, gradeLevel, dateOfBirth, gender, classLevel });
+      await register({ name, email, password, institution, dateOfBirth, gender, classLevel });
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
         ? (err as { response: { data: { message: string } } }).response?.data?.message
@@ -174,19 +173,6 @@ export default function Register() {
             </motion.div>
 
             <motion.div className="mb-6" variants={slideUp} custom={5}>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Grade Level</label>
-              <div className="relative">
-                <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
-                  <option value="">Select grade level</option>
-                  <option value="JHS">Junior High School</option>
-                  <option value="SHS">Senior High School</option>
-                </select>
-              </div>
-            </motion.div>
-
-            <motion.div className="mb-6" variants={slideUp} custom={6}>
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Class Level</label>
               <div className="relative">
                 <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

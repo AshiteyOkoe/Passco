@@ -24,7 +24,6 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [institution, setInstitution] = useState('');
-  const [gradeLevel, setGradeLevel] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [classLevel, setClassLevel] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -54,7 +53,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
     setError('');
     setLoading(true);
     try {
-      await register({ name, email: regEmail, password: regPassword, institution, gradeLevel, dateOfBirth, gender, classLevel });
+      await register({ name, email: regEmail, password: regPassword, institution, dateOfBirth, gender, classLevel });
       onClose();
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
@@ -292,21 +291,6 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           required
                           className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         />
-                      </div>
-                    </div>
-                    <div className="mb-6">
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Grade Level</label>
-                      <div className="relative">
-                        <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <select
-                          value={gradeLevel}
-                          onChange={(e) => setGradeLevel(e.target.value)}
-                          className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-                        >
-                          <option value="">Select grade level</option>
-                          <option value="JHS">Junior High School</option>
-                          <option value="SHS">Senior High School</option>
-                        </select>
                       </div>
                     </div>
                     <div className="mb-6">

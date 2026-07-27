@@ -57,7 +57,6 @@ export async function register(data: {
   password: string;
   role?: string;
   institution?: string;
-  gradeLevel?: string;
   dateOfBirth: string;
   gender?: string;
   classLevel?: string;

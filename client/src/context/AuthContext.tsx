@@ -13,7 +13,6 @@ interface AuthContextType {
     password: string;
     role?: string;
     institution?: string;
-    gradeLevel?: string;
     dateOfBirth: string;
     gender?: string;
     classLevel?: string;
@@ -65,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     role?: string;
     institution?: string;
-    gradeLevel?: string;
     dateOfBirth: string;
     gender?: string;
     classLevel?: string;
