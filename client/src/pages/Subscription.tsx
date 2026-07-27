@@ -13,7 +13,7 @@ const plans = [
     id: 'free',
     name: 'Free Trial',
     price: 0,
-    period: '/week',
+    period: 'forever',
     description: 'Get started with basic features',
     icon: Zap,
     color: 'from-slate-500 to-slate-600',
@@ -23,7 +23,7 @@ const plans = [
       'Access to all JHS & SHS subjects',
       'Quizzes (10 questions)',
       'Mock exams (20 questions)',
-      '10 AI-generated questions/week',
+      '20 AI-generated questions/month',
       'Basic progress tracking',
     ],
     limitations: [
@@ -47,7 +47,7 @@ const plans = [
       'Access to all subjects',
       'Unlimited quizzes',
       'Unlimited mock exams',
-      '30 AI-generated questions/month',
+      '500 AI-generated questions/month',
       'Detailed progress tracking',
       'Score history & trends',
     ],
@@ -72,7 +72,7 @@ const plans = [
       'Unlimited quizzes',
       'Unlimited mock exams',
       'Unlimited examinations',
-      '50 AI-generated questions/month',
+      'Unlimited AI-generated questions',
       'Advanced analytics & reports',
       'Performance insights',
       'Priority support',
@@ -86,7 +86,7 @@ export default function Subscription() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentSub, setCurrentSub] = useState<Subscription | null>(null);
-  const [aiUsage, setAiUsage] = useState({ used: 0, limit: 10, month: '' });
+  const [aiUsage, setAiUsage] = useState({ used: 0, limit: 20, month: '' });
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);

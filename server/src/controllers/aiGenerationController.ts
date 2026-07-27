@@ -9,7 +9,7 @@ function getCurrentMonth(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-const PLAN_LIMITS: Record<string, number> = { free: 10, basic: 30, premium: 50 };
+const PLAN_LIMITS: Record<string, number> = { free: 20, basic: 500, premium: -1 };
 
 async function getUserPlan(userId: string): Promise<string> {
   const { data: sub } = await supabase

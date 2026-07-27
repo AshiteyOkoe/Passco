@@ -5,9 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { slideUp, stagger, fadeUp } from '../utils/animations';
 import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
-  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Target, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight, ChevronLeft
+  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight, ChevronLeft
 } from 'lucide-react';
-import { HeroStudents } from '../components/icons/Illustrations';
 import { resolveUploadUrl } from '../services/api';
 import { DefaultAvatar } from '../components/DefaultAvatars';
 import { SUBJECT_META, getQuestions, shuffleArray, type SubjectId } from '../data/questionBank';
@@ -535,46 +534,102 @@ export default function Landing() {
                   )}
                 </div>
               ) : (
-                /* Static illustration for non-logged-in users */
-                <>
-                  <div className="relative rounded-2xl bg-white/10 p-4 shadow-xl ring-1 ring-white/20 backdrop-blur-md">
-                    <HeroStudents size="lg" className="w-full" />
+                /* Top 10 Student Rankings for non-logged-in users */
+                <div className="relative rounded-2xl border border-white/20 bg-white/10 p-5 shadow-xl backdrop-blur-md">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-amber-300" />
+                      <p className="text-xs font-semibold text-white/80">Top Performing Students</p>
+                    </div>
+                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-medium text-white/60">
+                      Live Rankings
+                    </span>
                   </div>
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.4 }}
-                    className="absolute -bottom-4 -left-4 rounded-xl border border-white/20 bg-white/10 p-3 shadow-lg backdrop-blur-md"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
-                        <Trophy className="h-4 w-4 text-emerald-300" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-white">92% Avg Score</p>
-                        <p className="text-[10px] text-white/60">From 1,200+ quizzes</p>
-                      </div>
-                    </div>
-                  </motion.div>
+                  {leaderboardEntries.length > 0 ? (
+                    <div className="space-y-2">
+                      {leaderboardEntries.slice(0, 10).map((entry: any, i: number) => {
+                        const rank = i + 1;
+                        const reward = getRewardLabel(entry.avg);
+                        const RewardIcon = reward.icon;
+                        return (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.06, duration: 0.3 }}
+                            className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5 transition hover:bg-white/10"
+                          >
+                            {/* Rank */}
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                              rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white' :
+                              rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white' :
+                              rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' :
+                              'bg-white/10 text-white/50'
+                            }`}>
+                              {rank <= 3 ? (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉') : `#${rank}`}
+                            </div>
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8, duration: 0.4 }}
-                    className="absolute -right-4 -top-4 rounded-xl border border-white/20 bg-white/10 p-3 shadow-lg backdrop-blur-md"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20">
-                        <Target className="h-4 w-4 text-indigo-300" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-white">5,000+</p>
-                        <p className="text-[10px] text-white/60">Active Students</p>
-                      </div>
+                            {/* Name + Reward */}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-white truncate">{entry.name}</p>
+                              <div className="flex items-center gap-1.5">
+                                <RewardIcon className={`h-3 w-3 ${reward.color}`} />
+                                <span className="text-[10px] text-white/50">{reward.label}</span>
+                                <span className="text-[10px] text-white/30">·</span>
+                                <span className="text-[10px] text-white/40">{entry.total} quiz{entry.total !== 1 ? 'zes' : ''}</span>
+                              </div>
+                            </div>
+
+                            {/* Mini Performance Bar */}
+                            <div className="hidden w-16 sm:block">
+                              <div className="flex items-end gap-px h-5">
+                                {entry.scores.slice(-5).map((s: number, j: number) => (
+                                  <div
+                                    key={j}
+                                    className="flex-1 rounded-sm"
+                                    style={{
+                                      height: `${Math.max((s / 100) * 20, 2)}px`,
+                                      backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
+                                      opacity: 0.7,
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Score + Badges */}
+                            <div className="text-right">
+                              <p className={`text-sm font-bold ${entry.avg >= 75 ? 'text-emerald-300' : entry.avg >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>
+                                {entry.avg}%
+                              </p>
+                              <div className="flex items-center justify-end gap-1">
+                                <Award className="h-2.5 w-2.5 text-amber-400/60" />
+                                <span className="text-[9px] text-white/40">{entry.badges}</span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
-                  </motion.div>
-                </>
+                  ) : (
+                    <div className="rounded-xl bg-white/5 p-8 text-center">
+                      <Trophy className="mx-auto mb-3 h-10 w-10 text-white/15" />
+                      <p className="text-sm text-white/40">No rankings yet</p>
+                      <p className="mt-1 text-[10px] text-white/25">Be the first to take an assessment!</p>
+                    </div>
+                  )}
+
+                  {/* CTA */}
+                  <div className="mt-4 rounded-xl bg-gradient-to-r from-indigo-500/20 to-emerald-500/20 p-3 text-center">
+                    <p className="text-xs font-semibold text-white/80">
+                      {leaderboardEntries.length > 0
+                        ? `Join ${leaderboardEntries.length} student${leaderboardEntries.length !== 1 ? 's' : ''} already competing!`
+                        : 'Start competing and climb the leaderboard!'}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-white/50">Sign up free to claim your spot</p>
+                  </div>
+                </div>
               )}
             </motion.div>
           </div>
