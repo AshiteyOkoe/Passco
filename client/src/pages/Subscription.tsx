@@ -12,8 +12,8 @@ const plans = [
   {
     id: 'free',
     name: 'Free Trial',
-    price: 0,
-    period: 'forever',
+    price: 10,
+    period: '/week',
     description: 'Get started with basic features',
     icon: Zap,
     color: 'from-slate-500 to-slate-600',
@@ -35,7 +35,7 @@ const plans = [
   {
     id: 'basic',
     name: 'Basic Plan',
-    price: 29,
+    price: 35,
     period: '/month',
     description: 'Unlock more practice tools',
     icon: Star,
@@ -59,7 +59,7 @@ const plans = [
   {
     id: 'premium',
     name: 'Premium Plan',
-    price: 59,
+    price: 50,
     period: '/month',
     description: 'Everything you need to ace your exams',
     icon: Crown,
