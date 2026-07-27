@@ -25,6 +25,8 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [institution, setInstitution] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
+  const [classLevel, setClassLevel] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
 
   const [error, setError] = useState('');
@@ -52,7 +54,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
     setError('');
     setLoading(true);
     try {
-      await register({ name, email: regEmail, password: regPassword, institution, gradeLevel, dateOfBirth });
+      await register({ name, email: regEmail, password: regPassword, institution, gradeLevel, dateOfBirth, gender, classLevel });
       onClose();
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
@@ -273,6 +275,13 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                       </div>
                     </div>
                     <div className="mb-3">
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Gender</label>
+                      <div className="flex gap-3">
+                        <button type="button" onClick={() => setGender('male')} className={`flex-1 rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition ${gender === 'male' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Male</button>
+                        <button type="button" onClick={() => setGender('female')} className={`flex-1 rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition ${gender === 'female' ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>Female</button>
+                      </div>
+                    </div>
+                    <div className="mb-3">
                       <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Date of Birth *</label>
                       <div className="relative">
                         <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -295,11 +304,23 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         >
                           <option value="">Select grade level</option>
-                          <option value="Primary">Primary School</option>
                           <option value="JHS">Junior High School</option>
                           <option value="SHS">Senior High School</option>
-                          <option value="Undergraduate">Undergraduate</option>
-                          <option value="Graduate">Graduate</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mb-6">
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Class Level</label>
+                      <div className="relative">
+                        <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <select
+                          value={classLevel}
+                          onChange={(e) => setClassLevel(e.target.value)}
+                          className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                        >
+                          <option value="">Select class level</option>
+                          <option value="JHS">JHS</option>
+                          <option value="SHS">SHS</option>
                         </select>
                       </div>
                     </div>
