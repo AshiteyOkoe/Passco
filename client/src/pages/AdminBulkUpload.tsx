@@ -23,7 +23,7 @@ type Step = 'upload' | 'processing' | 'preview';
 const ALL_SUBJECTS: SubjectId[] = [
   'mathematics', 'science', 'english', 'social-studies', 'ict', 'rme', 'creative-arts', 'career-tech',
 ];
-const ALL_CLASSES: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3', 'shs1', 'shs2', 'shs3'];
+const ALL_CLASSES: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3'];
 const ALL_DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
 const ALL_TYPES: QuestionType[] = ['multiple-choice', 'true-false'];
 

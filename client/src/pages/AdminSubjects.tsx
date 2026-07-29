@@ -13,7 +13,7 @@ import {
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 import { getAdminSubjectCounts } from '../services/api';
 
-const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3', 'shs1', 'shs2', 'shs3'];
+const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
 const DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
 

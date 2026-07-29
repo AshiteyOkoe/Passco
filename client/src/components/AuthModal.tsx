@@ -451,8 +451,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         >
                           <option value="">Select class level</option>
-                          <option value="JHS">JHS</option>
-                          <option value="SHS">SHS</option>
+<option value="JHS">JHS</option>
                         </select>
                       </div>
                     </div>

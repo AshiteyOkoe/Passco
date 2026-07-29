@@ -20,7 +20,7 @@ const plans = [
     bg: 'bg-slate-50 dark:bg-slate-800/50',
     border: 'border-slate-200 dark:border-slate-700',
     features: [
-      'Access to all JHS & SHS subjects',
+      'Access to all JHS subjects',
       'Quizzes (10 questions)',
       'Mock exams (20 questions)',
       '20 AI-generated questions/month',

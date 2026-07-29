@@ -55,7 +55,7 @@ const landingPlans = [
     bg: 'bg-slate-50 dark:bg-slate-800/50',
     border: 'border-slate-200 dark:border-slate-700',
     features: [
-      'Access to all JHS & SHS subjects',
+      'Access to all JHS subjects',
       'Quizzes (10 questions)',
       'Mock exams (20 questions)',
       '20 AI-generated questions/month',
@@ -334,7 +334,7 @@ export default function Landing() {
               <motion.p variants={fadeUp} className="mt-4 max-w-lg text-lg text-white/70">
                 {user
                   ? "Jump right back in — take an assessment, review your progress, or try a new subject. See how you rank among fellow students!"
-                  : 'Prepare for your exams with JHS & SHS assessments across multiple subjects. Track your progress, earn badges, and improve your scores.'}
+                  : 'Prepare for your exams with JHS assessments across multiple subjects. Track your progress, earn badges, and improve your scores.'}
               </motion.p>
               <motion.div variants={fadeUp} className="mt-8 flex flex-wrap gap-3">
                 {user ? (
@@ -483,7 +483,7 @@ export default function Landing() {
                   </div>
                   <div className="space-y-3">
                     {[
-                      { icon: ClipboardCheck, label: 'JHS & SHS Assessments', desc: 'Quizzes, mocks & exams across 15+ subjects' },
+                      { icon: ClipboardCheck, label: 'JHS Assessments', desc: 'Quizzes, mocks & exams across 8 subjects' },
                       { icon: BarChart3, label: 'Track Your Progress', desc: 'Analytics, trends & performance insights' },
                       { icon: Award, label: 'Earn Badges & Rewards', desc: 'Unlock achievements as you improve' },
                       { icon: Zap, label: 'AI-Powered Questions', desc: 'Generate custom practice questions' },

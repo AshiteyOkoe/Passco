@@ -85,15 +85,11 @@ function getRank(score: number): { label: string; icon: string; color: string } 
   return { label: 'D Keep Going', icon: '💪', color: 'text-rose-500' };
 }
 
-function isSHSClass(level: ClassLevel): boolean {
-  return level.startsWith('shs');
-}
-
 export default function StudentPerformanceAnalytics() {
   const { user } = useAuth();
   const [analytics, setAnalytics] = useState<StudentStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState<'overview' | 'jhs' | 'shs'>('overview');
+  const [activeView, setActiveView] = useState<'overview'>('overview');
 
   useEffect(() => {
     getStudentAnalytics()
@@ -115,14 +111,7 @@ export default function StudentPerformanceAnalytics() {
       .sort((a, b) => b.timestamp - a.timestamp);
   }, [localAssessments]);
 
-  const filteredResults = useMemo(() => {
-    if (activeView === 'jhs') return allResults.filter(r => !isSHSClass(r.classLevel));
-    if (activeView === 'shs') return allResults.filter(r => isSHSClass(r.classLevel));
-    return allResults;
-  }, [allResults, activeView]);
-
-  const hasJHS = useMemo(() => allResults.some(r => !isSHSClass(r.classLevel)), [allResults]);
-  const hasSHS = useMemo(() => allResults.some(r => isSHSClass(r.classLevel)), [allResults]);
+  const filteredResults = useMemo(() => allResults, [allResults]);
 
   const kpis = useMemo(() => {
     const totalAssessments = filteredResults.length;
@@ -216,39 +205,8 @@ export default function StudentPerformanceAnalytics() {
       class: CLASS_META[cls as ClassLevel]?.label || cls,
       score: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
       attempts: data.count,
-      level: isSHSClass(cls as ClassLevel) ? 'shs' : 'jhs',
     }));
   }, [filteredResults]);
-
-  const jhsVsShsData = useMemo(() => {
-    if (activeView !== 'overview') return [];
-    const jhsResults = allResults.filter(r => !isSHSClass(r.classLevel));
-    const shsResults = allResults.filter(r => isSHSClass(r.classLevel));
-
-    const jhsAvg = jhsResults.length > 0
-      ? Math.round(jhsResults.reduce((s, r) => s + r.percentage, 0) / jhsResults.length) : 0;
-    const shsAvg = shsResults.length > 0
-      ? Math.round(shsResults.reduce((s, r) => s + r.percentage, 0) / shsResults.length) : 0;
-
-    const subjects = new Set([...jhsResults.map(r => r.subject), ...shsResults.map(r => r.subject)]);
-    const data: Array<{ subject: string; jhs: number; shs: number }> = [];
-
-    subjects.forEach(sub => {
-      const jhsSub = jhsResults.filter(r => r.subject === sub);
-      const shsSub = shsResults.filter(r => r.subject === sub);
-      const meta = SUBJECT_META[sub as SubjectId];
-      data.push({
-        subject: meta?.label?.split(' ')[0] || sub.split('-')[0],
-        jhs: jhsSub.length > 0 ? Math.round(jhsSub.reduce((s, r) => s + r.percentage, 0) / jhsSub.length) : 0,
-        shs: shsSub.length > 0 ? Math.round(shsSub.reduce((s, r) => s + r.percentage, 0) / shsSub.length) : 0,
-      });
-    });
-
-    return [
-      { subject: 'Overall', jhs: jhsAvg, shs: shsAvg },
-      ...data.slice(0, 7),
-    ];
-  }, [allResults, activeView]);
 
   const timeOfDayData = useMemo(() => {
     const hourMap = new Map<number, { total: number; count: number }>();
@@ -361,52 +319,16 @@ export default function StudentPerformanceAnalytics() {
         </motion.div>
 
         {/* View Toggle */}
-        {(hasJHS || hasSHS) && (
-          <motion.div
-            className="flex gap-2 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 w-fit"
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-          >
-            <button
-              onClick={() => setActiveView('overview')}
-              className={cn(
-                'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
-                activeView === 'overview'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-              )}
-            >
-              📊 Overview
-            </button>
-            {hasJHS && (
-              <button
-                onClick={() => setActiveView('jhs')}
-                className={cn(
-                  'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
-                  activeView === 'jhs'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-                )}
-              >
-                📚 JHS
-              </button>
-            )}
-            {hasSHS && (
-              <button
-                onClick={() => setActiveView('shs')}
-                className={cn(
-                  'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
-                  activeView === 'shs'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-                )}
-              >
-                🎓 SHS
-              </button>
-            )}
-          </motion.div>
-        )}
+        <motion.div
+          className="flex gap-2 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900 w-fit"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+        >
+          <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+            📊 Overview
+          </button>
+        </motion.div>
 
         {/* KPI Cards */}
         <motion.div
@@ -461,33 +383,7 @@ export default function StudentPerformanceAnalytics() {
           />
         </motion.div>
 
-        {/* JHS vs SHS Comparison (Overview only) */}
-        {activeView === 'overview' && jhsVsShsData.length > 0 && (
-          <motion.div
-            className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
-            variants={slideUp}
-            initial="hidden"
-            animate="visible"
-          >
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-              <GraduationCap className="h-4 w-4 text-indigo-500" /> JHS vs SHS Comparison
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={jhsVsShsData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="subject" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  wrapperStyle={{ fontSize: '12px' }}
-                  formatter={(value: string) => value === 'jhs' ? 'JHS' : 'SHS'}
-                />
-                <Bar dataKey="jhs" name="jhs" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                <Bar dataKey="shs" name="shs" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </motion.div>
-        )}
+
 
         {/* Score Trend + Grade Distribution */}
         <div className="grid gap-6 lg:grid-cols-3">
@@ -759,13 +655,8 @@ export default function StudentPerformanceAnalytics() {
               <div className="space-y-3">
                 {classPerformance.map((c, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
-                    <div className={cn(
-                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                      c.level === 'shs' ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-blue-50 dark:bg-blue-500/10'
-                    )}>
-                      <span className={cn('text-lg font-bold', c.level === 'shs' ? 'text-emerald-500' : 'text-blue-500')}>
-                        {c.level === 'shs' ? '🎓' : '📚'}
-                      </span>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                      <span className="text-lg font-bold text-blue-500">📚</span>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-800 dark:text-white">{c.class}</p>
@@ -871,12 +762,7 @@ export default function StudentPerformanceAnalytics() {
                         </span>
                       </td>
                       <td className="py-3 pr-4">
-                        <span className={cn(
-                          'rounded-lg px-2 py-1 text-xs font-medium',
-                          isSHSClass(r.classLevel)
-                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-                            : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
-                        )}>
+                        <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                           {CLASS_META[r.classLevel]?.label || r.classLevel}
                         </span>
                       </td>

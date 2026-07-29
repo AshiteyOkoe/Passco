@@ -35,9 +35,6 @@ const CLASS_COLORS: Record<ClassLevel, string> = {
   jhs1: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
   jhs2: 'bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400',
   jhs3: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400',
-  shs1: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
-  shs2: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
-  shs3: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -62,9 +59,7 @@ const ITEMS_PER_PAGE = 20;
 
 const CLASS_MAP: Record<string, ClassLevel> = {
   'JHS 1': 'jhs1', 'JHS 2': 'jhs2', 'JHS 3': 'jhs3',
-  'SHS 1': 'shs1', 'SHS 2': 'shs2', 'SHS 3': 'shs3',
   'jhs1': 'jhs1', 'jhs2': 'jhs2', 'jhs3': 'jhs3',
-  'shs1': 'shs1', 'shs2': 'shs2', 'shs3': 'shs3',
 };
 
 const SUBJECT_MAP: Record<string, string> = {

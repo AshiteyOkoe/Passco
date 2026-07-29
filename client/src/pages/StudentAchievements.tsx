@@ -185,7 +185,7 @@ export default function StudentAchievements() {
     const b: Badge[] = [];
 
     // Class badges
-    const classLevels: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3', 'shs1', 'shs2', 'shs3'];
+    const classLevels: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3'];
     classLevels.forEach(cls => {
       const hasPassed = completed.some(r => r.classLevel === cls);
       const classCount = completed.filter(r => r.classLevel === cls).length;
