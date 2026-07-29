@@ -54,9 +54,12 @@ export async function sendOTP(req: AuthRequest, res: Response): Promise<void> {
     }
 
     const code = createOTP(email);
-    await sendOTPEmail(email, code);
+    const { sent, error } = await sendOTPEmail(email, code);
 
-    res.json({ message: 'Verification code sent to your email' });
+    res.json({
+      message: sent ? 'Verification code sent to your email' : 'Verification code (dev mode)',
+      ...(sent ? {} : { code, smtpError: error }),
+    });
   } catch (error) {
     console.error('Send OTP error:', error);
     res.status(500).json({ message: 'Failed to send verification code' });

@@ -37,7 +37,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await sendOTP(email);
+      const res = await sendOTP(email);
       const params = new URLSearchParams({
         name,
         email,
@@ -47,6 +47,9 @@ export default function Register() {
         classLevel,
         dateOfBirth,
       });
+      if ('code' in res) {
+        params.set('devCode', (res as { code: string }).code);
+      }
       navigate(`/verify-otp?${params.toString()}`);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err

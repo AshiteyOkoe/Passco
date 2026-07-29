@@ -17,6 +17,7 @@ export default function VerifyOTP() {
   const gender = searchParams.get('gender') || '';
   const classLevel = searchParams.get('classLevel') || '';
   const dateOfBirth = searchParams.get('dateOfBirth') || '';
+  const devCode = searchParams.get('devCode') || '';
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
@@ -101,7 +102,10 @@ export default function VerifyOTP() {
     setResending(true);
     setError('');
     try {
-      await sendOTP(email);
+      const res = await sendOTP(email);
+      if ('code' in res) {
+        setCode((res as { code: string }).code.split(''));
+      }
     } catch {
       setError('Failed to resend code');
     } finally {
@@ -130,6 +134,11 @@ export default function VerifyOTP() {
             We sent a 6-digit code to<br />
             <span className="font-medium text-slate-700 dark:text-slate-300">{email}</span>
           </p>
+          {devCode && (
+            <p className="mt-2 text-sm text-amber-600 dark:text-amber-400 font-mono">
+              Dev code: <span className="font-bold tracking-widest">{devCode}</span>
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">

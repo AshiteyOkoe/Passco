@@ -70,7 +70,7 @@ export async function login(data: { email: string; password: string }): Promise<
   return res.data;
 }
 
-export async function sendOTP(email: string): Promise<{ message: string }> {
+export async function sendOTP(email: string): Promise<{ message: string; code?: string }> {
   const res = await api.post('/otp/send', { email });
   return res.data;
 }

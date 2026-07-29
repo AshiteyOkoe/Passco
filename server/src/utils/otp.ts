@@ -22,6 +22,7 @@ function getTransporter() {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    tls: { rejectUnauthorized: false },
   });
 }
 
@@ -47,26 +48,35 @@ export function verifyOTP(email: string, code: string): boolean {
   return true;
 }
 
-export async function sendOTPEmail(email: string, code: string): Promise<void> {
+export async function sendOTPEmail(email: string, code: string): Promise<{ sent: boolean; error?: string }> {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
-    return;
+    return { sent: false };
   }
 
-  const transporter = getTransporter();
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@passco.app',
-    to: email,
-    subject: 'Passco - Your Verification Code',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #4f46e5;">Passco Verification</h2>
-        <p>Your verification code is:</p>
-        <div style="background: #f1f5f9; padding: 16px; text-align: center; border-radius: 8px; margin: 16px 0;">
-          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e293b;">${code}</span>
+  try {
+    const transporter = getTransporter();
+    await transporter.verify();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@passco.app',
+      to: email,
+      subject: 'Passco - Your Verification Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #4f46e5;">Passco Verification</h2>
+          <p>Your verification code is:</p>
+          <div style="background: #f1f5f9; padding: 16px; text-align: center; border-radius: 8px; margin: 16px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e293b;">${code}</span>
+          </div>
+          <p style="color: #64748b; font-size: 14px;">This code expires in 5 minutes. Do not share it with anyone.</p>
         </div>
-        <p style="color: #64748b; font-size: 14px;">This code expires in 5 minutes. Do not share it with anyone.</p>
-      </div>
-    `,
-  });
+      `,
+    });
+    return { sent: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Failed to send email:', msg);
+    console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
+    return { sent: false, error: msg };
+  }
 }

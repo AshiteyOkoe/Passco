@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginHandler = async (email: string, password: string) => {
     const res = await api.login({ email, password });
+    localStorage.removeItem('assessment-history');
     localStorage.setItem('passco-token', res.token);
     localStorage.setItem('passco-user', JSON.stringify(res.user));
     setToken(res.token);
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     classLevel?: string;
   }) => {
     const res = await api.register(data);
+    localStorage.removeItem('assessment-history');
     localStorage.setItem('passco-token', res.token);
     localStorage.setItem('passco-user', JSON.stringify(res.user));
     setToken(res.token);
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('passco-token');
     localStorage.removeItem('passco-user');
+    localStorage.removeItem('assessment-history');
     setToken(null);
     setUser(null);
   };
