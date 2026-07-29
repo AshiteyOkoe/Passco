@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import {
   getAIGenerationStatus, generateQuestionsAI, saveAIGeneratedQuestions,
+  uploadFile, processFile as processServerFile,
 } from '../services/api';
 import {
   Upload, Sparkles, FileText, Check, AlertCircle, RotateCcw,
@@ -79,6 +80,12 @@ export default function AIGenerator() {
   };
 
   const extractTextFromFile = async (f: File): Promise<string> => {
+    if (f.type.startsWith('image/')) {
+      const { document } = await uploadFile(f);
+      const processed = await processServerFile(document.id);
+      return processed.extractedText || '';
+    }
+
     if (f.type === 'application/pdf') {
       const arrayBuffer = await f.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

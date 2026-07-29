@@ -118,7 +118,7 @@ export async function uploadFile(file: File): Promise<{ document: UploadedDocume
   return res.data;
 }
 
-export async function processFile(documentId: string): Promise<UploadedDocument> {
+export async function processFile(documentId: string): Promise<UploadedDocument & { extractedText?: string }> {
   const res = await api.post(`/files/${documentId}/process`);
   return res.data;
 }
