@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AuthModal from './AuthModal';
 import { DefaultAvatar } from './DefaultAvatars';
 import { resolveUploadUrl } from '../services/api';
+import InstallPrompt from './InstallPrompt';
 
 export default function PublicLayout() {
   const { user, logout } = useAuth();
@@ -302,6 +303,8 @@ export default function PublicLayout() {
           </div>
         </div>
       </footer>
+
+      <InstallPrompt />
 
       <AuthModal
         isOpen={showAuth !== null}

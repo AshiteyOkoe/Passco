@@ -11,6 +11,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DefaultAvatar } from './DefaultAvatars';
 import { resolveUploadUrl } from '../services/api';
+import InstallPrompt from './InstallPrompt';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -243,6 +244,8 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      <InstallPrompt />
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950">
