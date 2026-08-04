@@ -141,76 +141,76 @@ src="/images/logos/qna.svg"
             </button>
           </div>
         </div>
-      </header>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="border-b border-slate-200 bg-white md:hidden dark:border-slate-800 dark:bg-slate-950"
-          >
-            <nav className="space-y-1 px-4 pb-4 pt-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setMobileOpen(false)}
-                  className={`block rounded-lg px-4 py-2.5 text-sm font-medium ${
-                    isActive(link.to)
-                      ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <hr className="my-2 border-slate-200 dark:border-slate-800" />
-              {user ? (
-                <>
-                  <div className="flex items-center gap-3 px-4 py-2">
-                    {user.avatar?.startsWith('/uploads/') ? (
-                    <img src={resolveUploadUrl(user.avatar)} alt={user.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
-                    ) : (
-                      <DefaultAvatar gender={user.gender || '' as any} size={32} className="rounded-full ring-2 ring-indigo-200 dark:ring-indigo-800" />
-                    )}
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</span>
-                  </div>
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="absolute inset-x-0 top-full border-b border-slate-200 bg-white shadow-xl md:hidden dark:border-slate-800 dark:bg-slate-950"
+            >
+              <nav className="max-h-[calc(100vh-4rem)] space-y-1 overflow-y-auto px-4 pb-4 pt-2">
+                {navLinks.map((link) => (
                   <Link
-                    to={user.role === 'admin' ? '/admin' : '/dashboard'}
+                    key={link.to}
+                    to={link.to}
                     onClick={() => setMobileOpen(false)}
-                    className="block rounded-lg bg-indigo-500 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                    className={`block rounded-lg px-4 py-2.5 text-sm font-medium ${
+                      isActive(link.to)
+                        ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
+                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                    }`}
                   >
-                    Dashboard
+                    {link.label}
                   </Link>
-                  <button
-                    onClick={() => { logout(); navigate('/'); setMobileOpen(false); }}
-                    className="block w-full rounded-lg px-4 py-2.5 text-center text-sm font-medium text-slate-600 dark:text-slate-400"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => { setShowAuth('login'); setMobileOpen(false); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400"
-                  >
-                    <LogIn className="h-4 w-4" /> Sign In
-                  </button>
-                  <button
-                    onClick={() => { setShowAuth('register'); setMobileOpen(false); }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white"
-                  >
-                    <UserPlus className="h-4 w-4" /> Get Started
-                  </button>
-                </>
-              )}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                ))}
+                <hr className="my-2 border-slate-200 dark:border-slate-800" />
+                {user ? (
+                  <>
+                    <div className="flex items-center gap-3 px-4 py-2">
+                      {user.avatar?.startsWith('/uploads/') ? (
+                      <img src={resolveUploadUrl(user.avatar)} alt={user.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
+                      ) : (
+                        <DefaultAvatar gender={user.gender || '' as any} size={32} className="rounded-full ring-2 ring-indigo-200 dark:ring-indigo-800" />
+                      )}
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</span>
+                    </div>
+                    <Link
+                      to={user.role === 'admin' ? '/admin' : '/dashboard'}
+                      onClick={() => setMobileOpen(false)}
+                      className="block rounded-lg bg-indigo-500 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                    >
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={() => { logout(); navigate('/'); setMobileOpen(false); }}
+                      className="block w-full rounded-lg px-4 py-2.5 text-center text-sm font-medium text-slate-600 dark:text-slate-400"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { setShowAuth('login'); setMobileOpen(false); }}
+                      className="flex w-full items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400"
+                    >
+                      <LogIn className="h-4 w-4" /> Sign In
+                    </button>
+                    <button
+                      onClick={() => { setShowAuth('register'); setMobileOpen(false); }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white"
+                    >
+                      <UserPlus className="h-4 w-4" /> Get Started
+                    </button>
+                  </>
+                )}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
 
       <main className="flex-1">
         <Outlet />

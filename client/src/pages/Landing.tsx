@@ -45,51 +45,18 @@ const encouragements = [
 
 const landingPlans = [
   {
-    id: 'free',
-    name: 'Free Trial',
-    price: 10,
-    period: '/week',
-    description: 'Get started with basic features',
-    icon: Zap,
-    color: 'from-slate-500 to-slate-600',
-    bg: 'bg-slate-50 dark:bg-slate-800/50',
-    border: 'border-slate-200 dark:border-slate-700',
-    features: [
-      'Access to all JHS subjects',
-      'Quizzes (10 questions)',
-      'Mock exams (20 questions)',
-      '20 AI-generated questions/month',
-    ],
-  },
-  {
     id: 'basic',
-    name: 'Basic Plan',
-    price: 35,
-    period: '/month',
-    description: 'Unlock more practice tools',
-    icon: Star,
+    name: 'QnA Access Plan',
+    price: 10,
+    period: '/14 days',
+    description: 'Full access to all features',
+    icon: Crown,
     color: 'from-indigo-500 to-indigo-600',
     bg: 'bg-indigo-50 dark:bg-indigo-500/10',
     border: 'border-indigo-200 dark:border-indigo-800',
-    features: [
-      'Unlimited quizzes',
-      'Unlimited mock exams',
-      '500 AI-generated questions/month',
-      'Detailed progress tracking',
-    ],
-  },
-  {
-    id: 'premium',
-    name: 'Premium Plan',
-    price: 50,
-    period: '/month',
-    description: 'Everything you need to ace your exams',
-    icon: Crown,
-    color: 'from-amber-500 to-orange-500',
-    bg: 'bg-amber-50 dark:bg-amber-500/10',
-    border: 'border-amber-200 dark:border-amber-800',
     popular: true,
     features: [
+      'Access to all subjects',
       'Unlimited quizzes & exams',
       'Unlimited examinations',
       'Unlimited AI-generated questions',
@@ -1034,11 +1001,11 @@ export default function Landing() {
                 Choose a Plan That Fits Your Goals
               </h2>
               <p className="mx-auto mt-4 max-w-lg text-slate-500 dark:text-slate-400">
-                Start free or upgrade for unlimited practice and AI-powered questions.
+                Get full access for just GH₵10 every 14 days — no long-term commitments.
               </p>
             </motion.div>
 
-            <div className="mt-12 grid gap-6 sm:grid-cols-3">
+            <div className="mx-auto mt-12 max-w-md">
               {landingPlans.map((plan, i) => (
                 <motion.div
                   key={plan.id}

@@ -7,7 +7,7 @@ import {
 } from '../services/api';
 import {
   Upload, Sparkles, FileText, Check, AlertCircle, RotateCcw,
-  Save, ChevronDown, ChevronUp, Brain, Zap, Clock, Crown,
+  Save, ChevronDown, ChevronUp, Brain, Clock, Crown,
   BookOpen, X, Loader2,
 } from 'lucide-react';
 import { fadeUp } from '../utils/animations';
@@ -173,8 +173,7 @@ export default function AIGenerator() {
     setStep('upload');
   };
 
-  const planBadge = plan === 'premium' ? { label: 'Premium', color: 'text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400', icon: Crown }
-    : plan === 'basic' ? { label: 'Basic', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400', icon: Zap }
+  const planBadge = plan === 'premium' || plan === 'basic' ? { label: 'QnA Access', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400', icon: Crown }
     : { label: 'Free Trial', color: 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-400', icon: Brain };
 
   return (

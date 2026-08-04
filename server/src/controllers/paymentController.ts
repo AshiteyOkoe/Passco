@@ -25,7 +25,7 @@ export async function initializePayment(req: AuthRequest, res: Response): Promis
       res.status(400).json({ message: 'Invalid plan' }); return;
     }
 
-    const amounts: Record<string, number> = { basic: 2900, premium: 5900 };
+    const amounts: Record<string, number> = { basic: 10, premium: 10 };
     const amount = amounts[plan];
 
     const callback_url = `${process.env.CLIENT_URL || 'https://selfexamine.vercel.app'}/subscription?payment=success`;
@@ -100,7 +100,7 @@ export async function verifyPayment(req: AuthRequest, res: Response): Promise<vo
 
     const now = new Date();
     const expiresAt = new Date(now);
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    expiresAt.setDate(expiresAt.getDate() + 14);
 
     await supabase.from('subscriptions').update({ status: 'expired', updated_at: now.toISOString() })
       .eq('user_id', userId).eq('status', 'active');
@@ -182,7 +182,7 @@ export async function paystackWebhook(req: AuthRequest, res: Response): Promise<
           const userId = meta?.user_id as string;
           const plan = meta?.plan as string;
           const now = new Date();
-          const expiresAt = new Date(now); expiresAt.setMonth(expiresAt.getMonth() + 1);
+          const expiresAt = new Date(now); expiresAt.setDate(expiresAt.getDate() + 14);
 
           await supabase.from('payments').update({ status: 'success', paid_at: now.toISOString(), updated_at: now.toISOString() }).eq('provider_ref', reference);
           await supabase.from('subscriptions').update({ status: 'expired', updated_at: now.toISOString() }).eq('user_id', userId).eq('status', 'active');

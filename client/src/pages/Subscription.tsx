@@ -3,69 +3,22 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { getMySubscription, initializePayment, verifyPayment } from '../services/api';
-import { Check, Crown, Zap, Sparkles, ArrowRight, Clock, AlertCircle, CreditCard, Star, Shield } from 'lucide-react';
+import { Check, Crown, ArrowRight, Clock, AlertCircle, CreditCard, Shield } from 'lucide-react';
 import { fadeUp, stagger } from '../utils/animations';
 import type { Subscription, PlanLimits } from '../types';
 import AnimatedSpinner from '../components/AnimatedSpinner';
 
 const plans = [
   {
-    id: 'free',
-    name: 'Free Trial',
-    price: 10,
-    period: '/week',
-    description: 'Get started with basic features',
-    icon: Zap,
-    color: 'from-slate-500 to-slate-600',
-    bg: 'bg-slate-50 dark:bg-slate-800/50',
-    border: 'border-slate-200 dark:border-slate-700',
-    features: [
-      'Access to all JHS subjects',
-      'Quizzes (10 questions)',
-      'Mock exams (20 questions)',
-      '20 AI-generated questions/month',
-      'Basic progress tracking',
-    ],
-    limitations: [
-      'No full examinations',
-      'Limited AI generation',
-      'No advanced analytics',
-    ],
-  },
-  {
     id: 'basic',
-    name: 'Basic Plan',
-    price: 35,
-    period: '/month',
-    description: 'Unlock more practice tools',
-    icon: Star,
+    name: 'QnA Access Plan',
+    price: 10,
+    period: '/14 days',
+    description: 'Full access to all features',
+    icon: Crown,
     color: 'from-indigo-500 to-indigo-600',
     bg: 'bg-indigo-50 dark:bg-indigo-500/10',
     border: 'border-indigo-200 dark:border-indigo-800',
-    popular: false,
-    features: [
-      'Access to all subjects',
-      'Unlimited quizzes',
-      'Unlimited mock exams',
-      '500 AI-generated questions/month',
-      'Detailed progress tracking',
-      'Score history & trends',
-    ],
-    limitations: [
-      'No full examinations',
-      'No advanced analytics',
-    ],
-  },
-  {
-    id: 'premium',
-    name: 'Premium Plan',
-    price: 50,
-    period: '/month',
-    description: 'Everything you need to ace your exams',
-    icon: Crown,
-    color: 'from-amber-500 to-orange-500',
-    bg: 'bg-amber-50 dark:bg-amber-500/10',
-    border: 'border-amber-200 dark:border-amber-800',
     popular: true,
     features: [
       'Access to all subjects',
@@ -224,7 +177,7 @@ export default function Subscription() {
         <AnimatedSpinner label="Loading plans..." />
       ) : (
         <motion.div
-          className="grid gap-6 md:grid-cols-3"
+          className="mx-auto max-w-md"
           variants={stagger}
           initial="hidden"
           animate="visible"
@@ -283,13 +236,6 @@ export default function Subscription() {
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 text-sm font-semibold text-slate-400 dark:border-slate-700 dark:bg-slate-800"
                   >
                     Current Plan
-                  </button>
-                ) : plan.id === 'free' ? (
-                  <button
-                    disabled
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 text-sm font-semibold text-slate-400 dark:border-slate-700 dark:bg-slate-800"
-                  >
-                    Default
                   </button>
                 ) : (
                   <button

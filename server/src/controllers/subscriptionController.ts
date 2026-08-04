@@ -4,8 +4,8 @@ import { AuthRequest } from '../types';
 
 export const PLAN_LIMITS = {
   free: { aiQuestions: 20, label: 'Free Trial', quizzes: true, mocks: true, examinations: false, price: 0 },
-  basic: { aiQuestions: 500, label: 'Basic', quizzes: true, mocks: true, examinations: false, price: 29 },
-  premium: { aiQuestions: -1, label: 'Premium', quizzes: true, mocks: true, examinations: true, price: 59 },
+  basic: { aiQuestions: -1, label: 'QnA Access', quizzes: true, mocks: true, examinations: true, price: 10 },
+  premium: { aiQuestions: -1, label: 'QnA Access', quizzes: true, mocks: true, examinations: true, price: 10 },
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;
