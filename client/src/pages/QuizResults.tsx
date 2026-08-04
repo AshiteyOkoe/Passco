@@ -58,7 +58,7 @@ const resultId = (location.state as { resultId?: string } | null)?.resultId;
   }, [result]);
 
   if (loading) return <div className="flex items-center justify-center p-12"><Spinner /></div>;
-  if (!result) return <div className="p-12 text-center text-slate-500">Result not found</div>;
+  if (!result) return <div className="p-12 text-center text-slate-500 dark:text-slate-400">Result not found</div>;
 
   const percentage = result.score;
 
@@ -122,7 +122,7 @@ const resultId = (location.state as { resultId?: string } | null)?.resultId;
             {quizTitle}
           </motion.h2>
 
-          <motion.div className="mt-2 flex items-center justify-center gap-1 text-sm text-slate-500" variants={fadeUp}>
+          <motion.div className="mt-2 flex items-center justify-center gap-1 text-sm text-slate-500 dark:text-slate-400" variants={fadeUp}>
             <motion.div
               animate={percentage >= 75 ? { scale: [1, 1.05, 1], opacity: [0.7, 1, 0.7] } : { scale: 1, opacity: 0.7 }}
               transition={percentage >= 75 ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : undefined}
@@ -233,7 +233,7 @@ function Spinner() {
         <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-500 border-r-indigo-400/60" />
         <Trophy className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
       </motion.div>
-      <p className="text-sm text-slate-500">Loading results...</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">Loading results...</p>
     </div>
   );
 }

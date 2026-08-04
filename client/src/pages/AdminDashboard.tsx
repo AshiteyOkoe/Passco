@@ -277,7 +277,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-lg bg-white p-2 dark:bg-slate-900">
                       <p className="text-lg font-bold text-slate-800 dark:text-white">{student.quizzesTaken}</p>
-                      <p className="text-[10px] text-slate-500">Quizzes</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Quizzes</p>
                     </div>
                     <div className="rounded-lg bg-white p-2 dark:bg-slate-900">
                       <p className={cn(
@@ -286,11 +286,11 @@ export default function AdminDashboard() {
                       )}>
                         {student.avgScore}%
                       </p>
-                      <p className="text-[10px] text-slate-500">Avg Score</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Avg Score</p>
                     </div>
                     <div className="rounded-lg bg-white p-2 dark:bg-slate-900">
                       <p className="text-lg font-bold text-slate-800 dark:text-white">{student.documentsUploaded}</p>
-                      <p className="text-[10px] text-slate-500">Docs</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Docs</p>
                     </div>
                   </div>
                 </motion.div>
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
           {data.recentDocuments.length === 0 ? (
             <div className="flex flex-col items-center py-8">
               <FileText className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500">No documents uploaded yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No documents uploaded yet.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -358,7 +358,7 @@ export default function AdminDashboard() {
           {data.recentResults.length === 0 ? (
             <div className="flex flex-col items-center py-8">
               <BarChart3 className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500">No quiz results yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No quiz results yet.</p>
             </div>
           ) : (
             <div className="space-y-3">

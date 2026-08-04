@@ -165,7 +165,7 @@ export default function AdminFiles() {
               <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
               <div className="w-full max-w-xs">
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-slate-500">Uploading...</span>
+                  <span className="text-slate-500 dark:text-slate-400">Uploading...</span>
                   <span className="font-medium text-indigo-600 dark:text-indigo-400">{uploadProgress}%</span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
@@ -484,7 +484,7 @@ export default function AdminFiles() {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowExtractedText(null)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
                 >
                   <X className="h-4 w-4" />
                 </motion.button>

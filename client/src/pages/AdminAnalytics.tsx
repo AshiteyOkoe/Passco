@@ -316,7 +316,7 @@ export default function AdminAnalytics() {
           {students.length === 0 ? (
             <div className="flex flex-col items-center py-8">
               <Users className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500">No students yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No students yet.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -338,7 +338,7 @@ export default function AdminAnalytics() {
                   <div className="hidden items-center gap-4 sm:flex">
                     <div className="text-center">
                       <p className="text-sm font-bold text-slate-800 dark:text-white">{s.quizzesTaken}</p>
-                      <p className="text-[10px] text-slate-500">Quizzes</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Quizzes</p>
                     </div>
                     <div className="text-center">
                       <p className={cn(
@@ -347,11 +347,11 @@ export default function AdminAnalytics() {
                       )}>
                         {s.avgScore}%
                       </p>
-                      <p className="text-[10px] text-slate-500">Avg Score</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Avg Score</p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-slate-800 dark:text-white">{s.documentsUploaded}</p>
-                      <p className="text-[10px] text-slate-500">Docs</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Docs</p>
                     </div>
                   </div>
                   <Link to={`/admin/analytics?student=${s.id}`}>
@@ -442,7 +442,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
           {results.length === 0 ? (
             <div className="flex flex-col items-center py-8">
               <BarChart3 className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500">No quiz results yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No quiz results yet.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -489,7 +489,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
           {documents.length === 0 ? (
             <div className="flex flex-col items-center py-8">
               <FileText className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500">No documents uploaded.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No documents uploaded.</p>
             </div>
           ) : (
             <div className="space-y-3">

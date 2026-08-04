@@ -48,7 +48,7 @@ export default function Quizzes() {
       <div className="flex items-center justify-center p-12">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
-          <p className="text-sm text-slate-500">Loading quizzes...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading quizzes...</p>
         </div>
       </div>
     );
@@ -68,7 +68,7 @@ export default function Quizzes() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Quizzes</h1>
-            <p className="text-sm text-slate-500">Uploaded quizzes ready for you to take</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Uploaded quizzes ready for you to take</p>
           </div>
         </motion.div>
 

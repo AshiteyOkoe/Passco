@@ -281,7 +281,7 @@ export default function StudentPerformanceAnalytics() {
       >
         <BarChart3 className="mx-auto mb-4 h-12 w-12 text-slate-300" />
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">No performance data yet</h2>
-        <p className="mb-4 text-sm text-slate-500">Complete some assessments to see your performance analytics.</p>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Complete some assessments to see your performance analytics.</p>
         <Link
           to="/assessment/setup"
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
@@ -660,7 +660,7 @@ export default function StudentPerformanceAnalytics() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-800 dark:text-white">{c.class}</p>
-                      <p className="text-xs text-slate-500">{c.attempts} assessment{c.attempts !== 1 ? 's' : ''}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{c.attempts} assessment{c.attempts !== 1 ? 's' : ''}</p>
                     </div>
                     <span className={cn('text-lg font-bold', getScoreColor(c.score))}>{c.score}%</span>
                   </div>
@@ -817,7 +817,7 @@ export default function StudentPerformanceAnalytics() {
                       {grade}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span>{r.classLevel} · {r.assessmentType}</span>
                     <span>{new Date(r.timestamp || r.completedAt || Date.now()).toLocaleDateString()}</span>
                   </div>

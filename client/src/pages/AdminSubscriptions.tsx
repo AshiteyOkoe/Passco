@@ -73,7 +73,7 @@ export default function AdminSubscriptions() {
           <motion.div key={s.label} variants={fadeUp} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg ${s.bg}`}><s.icon className={`h-4 w-4 ${s.color}`} /></div>
             <p className="text-xl font-bold text-slate-900 dark:text-white">{s.value}</p>
-            <p className="text-[10px] text-slate-500">{s.label}</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">{s.label}</p>
           </motion.div>
         ))}
       </motion.div>
@@ -94,11 +94,11 @@ export default function AdminSubscriptions() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Student</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Plan</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Student</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Plan</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
@@ -112,7 +112,7 @@ export default function AdminSubscriptions() {
                       : p.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
                   }`}>{p.status}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{new Date(p.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(p.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
               {payments.length === 0 && (
@@ -128,11 +128,11 @@ export default function AdminSubscriptions() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Student</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Plan</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Expires</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Started</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Student</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Plan</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Expires</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Started</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
@@ -144,8 +144,8 @@ export default function AdminSubscriptions() {
                     s.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
                       : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                   }`}>{s.status}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{new Date(s.starts_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '-'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(s.starts_at).toLocaleDateString()}</td>
                 </tr>
               ))}
               {subscriptions.length === 0 && (

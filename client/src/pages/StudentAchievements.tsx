@@ -616,7 +616,7 @@ export default function StudentAchievements() {
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Upload className="h-4 w-4 text-slate-500" />
+                        <Upload className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                           {adminSignature ? 'Signature uploaded' : 'Upload Director\'s signature'}
                         </span>

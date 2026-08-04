@@ -816,7 +816,7 @@ export default function TakeAssessment() {
                                 animate={{ scale: 1 }}
                                 transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                               >
-                                <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                                <CheckCircle2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                               </motion.div>
                             )}
                           </motion.button>

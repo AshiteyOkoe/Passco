@@ -299,7 +299,7 @@ export default function AdminBulkUpload() {
       'creative-arts': 'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400',
       'career-tech': 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400',
     };
-    return colors[subject] || 'bg-slate-100 text-slate-700';
+    return colors[subject] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
   };
 
   return (
@@ -353,7 +353,7 @@ export default function AdminBulkUpload() {
         >
           <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500" />
           <p className="text-sm text-rose-700 dark:text-rose-400">{errorMsg}</p>
-          <button onClick={() => setErrorMsg('')} className="ml-auto text-rose-400 hover:text-rose-600">
+          <button onClick={() => setErrorMsg('')} className="ml-auto text-rose-400 hover:text-rose-600 dark:hover:text-rose-400">
             <X className="h-4 w-4" />
           </button>
         </motion.div>
@@ -533,7 +533,7 @@ export default function AdminBulkUpload() {
                 </span>
               </h2>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">{stats.approved} approved</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{stats.approved} approved</span>
                 <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                   <div
                     className="h-full rounded-full bg-emerald-500 transition-all"
@@ -909,7 +909,7 @@ export default function AdminBulkUpload() {
             {filteredQuestions.length === 0 && questions.length > 0 && (
               <div className="flex flex-col items-center py-12">
                 <Search className="mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" />
-                <p className="text-sm text-slate-500">No questions match your filters.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No questions match your filters.</p>
               </div>
             )}
           </div>
@@ -961,7 +961,7 @@ function StatMini({ label, value, icon: Icon, color }: {
         >
           <Icon className={cn('h-3.5 w-3.5', color)} />
         </motion.span>
-        <span className="text-[10px] font-medium text-slate-500">{label}</span>
+        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{label}</span>
       </div>
       <p className="mt-1 text-lg font-bold text-slate-800 dark:text-white">{value}</p>
     </div>

@@ -122,7 +122,7 @@ export default function AdminCreateQuiz() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-slate-800 dark:text-white">Selected Questions</h2>
               <motion.span
-                className="text-sm text-indigo-600 font-semibold"
+                className="text-sm text-indigo-600 font-semibold dark:text-indigo-400"
                 key={selectedQuestions.size}
                 initial={{ scale: 1.3 }}
                 animate={{ scale: 1 }}
@@ -210,7 +210,7 @@ export default function AdminCreateQuiz() {
               ))}
             </AnimatePresence>
             {filteredQuestions.length === 0 && (
-              <p className="py-8 text-center text-sm text-slate-500">No approved questions available.</p>
+              <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">No approved questions available.</p>
             )}
           </div>
         </motion.div>

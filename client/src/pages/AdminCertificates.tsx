@@ -235,7 +235,7 @@ export default function AdminCertificates() {
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">CURRENT SIGNATURE</p>
                     <button
                       onClick={handleRemove}
-                      className="flex items-center gap-1 text-xs font-medium text-rose-500 transition hover:text-rose-600"
+                      className="flex items-center gap-1 text-xs font-medium text-rose-500 transition hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300"
                     >
                       <Trash2 className="h-3 w-3" /> Remove
                     </button>

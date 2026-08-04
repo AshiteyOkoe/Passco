@@ -314,7 +314,7 @@ export default function ResultsDashboard() {
           >
             <BarChart3 className="mx-auto mb-4 h-12 w-12 text-slate-300" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">No results yet</h2>
-            <p className="mb-4 text-sm text-slate-500">Complete some assessments to see your results dashboard.</p>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Complete some assessments to see your results dashboard.</p>
             <Link
               to="/assessment/setup"
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"

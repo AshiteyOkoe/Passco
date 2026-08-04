@@ -30,7 +30,7 @@ export default function StudentAnalytics() {
       >
         <BarChart3 className="mx-auto mb-4 h-12 w-12 text-slate-300" />
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">No data yet</h2>
-        <p className="mb-4 text-sm text-slate-500">Complete some quizzes to see your analytics.</p>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Complete some quizzes to see your analytics.</p>
         <Link to="/assessment/setup" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
           Take an Assessment <ArrowRight className="h-4 w-4" />
         </Link>
@@ -86,7 +86,7 @@ export default function StudentAnalytics() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06, duration: 0.4 }}
               >
-                <span className="text-xs font-medium text-slate-500">{point.score}%</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{point.score}%</span>
                 <div className="h-24 w-8 rounded-lg bg-slate-100 dark:bg-slate-800" style={{ display: 'flex', alignItems: 'flex-end' }}>
                   <motion.div
                     className={cn('w-full rounded-lg', point.score >= 75 ? 'bg-emerald-500' : point.score >= 50 ? 'bg-amber-500' : 'bg-rose-500')}
@@ -157,11 +157,11 @@ export default function StudentAnalytics() {
                   className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', r.score >= 75 ? 'bg-emerald-100 dark:bg-emerald-500/10' : 'bg-amber-100 dark:bg-amber-500/10')}
                   whileHover={{ scale: 1.15, rotate: 5 }}
                 >
-                  {r.score >= 75 ? <Trophy className="h-5 w-5 text-emerald-600" /> : <TrendingUp className="h-5 w-5 text-amber-600" />}
+                  {r.score >= 75 ? <Trophy className="h-5 w-5 text-emerald-600 dark:text-emerald-500" /> : <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-500" />}
                 </motion.div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-800 dark:text-white">Score: {r.score}%</p>
-                  <p className="text-xs text-slate-500">{r.correctCount}/{r.totalQuestions} correct</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{r.correctCount}/{r.totalQuestions} correct</p>
                 </div>
                 <span className="text-xs text-slate-400">{new Date(r.completedAt).toLocaleDateString()}</span>
               </motion.div>

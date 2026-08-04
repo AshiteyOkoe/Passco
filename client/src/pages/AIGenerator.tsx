@@ -234,7 +234,7 @@ export default function AIGenerator() {
                   <FileText className="h-8 w-8 text-indigo-500" />
                   <div>
                     <p className="text-sm font-semibold text-slate-800 dark:text-white">{file.name}</p>
-                    <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{(file.size / 1024).toFixed(1)} KB</p>
                   </div>
                 </div>
                 <button onClick={processFile} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
@@ -372,7 +372,7 @@ export default function AIGenerator() {
                           }`}>{q.difficulty}</span>
                         </div>
                       </div>
-                      <button onClick={() => setExpandedQ(expanded ? null : i)} className="shrink-0 p-1 text-slate-400 hover:text-slate-600">
+                      <button onClick={() => setExpandedQ(expanded ? null : i)} className="shrink-0 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </button>
                     </div>
