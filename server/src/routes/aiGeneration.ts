@@ -6,7 +6,7 @@ const router = Router();
 
 router.get('/status', authenticate, getAIGenerationStatus);
 router.post('/generate', authenticate, generateQuestionsFromAI);
-router.post('/save', authenticate, saveAIGeneratedQuestions);
+router.post('/save', authenticate, requireAdmin, saveAIGeneratedQuestions);
 router.get('/admin/usage', authenticate, requireAdmin, getAIUsageStats);
 
 export default router;

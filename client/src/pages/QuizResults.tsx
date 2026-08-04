@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getResultById } from '../services/api';
 import { cn } from '../utils';
@@ -13,14 +13,22 @@ import type { Result } from '../types';
 
 export default function QuizResults() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [animatedScore, setAnimatedScore] = useState(0);
 
+const resultId = (location.state as { resultId?: string } | null)?.resultId;
+
   useEffect(() => {
-    getResultById(id!)
-      .then(res => {
+    const targetId = resultId || id;
+    if (!targetId) {
+      setLoading(false);
+      return;
+    }
+    getResultById(targetId)
+      .then((res) => {
         setResult(res.result);
         if (res.result.score >= 75) {
           setShowConfetti(true);
@@ -28,7 +36,7 @@ export default function QuizResults() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [resultId, id]);
 
   useEffect(() => {
     if (!result) return;

@@ -11,6 +11,7 @@ import Contact from './pages/Contact';
 import StudentDashboard from './pages/StudentDashboard';
 import UploadFile from './pages/UploadFile';
 import TakeQuiz from './pages/TakeQuiz';
+import Quizzes from './pages/Quizzes';
 import QuizResults from './pages/QuizResults';
 import StudentAnalytics from './pages/StudentAnalytics';
 import StudentPerformanceAnalytics from './pages/StudentPerformanceAnalytics';
@@ -113,7 +114,7 @@ export default function App() {
         {/* Protected student routes */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<StudentDashboard />} />
-          <Route path="/upload" element={<UploadFile />} />
+          <Route path="/quizzes" element={<Quizzes />} />
           <Route path="/quiz/:id" element={<TakeQuiz />} />
           <Route path="/quiz/:id/results" element={<QuizResults />} />
           <Route path="/analytics" element={<StudentAnalytics />} />
@@ -126,7 +127,6 @@ export default function App() {
           <Route path="/assessment/history" element={<AssessmentHistory />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/subscription" element={<Subscription />} />
-          <Route path="/ai-generator" element={<AIGenerator />} />
         </Route>
 
         {/* Protected admin routes */}
@@ -147,6 +147,8 @@ export default function App() {
           <Route path="files" element={<AdminFiles />} />
           <Route path="questions" element={<AdminQuestionBank />} />
           <Route path="create-quiz" element={<AdminCreateQuiz />} />
+          <Route path="upload" element={<UploadFile />} />
+          <Route path="ai-generator" element={<AIGenerator />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="certificates" element={<AdminCertificates />} />
           <Route path="subscriptions" element={<AdminSubscriptions />} />

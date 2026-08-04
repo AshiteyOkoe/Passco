@@ -106,6 +106,7 @@ export interface QuizAnswer {
 
 export interface Result {
   _id: string;
+  id?: string;
   userId: string;
   quizId: string | { _id: string; title: string; difficulty: string };
   answers: AnswerDetail[];

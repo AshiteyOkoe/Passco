@@ -51,7 +51,7 @@ async function getQuizWithJoins(quizId: string, hideAnswers = false) {
       ? 'id, question, type, options, explanation, difficulty, topic, subject, class_level'
       : '*';
     const { data } = await supabase.from('questions').select(selectCols).in('id', questionIds);
-    questions = data || [];
+    questions = (data || []).map((q: any) => ({ ...q, _id: q.id }));
   }
 
   const { data: qaRows } = await supabase.from('quiz_assigned_users').select('user_id').eq('quiz_id', quizId);
@@ -61,6 +61,10 @@ async function getQuizWithJoins(quizId: string, hideAnswers = false) {
 
   return {
     ...quiz,
+    _id: quiz.id,
+    timeLimit: quiz.time_limit,
+    documentId: quiz.document_id,
+    isActive: quiz.is_active,
     questions,
     assignedTo,
     createdBy: creator ? { _id: quiz.created_by, name: creator.name, email: creator.email } : quiz.created_by,
@@ -74,17 +78,10 @@ export async function getQuizzes(req: AuthRequest, res: Response): Promise<void>
     if (req.user?.role === 'admin') {
       quizQuery = supabase.from('quizzes').select('*').order('created_at', { ascending: false });
     } else {
-      const { data: assigned } = await supabase
-        .from('quiz_assigned_users')
-        .select('quiz_id')
-        .eq('user_id', req.user!.id);
-      const assignedIds = (assigned || []).map((r) => r.quiz_id);
-
       quizQuery = supabase
         .from('quizzes')
         .select('*')
         .eq('is_active', true)
-        .or(`created_by.eq.${req.user!.id},id.in.(${assignedIds.length > 0 ? assignedIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
         .order('created_at', { ascending: false });
     }
 
@@ -99,7 +96,15 @@ export async function getQuizzes(req: AuthRequest, res: Response): Promise<void>
           ? await supabase.from('questions').select('*').in('id', questionIds)
           : { data: [] };
 
-        return { ...quiz, questions: questions || [], createdBy: creator || { name: 'Unknown', email: '' } };
+        return {
+          ...quiz,
+          _id: quiz.id,
+          timeLimit: quiz.time_limit,
+          documentId: quiz.document_id,
+          isActive: quiz.is_active,
+          questions: (questions || []).map((q) => ({ ...q, _id: q.id })),
+          createdBy: creator || { name: 'Unknown', email: '' },
+        };
       })
     );
 
@@ -121,9 +126,8 @@ export async function getQuizById(req: AuthRequest, res: Response): Promise<void
     }
 
     if (req.user?.role === 'student') {
-      const isAssigned = quiz.assignedTo?.some((id: string) => id === req.user!.id);
       const isCreator = quiz.created_by === req.user.id;
-      if (!isAssigned && !isCreator) {
+      if (!quiz.isActive && !isCreator) {
         res.status(403).json({ message: 'Not authorized' });
         return;
       }

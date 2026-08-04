@@ -83,8 +83,8 @@ export default function TakeQuiz() {
       flagged: answers.get(q._id)?.flagged ?? false,
     }));
     try {
-      await submitQuiz(quiz._id, { answers: answerArray, timeTaken });
-      navigate(`/quiz/${quiz._id}/results`);
+      const res = await submitQuiz(quiz._id, { answers: answerArray, timeTaken });
+      navigate(`/quiz/${quiz._id}/results`, { state: { resultId: res.result.id } });
     } catch {
       alert('Failed to submit quiz.');
       hasSubmittedRef.current = false;

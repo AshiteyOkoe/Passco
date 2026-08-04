@@ -36,13 +36,13 @@ export default function Layout() {
 
   const studentLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: Home },
+    { to: '/quizzes', label: 'My Quizzes', icon: BookOpen },
     { to: '/assessment/setup', label: 'Assessment', icon: ClipboardCheck },
     { to: '/analytics', label: 'My Analytics', icon: BarChart3 },
     { to: '/analytics/performance', label: 'Performance', icon: TrendingUp },
     { to: '/results-dashboard', label: 'Results Dashboard', icon: LayoutDashboard },
     { to: '/achievements', label: 'Achievements', icon: Award },
     { to: '/assessment/history', label: 'Results History', icon: History },
-    { to: '/ai-generator', label: 'AI Generator', icon: Sparkles },
     { to: '/subscription', label: 'Subscription', icon: CreditCard },
     { to: '/profile', label: 'My Profile', icon: User },
   ];
@@ -57,6 +57,8 @@ export default function Layout() {
     { to: '/admin/files', label: 'All Files', icon: FileText },
     { to: '/admin/questions', label: 'Question Bank', icon: Library },
     { to: '/admin/create-quiz', label: 'Create Quiz', icon: PlusCircle },
+    { to: '/admin/upload', label: 'Upload Quiz', icon: FileUp },
+    { to: '/admin/ai-generator', label: 'AI Generator', icon: Sparkles },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/admin/certificates', label: 'Certificates', icon: Crown },
     { to: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },

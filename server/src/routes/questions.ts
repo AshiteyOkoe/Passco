@@ -14,8 +14,8 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post('/', createQuestion);
-router.post('/generate', generateQuestionsFromDocument);
+router.post('/', requireAdmin, createQuestion);
+router.post('/generate', requireAdmin, generateQuestionsFromDocument);
 router.get('/', getQuestions);
 router.get('/approved', getApprovedQuestions);
 router.put('/:id', updateQuestion);
