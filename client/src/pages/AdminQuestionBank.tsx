@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestions, deleteQuestion, approveQuestion, createQuestion, getDocuments } from '../services/api';
 import {
@@ -26,6 +27,14 @@ export default function AdminQuestionBank() {
   const [search, setSearch] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const cls = searchParams.get('class') as ClassLevel | null;
+    const subj = searchParams.get('subject') as SubjectId | null;
+    if (cls === 'jhs1' || cls === 'jhs2' || cls === 'jhs3') setClassFilter(cls);
+    if (subj && SUBJECT_META[subj]) setSubjectFilter(subj);
+  }, [searchParams]);
 
   const [formQuestion, setFormQuestion] = useState('');
   const [formType, setFormType] = useState<'multiple-choice' | 'true-false'>('multiple-choice');

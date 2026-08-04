@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -10,11 +10,24 @@ import {
   CLASS_META, SUBJECT_META, getSubjectQuestionCount,
   type ClassLevel, type SubjectId, type DifficultyLevel,
 } from '../data/questionBank';
+import { getApprovedBankQuestions } from '../services/api';
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 
 const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
 const DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
+
+const CLASS_MAP: Record<string, ClassLevel> = {
+  'JHS 1': 'jhs1', 'JHS 2': 'jhs2', 'JHS 3': 'jhs3',
+  'jhs1': 'jhs1', 'jhs2': 'jhs2', 'jhs3': 'jhs3',
+};
+
+const SUBJECT_MAP: Record<string, string> = {
+  'Mathematics': 'mathematics', 'Science': 'science', 'English Language': 'english',
+  'Social Studies': 'social-studies', 'ICT': 'ict',
+  'Religious and Moral Education': 'rme', 'Religious & Moral Education': 'rme',
+  'Creative Arts and Design': 'creative-arts', 'Career Technology': 'career-tech',
+};
 
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
   beginner: 'bg-emerald-500',
@@ -23,12 +36,29 @@ const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
 };
 
 export default function AdminClasses() {
+  const [uploadedCounts, setUploadedCounts] = useState<Record<string, Record<string, number>>>({});
+
+  useEffect(() => {
+    getApprovedBankQuestions()
+      .then(({ questions }) => {
+        const counts: Record<string, Record<string, number>> = {};
+        for (const q of questions) {
+          const cls = CLASS_MAP[q.classLevel] || 'jhs2';
+          const subj = SUBJECT_MAP[q.subject] || q.subject || 'english';
+          counts[cls] = counts[cls] || {};
+          counts[cls][subj] = (counts[cls][subj] || 0) + 1;
+        }
+        setUploadedCounts(counts);
+      })
+      .catch(() => {});
+  }, []);
+
   const classData = useMemo(() => {
     return CLASS_KEYS.map((cls) => {
       const subjectBreakdown = SUBJECT_KEYS.map((sub) => ({
         id: sub,
         ...SUBJECT_META[sub],
-        count: getSubjectQuestionCount(cls, sub),
+        count: getSubjectQuestionCount(cls, sub) + (uploadedCounts[cls]?.[sub] || 0),
       }));
 
       const totalQuestions = subjectBreakdown.reduce((sum, s) => sum + s.count, 0);
@@ -49,7 +79,7 @@ export default function AdminClasses() {
         difficultyBreakdown,
       };
     });
-  }, []);
+  }, [uploadedCounts]);
 
   const aggregate = useMemo(() => {
     const totalQuestions = classData.reduce((sum, c) => sum + c.totalQuestions, 0);
@@ -184,9 +214,13 @@ export default function AdminClasses() {
               </h3>
               <div className="space-y-2.5">
                 {cls.subjects.map((sub) => (
-                  <div key={sub.id} className="flex items-center gap-3">
+                  <Link
+                    key={sub.id}
+                    to={`/admin/question-bank?class=${cls.key}&subject=${sub.id}`}
+                    className="group flex items-center gap-3 rounded-xl px-2 py-1 transition hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                  >
                     <span className="w-5 text-center text-base">{sub.icon}</span>
-                    <span className="w-40 shrink-0 truncate text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <span className="w-40 shrink-0 truncate text-sm font-medium text-slate-700 group-hover:text-indigo-600 dark:text-slate-300 dark:group-hover:text-indigo-400">
                       {sub.label}
                     </span>
                     <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
@@ -203,7 +237,8 @@ export default function AdminClasses() {
                     <span className="w-10 text-right text-sm font-bold text-slate-600 dark:text-slate-400">
                       {sub.count}
                     </span>
-                  </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 opacity-0 transition group-hover:opacity-100 group-hover:text-indigo-500 dark:text-slate-600" />
+                  </Link>
                 ))}
               </div>
             </div>

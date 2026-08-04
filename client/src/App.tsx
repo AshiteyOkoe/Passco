@@ -9,7 +9,6 @@ import HowItWorks from './pages/HowItWorks';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import StudentDashboard from './pages/StudentDashboard';
-import UploadFile from './pages/UploadFile';
 import TakeQuiz from './pages/TakeQuiz';
 import Quizzes from './pages/Quizzes';
 import QuizResults from './pages/QuizResults';
@@ -147,7 +146,6 @@ export default function App() {
           <Route path="files" element={<AdminFiles />} />
           <Route path="questions" element={<AdminQuestionBank />} />
           <Route path="create-quiz" element={<AdminCreateQuiz />} />
-          <Route path="upload" element={<UploadFile />} />
           <Route path="ai-generator" element={<AIGenerator />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="certificates" element={<AdminCertificates />} />

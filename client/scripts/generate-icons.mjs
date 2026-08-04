@@ -7,7 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public', 'images', 'icons');
 mkdirSync(publicDir, { recursive: true });
 
-const svg = readFileSync(join(__dirname, '..', 'public', 'images', 'logos', 'passcologo.svg'));
+const svg = readFileSync(join(__dirname, '..', 'public', 'images', 'logos', 'qna.svg'));
 
 const sizes = [48, 72, 96, 128, 144, 152, 192, 256, 384, 512];
 
@@ -17,8 +17,8 @@ for (const size of sizes) {
   </svg>`);
 
   const icon = await sharp(svg).resize(Math.round(size * 0.6), Math.round(size * 0.6)).toBuffer();
-  const iconBg = await sharp(bg).composite([{ input: icon, gravity: 'center' }]).png().toFile(join(publicDir, `icon-${size}x${size}.png`));
-  console.log(`Created icon-${size}x${size}.png`);
+  const iconBg = await sharp(bg).composite([{ input: icon, gravity: 'center' }]).png().toFile(join(publicDir, `icon-${size}x${size}-qna.png`));
+  console.log(`Created icon-${size}x${size}-qna.png`);
 }
 
 const favicon = await sharp(svg).resize(32, 32).png().toFile(join(__dirname, '..', 'public', 'favicon.png'));

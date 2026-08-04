@@ -36,7 +36,7 @@ export default function PublicLayout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-2.5">
             <img
-              src="/images/logos/passcologo.svg"
+src="/images/logos/qna.svg"
               alt="Passco"
               className="h-12 w-auto object-contain mix-blend-multiply transition-transform hover:scale-110 dark:mix-blend-screen sm:h-14 md:h-16"
             />
@@ -221,7 +221,7 @@ export default function PublicLayout() {
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
               <Link to="/" className="flex items-center gap-2">
-                <img src="/images/logos/passcologo.svg" alt="Passco" className="h-10 w-auto object-contain mix-blend-multiply transition-transform hover:scale-110 dark:mix-blend-screen sm:h-12" />
+                <img src="/images/logos/qna.svg" alt="Passco" className="h-10 w-auto object-contain mix-blend-multiply transition-transform hover:scale-110 dark:mix-blend-screen sm:h-12" />
               </Link>
               <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
                 JHS self-examination platform. Take assessments across 8 subjects and track your progress instantly.

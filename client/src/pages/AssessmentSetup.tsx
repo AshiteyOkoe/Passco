@@ -70,7 +70,13 @@ export default function AssessmentSetup() {
   const handleBack = () => { if (currentStep > 1) { setDirection(-1); setCurrentStep(p => p - 1); } };
   const handleStart = () => {
     if (classLevel && subject && difficulty && assessmentType) {
-      navigate('/assessment/take', { state: { classLevel, subject, difficulty, assessmentType } });
+      const config = { classLevel, subject, difficulty, assessmentType };
+      try {
+        localStorage.setItem('passco-assessment-config', JSON.stringify(config));
+      } catch {
+        // ignore storage errors
+      }
+      navigate('/assessment/take', { state: config });
     }
   };
   const canProceed = () => {

@@ -18,7 +18,7 @@ import {
   EyeOff,
   Navigation,
 } from 'lucide-react';
-import { getQuestions, ASSESSMENT_META, ClassLevel, DifficultyLevel, AssessmentType, BankQuestion } from '../data/questionBank';
+import { getQuestions, shuffleArray, ASSESSMENT_META, ClassLevel, DifficultyLevel, AssessmentType, BankQuestion } from '../data/questionBank';
 import { saveAssessmentResult, getApprovedBankQuestions } from '../services/api';
 import { cn } from '../utils';
 import { cardFlip, fadeUp, bounceIn } from '../utils/animations';
@@ -28,6 +28,19 @@ interface LocationState {
   subject?: string;
   difficulty: DifficultyLevel;
   assessmentType: AssessmentType;
+}
+
+function dedupeQuestions(questions: BankQuestion[]): BankQuestion[] {
+  const seen = new Set<string>();
+  const result: BankQuestion[] = [];
+  for (const q of questions) {
+    if (!q) continue;
+    const key = q.question.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(q);
+  }
+  return result;
 }
 
 interface AssessmentAnswer {
@@ -49,8 +62,26 @@ interface ScoreResult {
 export default function TakeAssessment() {
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as LocationState;
   const { user } = useAuth();
+
+  // On a fresh navigation the config comes from location.state; after a refresh
+  // it's lost, so fall back to the persisted config to keep the quiz open.
+  const [state] = useState<LocationState>(() => {
+    const fromLocation = location.state as LocationState | null;
+    if (fromLocation?.classLevel && fromLocation?.difficulty && fromLocation?.assessmentType) {
+      return fromLocation;
+    }
+    try {
+      const raw = localStorage.getItem('passco-assessment-config');
+      if (raw) {
+        const parsed = JSON.parse(raw) as LocationState;
+        if (parsed?.classLevel && parsed.difficulty && parsed.assessmentType) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return fromLocation as LocationState;
+  });
 
   const [backendQuestions, setBackendQuestions] = useState<BankQuestion[]>([]);
 
@@ -78,12 +109,20 @@ export default function TakeAssessment() {
 
   const questions = useMemo(() => {
     if (!state) return [];
-    const staticQs = getQuestions(state.classLevel, state.difficulty, ASSESSMENT_META[state.assessmentType].questionCount, state.subject);
     const targetCount = ASSESSMENT_META[state.assessmentType].questionCount;
-    if (backendQuestions.length === 0) return staticQs;
-    const needed = Math.max(0, targetCount - staticQs.length);
-    const shuffled = [...backendQuestions].sort(() => Math.random() - 0.5);
-    return [...staticQs, ...shuffled.slice(0, needed)];
+    const staticQs = getQuestions(state.classLevel, state.difficulty, targetCount, state.subject);
+
+    // Uploaded (approved) questions are primary; static questions fill any shortfall.
+    const combined = dedupeQuestions([...backendQuestions, ...staticQs]);
+
+    // Always reshuffle so every user (and every re-entry/refresh) gets a new order.
+    const shuffled = shuffleArray(combined);
+
+    const result: BankQuestion[] = [];
+    for (let i = 0; i < targetCount; i++) {
+      result.push(shuffled[i % shuffled.length]);
+    }
+    return result.filter(Boolean);
   }, [state, backendQuestions]);
 
   const meta = useMemo(() => {

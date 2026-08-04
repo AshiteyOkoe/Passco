@@ -57,7 +57,6 @@ export default function Layout() {
     { to: '/admin/files', label: 'All Files', icon: FileText },
     { to: '/admin/questions', label: 'Question Bank', icon: Library },
     { to: '/admin/create-quiz', label: 'Create Quiz', icon: PlusCircle },
-    { to: '/admin/upload', label: 'Upload Quiz', icon: FileUp },
     { to: '/admin/ai-generator', label: 'AI Generator', icon: Sparkles },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/admin/certificates', label: 'Certificates', icon: Crown },
@@ -106,7 +105,7 @@ export default function Layout() {
             </button>
             <Link to="/" className="flex items-center gap-2.5">
               <img
-                src="/images/logos/passcologo.svg"
+                src="/images/logos/qna.svg"
                 alt="Passco"
                 className="h-12 w-auto object-contain mix-blend-multiply transition-transform hover:scale-110 dark:mix-blend-screen sm:h-14 md:h-16"
               />
