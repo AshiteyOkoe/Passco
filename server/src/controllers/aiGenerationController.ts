@@ -303,13 +303,17 @@ async function callGemini(system: string, user: string): Promise<unknown[]> {
   return Array.isArray(array) ? array : [];
 }
 
-async function getUserPlan(userId: string): Promise<string> {
-  const effective = await getEffectivePlan(userId);
+async function getUserPlan(user: AuthRequest['user']): Promise<string> {
+  if (!user) return 'free';
+  if (user.role === 'admin') return 'premium';
+  const effective = await getEffectivePlan(user.id);
   return effective.plan;
 }
 
-async function getUserAiLimit(userId: string): Promise<number> {
-  const effective = await getEffectivePlan(userId);
+async function getUserAiLimit(user: AuthRequest['user']): Promise<number> {
+  if (!user) return PLAN_LIMITS.free.aiQuestions;
+  if (user.role === 'admin') return -1;
+  const effective = await getEffectivePlan(user.id);
   return PLAN_LIMITS[effective.plan].aiQuestions;
 }
 
@@ -343,10 +347,10 @@ async function incrementUsage(userId: string, month: string, count: number): Pro
 
 export async function getAIGenerationStatus(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const plan = await getUserPlan(req.user!.id);
+    const plan = await getUserPlan(req.user);
     const month = getCurrentMonth();
     const used = await getUsage(req.user!.id, month);
-    const limit = await getUserAiLimit(req.user!.id);
+    const limit = await getUserAiLimit(req.user);
 
     res.json({ plan, used, limit, month });
   } catch (error) {
@@ -371,10 +375,10 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
       res.status(400).json({ message: 'Text and subject are required' }); return;
     }
 
-    const plan = await getUserPlan(req.user!.id);
+    const plan = await getUserPlan(req.user);
     const month = getCurrentMonth();
     const used = await getUsage(req.user!.id, month);
-    const limit = await getUserAiLimit(req.user!.id);
+    const limit = await getUserAiLimit(req.user);
 
     if (limit !== -1 && used + (requestedCount || 10) > limit) {
       const remaining = Math.max(0, limit - used);
