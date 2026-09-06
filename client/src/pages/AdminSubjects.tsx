@@ -8,14 +8,13 @@ import {
 import { cn } from '../utils';
 import {
   CLASS_META, SUBJECT_META, getSubjectQuestionCount,
-  type ClassLevel, type SubjectId, type DifficultyLevel,
+  type ClassLevel, type SubjectId,
 } from '../data/questionBank';
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 import { getAdminSubjectCounts } from '../services/api';
 
 const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
-const DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
 
 const COLOR_MAP: Record<string, { bg: string; text: string; ring: string; bar: string }> = {
   blue: { bg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', ring: 'ring-blue-200 dark:ring-blue-800', bar: 'bg-blue-500' },
@@ -28,46 +27,33 @@ const COLOR_MAP: Record<string, { bg: string; text: string; ring: string; bar: s
   orange: { bg: 'bg-orange-50 dark:bg-orange-500/10', text: 'text-orange-600 dark:text-orange-400', ring: 'ring-orange-200 dark:ring-orange-800', bar: 'bg-orange-500' },
 };
 
-const DIFF_COLOR_MAP: Record<DifficultyLevel, string> = {
-  beginner: 'bg-emerald-500',
-  intermediate: 'bg-amber-500',
-  expert: 'bg-rose-500',
-};
-
 export default function AdminSubjects() {
   const [filterClass, setFilterClass] = useState<ClassLevel | 'all'>('all');
-  const [serverCounts, setServerCounts] = useState<Record<string, number>>({});
+  const [serverCounts, setServerCounts] = useState<{ counts: Record<string, number>; byClass: Record<string, Record<string, number>> }>({ counts: {}, byClass: {} });
 
   useEffect(() => {
     getAdminSubjectCounts()
-      .then((res) => setServerCounts(res.counts))
+      .then((res) => setServerCounts(res))
       .catch(() => {});
   }, []);
 
   const subjectData = useMemo(() => {
     return SUBJECT_KEYS.map((sub) => {
       const meta = SUBJECT_META[sub];
-      const serverCount = serverCounts[meta.label] || 0;
+      const serverCount = serverCounts.counts[sub] || 0;
 
       const perClass = CLASS_KEYS.map((cls) => ({
         key: cls,
         label: CLASS_META[cls].label,
-        count: getSubjectQuestionCount(cls, sub),
+        count: getSubjectQuestionCount(cls, sub) + (serverCounts.byClass[cls]?.[sub] || 0),
       }));
 
-      const perDifficulty = DIFFICULTIES.map((d) => ({
-        level: d,
-        count: CLASS_KEYS.reduce((sum, cls) => sum + getSubjectQuestionCount(cls, sub, d), 0),
-      }));
-
-      const bankTotal = perClass.reduce((sum, c) => sum + c.count, 0);
-      const totalQuestions = bankTotal + serverCount;
+      const totalQuestions = perClass.reduce((sum, c) => sum + c.count, 0);
 
       return {
         key: sub,
         ...meta,
         perClass,
-        perDifficulty,
         totalQuestions,
         serverCount,
       };
@@ -76,18 +62,14 @@ export default function AdminSubjects() {
 
   const filtered = useMemo(() => {
     if (filterClass === 'all') return subjectData;
-    return subjectData.map((s) => ({
-      ...s,
-      totalQuestions: getSubjectQuestionCount(filterClass, s.key) + (s.serverCount || 0),
-      perClass: s.perClass.map((c) => ({
+    return subjectData.map((s) => {
+      const perClass = s.perClass.map((c) => ({
         ...c,
-        count: c.key === filterClass ? getSubjectQuestionCount(filterClass, s.key) : 0,
-      })),
-      perDifficulty: DIFFICULTIES.map((d) => ({
-        level: d,
-        count: getSubjectQuestionCount(filterClass, s.key, d),
-      })),
-    }));
+        count: c.key === filterClass ? c.count : 0,
+      }));
+      const totalQuestions = perClass.reduce((sum, c) => sum + c.count, 0);
+      return { ...s, perClass, totalQuestions };
+    });
   }, [subjectData, filterClass]);
 
   const aggregate = useMemo(() => {
@@ -183,7 +165,10 @@ export default function AdminSubjects() {
                 'border-slate-200 dark:border-slate-800'
               )}
             >
-              <div className="mb-4 flex items-center gap-3">
+              <Link
+                to={`/admin/questions?subject=${sub.key}${filterClass !== 'all' ? `&class=${filterClass}` : ''}`}
+                className="mb-4 flex items-center gap-3 group"
+              >
                 <motion.div
                   className={cn(
                     'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl',
@@ -193,10 +178,10 @@ export default function AdminSubjects() {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 200, delay: idx * 0.06 }}
                 >
-                  {sub.icon}
+                  <sub.icon className="h-6 w-6" aria-hidden="true" />
                 </motion.div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-bold text-slate-800 dark:text-white">{sub.label}</h3>
+                  <h3 className="truncate text-sm font-bold text-slate-800 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">{sub.label}</h3>
                   <p className={cn('text-lg font-extrabold', colors.text)}>{sub.totalQuestions}</p>
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Questions</p>
                   {sub.serverCount ? (
@@ -205,7 +190,7 @@ export default function AdminSubjects() {
                     </p>
                   ) : null}
                 </div>
-              </div>
+              </Link>
 
               <div className="mb-4">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -230,32 +215,6 @@ export default function AdminSubjects() {
                         <span className="w-6 text-right text-[11px] font-bold text-slate-600 dark:text-slate-400">
                           {c.count}
                         </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Per Difficulty
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {sub.perDifficulty.map((d) => {
-                    const pct = sub.totalQuestions > 0 ? Math.round((d.count / sub.totalQuestions) * 100) : 0;
-                    return (
-                      <div key={d.level} className="rounded-lg bg-slate-50 p-2 text-center dark:bg-slate-800/50">
-                        <div className={cn('mx-auto mb-1 h-1.5 w-6 rounded-full', DIFF_COLOR_MAP[d.level])} />
-                        <p className="text-sm font-bold text-slate-800 dark:text-white">{d.count}</p>
-                        <p className="text-[9px] font-medium uppercase text-slate-500 dark:text-slate-400">
-                          {d.level.slice(0, 3)}
-                        </p>
-                        <div className="mt-1 h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                          <div
-                            className={cn('h-full rounded-full', DIFF_COLOR_MAP[d.level])}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
                       </div>
                     );
                   })}

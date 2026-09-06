@@ -17,16 +17,17 @@ import {
   Eye,
   EyeOff,
   Navigation,
+  MoreHorizontal,
 } from 'lucide-react';
-import { getQuestions, shuffleArray, ASSESSMENT_META, ClassLevel, DifficultyLevel, AssessmentType, BankQuestion } from '../data/questionBank';
-import { saveAssessmentResult, getApprovedBankQuestions } from '../services/api';
+import { getQuestions, shuffleArray, ASSESSMENT_META, ClassLevel, AssessmentType, BankQuestion } from '../data/questionBank';
+import { saveAssessmentResult, getApprovedBankQuestions, logAttemptEvent, reportQuestion } from '../services/api';
+import SubscriptionGate from '../components/SubscriptionGate';
 import { cn } from '../utils';
 import { cardFlip, fadeUp, bounceIn } from '../utils/animations';
 
 interface LocationState {
   classLevel: ClassLevel;
   subject?: string;
-  difficulty: DifficultyLevel;
   assessmentType: AssessmentType;
 }
 
@@ -59,7 +60,32 @@ interface ScoreResult {
   marksPossible: number;
 }
 
-export default function TakeAssessment() {
+export default function TakeAssessmentWrapper() {
+  const location = useLocation();
+  const stateType = (location.state as LocationState | null)?.assessmentType;
+
+  const resolvedType = (() => {
+    if (stateType) return stateType;
+    try {
+      const raw = localStorage.getItem('passco-assessment-config');
+      if (raw) return (JSON.parse(raw) as LocationState).assessmentType;
+    } catch {
+      // ignore
+    }
+    return undefined;
+  })();
+
+  const feature = resolvedType === 'mock' ? 'mocks' : 'examinations';
+  const featureName = resolvedType === 'mock' ? 'Mock assessments' : 'Examinations';
+
+  return (
+    <SubscriptionGate feature={feature} featureName={featureName}>
+      <TakeAssessment />
+    </SubscriptionGate>
+  );
+}
+
+function TakeAssessment() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -68,14 +94,14 @@ export default function TakeAssessment() {
   // it's lost, so fall back to the persisted config to keep the quiz open.
   const [state] = useState<LocationState>(() => {
     const fromLocation = location.state as LocationState | null;
-    if (fromLocation?.classLevel && fromLocation?.difficulty && fromLocation?.assessmentType) {
+    if (fromLocation?.classLevel && fromLocation?.assessmentType) {
       return fromLocation;
     }
     try {
       const raw = localStorage.getItem('passco-assessment-config');
       if (raw) {
         const parsed = JSON.parse(raw) as LocationState;
-        if (parsed?.classLevel && parsed.difficulty && parsed.assessmentType) return parsed;
+        if (parsed?.classLevel && parsed.assessmentType) return parsed;
       }
     } catch {
       // ignore
@@ -90,7 +116,6 @@ export default function TakeAssessment() {
     const params: Record<string, string> = {};
     if (state.subject) params.subject = state.subject;
     if (state.classLevel) params.classLevel = state.classLevel;
-    if (state.difficulty) params.difficulty = state.difficulty;
     getApprovedBankQuestions(params)
       .then(({ questions }) => {
         const mapped: BankQuestion[] = questions.map(q => ({
@@ -110,7 +135,7 @@ export default function TakeAssessment() {
   const questions = useMemo(() => {
     if (!state) return [];
     const targetCount = ASSESSMENT_META[state.assessmentType].questionCount;
-    const staticQs = getQuestions(state.classLevel, state.difficulty, targetCount, state.subject);
+    const staticQs = getQuestions(state.classLevel, targetCount, state.subject);
 
     // Uploaded (approved) questions are primary; static questions fill any shortfall.
     const combined = dedupeQuestions([...backendQuestions, ...staticQs]);
@@ -132,7 +157,7 @@ export default function TakeAssessment() {
 
   const storageKey = useMemo(() => {
     if (!state) return '';
-    return `assessment-${state.classLevel}-${state.subject || 'all'}-${state.difficulty}-${state.assessmentType}`;
+    return `assessment-${state.classLevel}-${state.subject || 'all'}-${state.assessmentType}`;
   }, [state]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -145,6 +170,12 @@ export default function TakeAssessment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [isAbandoning, setIsAbandoning] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportNote, setReportNote] = useState('');
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+  const [reportError, setReportError] = useState(false);
   const hasInteracted = useRef(false);
 
   const timerRef = useRef<HTMLDivElement>(null);
@@ -164,6 +195,13 @@ export default function TakeAssessment() {
     hasInteracted.current = answeredCount > 0;
   }, [answers]);
 
+  // Log start event on first load
+  useEffect(() => {
+    if (state) {
+      logAttemptEvent({ assessmentType: state.assessmentType, eventType: 'start' }).catch(() => {});
+    }
+  }, []);
+
   // Warn on tab close / refresh while assessment is active
   useEffect(() => {
     if (isSubmitted || isAbandoning) return;
@@ -174,6 +212,18 @@ export default function TakeAssessment() {
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [isSubmitted, isAbandoning]);
+
+  // Tab-switch detection
+  useEffect(() => {
+    if (isSubmitted || isAbandoning) return;
+    const handler = () => {
+      if (document.hidden) {
+        logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'tab_switch' }).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [isSubmitted, isAbandoning, state]);
 
   // Warn on browser back / forward navigation
   useEffect(() => {
@@ -223,6 +273,7 @@ export default function TakeAssessment() {
     if (isSubmitted) return;
     setIsSubmitting(true);
     setIsSubmitted(true);
+    logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'submit' }).catch(() => {});
 
     const scoreResults: ScoreResult[] = questions.map((q) => {
       const answer = answers.get(q.id);
@@ -300,7 +351,6 @@ export default function TakeAssessment() {
       timeLimit: meta?.timeLimit ?? 600,
       classLevel: state?.classLevel,
       subject: state?.subject,
-      difficulty: state?.difficulty,
       assessmentType: state?.assessmentType,
       questions,
       studentName: user?.name || 'Student',
@@ -310,7 +360,6 @@ export default function TakeAssessment() {
     const historyEntry = {
       classLevel: state?.classLevel,
       subject: state?.subject,
-      difficulty: state?.difficulty,
       assessmentType: state?.assessmentType,
       totalQuestions: questions.length,
       correctAnswers: correctCount,
@@ -335,7 +384,6 @@ export default function TakeAssessment() {
     saveAssessmentResult({
       classLevel: state?.classLevel,
       subject: state?.subject,
-      difficulty: state?.difficulty,
       assessmentType: state?.assessmentType,
       totalQuestions: questions.length,
       answeredQuestions: answeredCount,
@@ -362,6 +410,7 @@ export default function TakeAssessment() {
     setIsAbandoning(true);
     setIsSubmitted(true);
     setShowLeaveModal(false);
+    logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'submit', details: { abandoned: true } }).catch(() => {});
 
     const totalQuestions = questions.length;
 
@@ -382,7 +431,6 @@ export default function TakeAssessment() {
       timeLimit: meta?.timeLimit ?? 600,
       classLevel: state?.classLevel,
       subject: state?.subject,
-      difficulty: state?.difficulty,
       assessmentType: state?.assessmentType,
       questions,
       studentName: user?.name || 'Student',
@@ -393,7 +441,6 @@ export default function TakeAssessment() {
     const historyEntry = {
       classLevel: state?.classLevel,
       subject: state?.subject,
-      difficulty: state?.difficulty,
       assessmentType: state?.assessmentType,
       totalQuestions,
       correctAnswers: 0,
@@ -416,7 +463,6 @@ export default function TakeAssessment() {
     saveAssessmentResult({
       classLevel: state?.classLevel,
       subject: state?.subject,
-      difficulty: state?.difficulty,
       assessmentType: state?.assessmentType,
       totalQuestions,
       answeredQuestions: 0,
@@ -437,6 +483,38 @@ export default function TakeAssessment() {
       navigate('/assessment/result', { state: resultPayload });
     }, 800);
   }, [questions, meta, timeLeft, state, storageKey, navigate, isSubmitted, isAbandoning, user]);
+
+  const openReportModal = () => {
+    setReportReason('');
+    setReportNote('');
+    setReportDone(false);
+    setReportError(false);
+    setShowReportModal(true);
+  };
+
+  const handleReportQuestion = async () => {
+    if (!currentQuestion || !reportReason || reportBusy) return;
+    setReportBusy(true);
+    setReportError(false);
+    try {
+      await reportQuestion({
+        questionId: currentQuestion.id,
+        questionText: currentQuestion.question,
+        subject: state?.subject || currentQuestion.subject || '',
+        classLevel: state?.classLevel,
+        assessmentType: state?.assessmentType,
+        assessmentKey: storageKey,
+        reason: reportReason,
+        note: reportNote,
+      });
+      logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'question_reported' }).catch(() => {});
+      setReportDone(true);
+    } catch {
+      setReportError(true);
+    } finally {
+      setReportBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (isSubmitted) return;
@@ -497,6 +575,7 @@ export default function TakeAssessment() {
       next.set(questionId, { ...existing, selectedOption: option, timestamp: Date.now() });
       return next;
     });
+    logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'answer_change', questionId }).catch(() => {});
   };
 
   const toggleFlag = (questionId: string) => {
@@ -511,6 +590,7 @@ export default function TakeAssessment() {
       next.set(questionId, { ...existing, flagged: !existing.flagged });
       return next;
     });
+    logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'flag', questionId }).catch(() => {});
   };
 
   const answeredCount = useMemo(() => {
@@ -551,7 +631,7 @@ export default function TakeAssessment() {
   if (!state || !meta || questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -564,7 +644,7 @@ export default function TakeAssessment() {
           animate={{ scale: 1, rotate: 360 }}
           transition={{ duration: 0.8, ease: 'easeInOut' }}
         >
-          <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+          <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 10 }}
@@ -625,7 +705,7 @@ export default function TakeAssessment() {
               </div>
               <button
                 onClick={() => setShowSubmitModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors text-sm"
               >
                 <Send className="w-4 h-4" />
                 <span className="hidden sm:inline">Submit</span>
@@ -636,7 +716,7 @@ export default function TakeAssessment() {
           {/* Progress Bar */}
           <div className="mt-2 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-indigo-500 rounded-full"
+              className="h-full bg-blue-500 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -666,7 +746,7 @@ export default function TakeAssessment() {
                 animate="visible"
               >
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-                  <Navigation className="w-4 h-4 text-indigo-500" />
+                  <Navigation className="w-4 h-4 text-blue-500" />
                   Question Navigator
                 </h3>
 
@@ -680,11 +760,11 @@ export default function TakeAssessment() {
                         onClick={() => goToQuestion(index)}
                         className={cn(
                           'relative w-10 h-10 rounded-xl text-sm font-medium transition-all duration-200',
-                          isCurrent && 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900',
+                          isCurrent && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900',
                           status === 'answered' && !isCurrent && 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
                           status === 'unanswered' && !isCurrent && 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
                           status === 'flagged' && !isCurrent && 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-                          isCurrent && 'bg-indigo-600 text-white',
+                          isCurrent && 'bg-blue-600 text-white',
                           'hover:scale-105 active:scale-95'
                         )}
                       >
@@ -739,7 +819,7 @@ export default function TakeAssessment() {
                   {/* Question Header */}
                   <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                     <div className="flex items-center gap-3">
-                      <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg text-sm font-semibold">
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-semibold">
                         Question {currentIndex + 1} of {questions.length}
                       </span>
                       <span className="hidden sm:inline px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-medium">
@@ -761,6 +841,14 @@ export default function TakeAssessment() {
                           getAnswer(currentQuestion.id).flagged && 'fill-current'
                         )}
                       />
+                    </button>
+                    <button
+                      onClick={openReportModal}
+                      className="flex h-10 w-10 items-center justify-center gap-1 rounded-xl text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-500 transition-all duration-200 text-xs font-semibold sm:h-auto sm:w-auto sm:px-3 sm:py-2"
+                      title="Report this question"
+                    >
+                      <MoreHorizontal className="w-5 h-5" />
+                      <span className="hidden sm:inline">Report</span>
                     </button>
                   </div>
 
@@ -784,7 +872,7 @@ export default function TakeAssessment() {
                             className={cn(
                               'w-full flex items-center gap-4 px-5 py-4 rounded-xl border-2 text-left transition-all duration-200',
                               isSelected
-                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50'
+                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50'
                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                             )}
                             whileHover={{ scale: 1.01 }}
@@ -794,7 +882,7 @@ export default function TakeAssessment() {
                               className={cn(
                                 'flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-colors',
                                 isSelected
-                                  ? 'bg-indigo-600 text-white'
+                                  ? 'bg-blue-600 text-white'
                                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                               )}
                             >
@@ -804,7 +892,7 @@ export default function TakeAssessment() {
                               className={cn(
                                 'flex-1 text-base',
                                 isSelected
-                                  ? 'text-indigo-700 dark:text-indigo-300 font-medium'
+                                  ? 'text-blue-700 dark:text-blue-300 font-medium'
                                   : 'text-slate-700 dark:text-slate-300'
                               )}
                             >
@@ -816,7 +904,7 @@ export default function TakeAssessment() {
                                 animate={{ scale: 1 }}
                                 transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                               >
-                                <CheckCircle2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                               </motion.div>
                             )}
                           </motion.button>
@@ -880,7 +968,7 @@ export default function TakeAssessment() {
               {currentIndex === questions.length - 1 ? (
                 <button
                   onClick={() => setShowSubmitModal(true)}
-                  className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                  className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-sm"
                 >
                   <Send className="w-5 h-5" />
                   Submit Assessment
@@ -888,7 +976,7 @@ export default function TakeAssessment() {
               ) : (
                 <button
                   onClick={goToNext}
-                  className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                  className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-sm"
                 >
                   Save & Continue
                   <ChevronRight className="w-5 h-5" />
@@ -922,7 +1010,7 @@ export default function TakeAssessment() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <Navigation className="w-5 h-5 text-indigo-500" />
+                  <Navigation className="w-5 h-5 text-blue-500" />
                   Navigator
                 </h3>
                 <button
@@ -943,11 +1031,11 @@ export default function TakeAssessment() {
                       onClick={() => goToQuestion(index)}
                       className={cn(
                         'relative w-10 h-10 rounded-xl text-sm font-medium transition-all duration-200',
-                        isCurrent && 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900',
+                        isCurrent && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900',
                         status === 'answered' && !isCurrent && 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
                         status === 'unanswered' && !isCurrent && 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
                         status === 'flagged' && !isCurrent && 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-                        isCurrent && 'bg-indigo-600 text-white'
+                        isCurrent && 'bg-blue-600 text-white'
                       )}
                     >
                       {index + 1}
@@ -1009,8 +1097,8 @@ export default function TakeAssessment() {
             >
               <div className="px-6 pt-6 pb-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                    <Send className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <Send className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
@@ -1087,12 +1175,145 @@ export default function TakeAssessment() {
                     setShowSubmitModal(false);
                     handleSubmit();
                   }}
-                  className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <Send className="w-4 h-4" />
                   Confirm Submit
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* REPORT QUESTION MODAL */}
+      <AnimatePresence>
+        {showReportModal && currentQuestion && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-slate-900 max-h-[90vh] overflow-y-auto"
+            >
+              {reportDone ? (
+                <div className="p-6 text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/10">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                  </div>
+                  <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">Question Reported</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Thanks for letting us know. Our team will review this question and correct it if needed.
+                  </p>
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="mt-6 w-full px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+                  >
+                    Back to Assessment
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-rose-100 dark:bg-rose-500/10 flex items-center justify-center">
+                        <AlertTriangle className="w-5 h-5 text-rose-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Report a Question</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Your assessment continues — the timer keeps running.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 max-h-24 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                      <p className="text-sm text-slate-600 dark:text-slate-300">{currentQuestion.question}</p>
+                    </div>
+
+                    <p className="mt-5 mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Why are you reporting this?</p>
+                    <div className="space-y-2">
+                      {[
+                        'The answer seems incorrect',
+                        'The question is unclear or confusing',
+                        'There is a typo or formatting issue',
+                        "It doesn't match the subject or topic",
+                        'Other',
+                      ].map((reason) => (
+                        <label
+                          key={reason}
+                          className={cn(
+                            'flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm cursor-pointer transition',
+                            reportReason === reason
+                              ? 'border-rose-400 bg-rose-50 dark:border-rose-500 dark:bg-rose-500/10 text-slate-800 dark:text-slate-200'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="report-reason"
+                            value={reason}
+                            checked={reportReason === reason}
+                            onChange={() => setReportReason(reason)}
+                            className="sr-only"
+                          />
+                          <span className={cn('h-4 w-4 rounded-full border-2', reportReason === reason ? 'border-rose-500 bg-rose-500' : 'border-slate-300 dark:border-slate-600')} />
+                          {reason}
+                        </label>
+                      ))}
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Additional note (optional)</label>
+                      <textarea
+                        rows={3}
+                        value={reportNote}
+                        onChange={(e) => setReportNote(e.target.value)}
+                        placeholder="Any extra detail that helps us investigate..."
+                        className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+
+                    {reportError && (
+                      <p className="mt-3 text-sm text-rose-500">
+                        We couldn't submit your report. Please try again.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 px-6 pb-6">
+                    <button
+                      onClick={() => setShowReportModal(false)}
+                      className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleReportQuestion}
+                      disabled={!reportReason || reportBusy}
+                      className="flex-1 px-4 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {reportBusy ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-4 h-4" />
+                          Submit Report
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}

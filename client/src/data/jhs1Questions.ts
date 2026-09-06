@@ -1,7 +1,7 @@
 import type { BankQuestion } from './questionBank';
 
-export const jhs1Beginner: BankQuestion[] = [
-  { id: 'jhs1-b-m1', question: 'What is 15 + 27?', type: 'multiple-choice', options: ['40', '42', '44', '38'], correctAnswer: '42', subject: 'Mathematics', explanation: '15 + 27 = 42' },
+export const jhs1Questions: BankQuestion[] = [
+{ id: 'jhs1-b-m1', question: 'What is 15 + 27?', type: 'multiple-choice', options: ['40', '42', '44', '38'], correctAnswer: '42', subject: 'Mathematics', explanation: '15 + 27 = 42' },
   { id: 'jhs1-b-m2', question: 'What is 8 × 7?', type: 'multiple-choice', options: ['54', '56', '48', '62'], correctAnswer: '56', subject: 'Mathematics', explanation: '8 × 7 = 56' },
   { id: 'jhs1-b-m3', question: 'What is 144 ÷ 12?', type: 'multiple-choice', options: ['11', '12', '13', '14'], correctAnswer: '12', subject: 'Mathematics', explanation: '144 ÷ 12 = 12' },
   { id: 'jhs1-b-m4', question: 'What is 25% of 200?', type: 'multiple-choice', options: ['25', '50', '75', '100'], correctAnswer: '50', subject: 'Mathematics', explanation: '25% of 200 = 0.25 × 200 = 50' },
@@ -81,10 +81,7 @@ export const jhs1Beginner: BankQuestion[] = [
   { id: 'jhs1-b-t8', question: 'Technology only refers to computers.', type: 'true-false', correctAnswer: false, subject: 'Career Technology', explanation: 'Technology includes all tools, machines, and methods used in daily life.' },
   { id: 'jhs1-b-t9', question: 'Gardening is a practical skill studied in Career Technology.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'Gardening involves practical skills in plant cultivation and land care.' },
   { id: 'jhs1-b-t10', question: 'Safety precautions are important when using tools.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'Following safety rules prevents accidents and injuries when using tools.' },
-];
-
-export const jhs1Intermediate: BankQuestion[] = [
-  { id: 'jhs1-i-m1', question: 'Solve for x: 2x + 6 = 18', type: 'multiple-choice', options: ['x = 5', 'x = 6', 'x = 7', 'x = 8'], correctAnswer: 'x = 6', subject: 'Mathematics', explanation: '2x + 6 = 18 → 2x = 12 → x = 6' },
+{ id: 'jhs1-i-m1', question: 'Solve for x: 2x + 6 = 18', type: 'multiple-choice', options: ['x = 5', 'x = 6', 'x = 7', 'x = 8'], correctAnswer: 'x = 6', subject: 'Mathematics', explanation: '2x + 6 = 18 → 2x = 12 → x = 6' },
   { id: 'jhs1-i-m2', question: 'Area of a rectangle with length 8cm and width 5cm?', type: 'multiple-choice', options: ['13cm²', '40cm²', '26cm²', '80cm²'], correctAnswer: '40cm²', subject: 'Mathematics', explanation: 'Area = 8 × 5 = 40cm²' },
   { id: 'jhs1-i-m3', question: 'Convert 3/4 to a percentage.', type: 'multiple-choice', options: ['34%', '75%', '43%', '80%'], correctAnswer: '75%', subject: 'Mathematics', explanation: '3/4 × 100 = 75%' },
   { id: 'jhs1-i-m4', question: 'What is 2³ + 3²?', type: 'multiple-choice', options: ['13', '15', '17', '11'], correctAnswer: '17', subject: 'Mathematics', explanation: '8 + 9 = 17' },
@@ -164,10 +161,7 @@ export const jhs1Intermediate: BankQuestion[] = [
   { id: 'jhs1-i-t8', question: 'Personal hygiene is important when preparing food.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'Good hygiene prevents contamination and foodborne illnesses.' },
   { id: 'jhs1-i-t9', question: 'ICT skills are not important in Career Technology.', type: 'true-false', correctAnswer: false, subject: 'Career Technology', explanation: 'ICT skills are essential for modern careers and business management.' },
   { id: 'jhs1-i-t10', question: 'Entrepreneurship means being self-employed and creating businesses.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'Entrepreneurs identify opportunities and start businesses to solve problems.' },
-];
-
-export const jhs1Expert: BankQuestion[] = [
-  { id: 'jhs1-e-m1', question: 'If f(x) = 3x - 2, what is f(4)?', type: 'multiple-choice', options: ['10', '12', '14', '8'], correctAnswer: '10', subject: 'Mathematics', explanation: 'f(4) = 3(4) - 2 = 10' },
+{ id: 'jhs1-e-m1', question: 'If f(x) = 3x - 2, what is f(4)?', type: 'multiple-choice', options: ['10', '12', '14', '8'], correctAnswer: '10', subject: 'Mathematics', explanation: 'f(4) = 3(4) - 2 = 10' },
   { id: 'jhs1-e-m2', question: 'Gradient of y = 2x + 5?', type: 'multiple-choice', options: ['5', '2', '7', '-2'], correctAnswer: '2', subject: 'Mathematics', explanation: 'm = 2 in y = mx + c.' },
   { id: 'jhs1-e-m3', question: 'Solve: 3(x - 2) = 2(x + 4)', type: 'multiple-choice', options: ['x = 14', 'x = 10', 'x = -2', 'x = 2'], correctAnswer: 'x = 14', subject: 'Mathematics', explanation: '3x - 6 = 2x + 8 → x = 14' },
   { id: 'jhs1-e-m4', question: '8 pens at ¢250 each with 10% discount. Total?', type: 'multiple-choice', options: ['¢2,000', '¢1,800', '¢2,250', '¢1,600'], correctAnswer: '¢1,800', subject: 'Mathematics', explanation: '8×250 = 2000. 10% off = 1800.' },

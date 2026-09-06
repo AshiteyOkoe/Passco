@@ -12,6 +12,8 @@ import {
 import { cn } from '../utils';
 import { fadeUp, scaleIn, slideUp, stagger, bounceIn } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import type { UploadedDocument, Question } from '../types';
 
 export default function AdminFiles() {
@@ -114,6 +116,8 @@ export default function AdminFiles() {
     );
   });
 
+  const docsPagination = usePagination(filteredDocs, 15);
+
   const docQuestions = selectedDoc ? questions.filter((q) => q.documentId === selectedDoc) : [];
   const selectedDocument = documents.find((d) => d.id === selectedDoc);
 
@@ -215,7 +219,7 @@ export default function AdminFiles() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); docsPagination.reset(); }}
             placeholder="Search files by name, topic, or uploader..."
             className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-indigo-500/20 transition focus:border-indigo-500 focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-indigo-400"
           />
@@ -234,7 +238,7 @@ export default function AdminFiles() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-2">
           <AnimatePresence>
-            {filteredDocs.map((doc, i) => (
+            {docsPagination.pageItems.map((doc, i) => (
               <motion.div
                 key={doc.id}
                 layout
@@ -313,8 +317,8 @@ export default function AdminFiles() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => { e.stopPropagation(); handleViewText(doc); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
-                    title="View Extracted Text"
+                    aria-label="View extracted text"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-blue-500/10 dark:hover:text-blue-400"
                   >
                     <Eye className="h-4 w-4" />
                   </motion.button>
@@ -322,8 +326,8 @@ export default function AdminFiles() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => { e.stopPropagation(); handleDelete(doc.id); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                    title="Delete"
+                    aria-label="Delete document"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                   >
                     <Trash2 className="h-4 w-4" />
                   </motion.button>
@@ -347,6 +351,15 @@ export default function AdminFiles() {
               </p>
             </motion.div>
           )}
+
+          <Pagination
+            className="mt-4"
+            page={docsPagination.page}
+            totalPages={docsPagination.totalPages}
+            totalItems={filteredDocs.length}
+            perPage={15}
+            onPageChange={docsPagination.goTo}
+          />
         </div>
 
         <motion.div
@@ -484,7 +497,8 @@ export default function AdminFiles() {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowExtractedText(null)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                  aria-label="Close"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
                 >
                   <X className="h-4 w-4" />
                 </motion.button>

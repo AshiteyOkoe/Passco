@@ -7,7 +7,7 @@ import {
 } from '../services/api';
 import {
   Upload, Sparkles, FileText, Check, AlertCircle, RotateCcw,
-  Save, ChevronDown, ChevronUp, Brain, Clock, Crown,
+  Save, ChevronDown, ChevronUp, Brain, Clock, Gem,
   BookOpen, X, Loader2,
 } from 'lucide-react';
 import { fadeUp } from '../utils/animations';
@@ -17,13 +17,18 @@ import type { AIGeneratedQuestion } from '../types';
 import * as mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.mjs',
-  import.meta.url,
-).toString();
+try {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.mjs',
+    import.meta.url,
+  ).toString();
+} catch {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.mjs`;
+}
 
 const ACCEPTED_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv', 'image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_COUNT = 200;
 const SUBJECT_OPTIONS: SubjectId[] = ['mathematics', 'science', 'english', 'social-studies', 'ict', 'rme', 'creative-arts', 'career-tech'];
 
 type Step = 'upload' | 'configure' | 'generating' | 'results';
@@ -35,7 +40,10 @@ export default function AIGenerator() {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState('');
   const [subject, setSubject] = useState<SubjectId>('mathematics');
-  const [difficulty, setDifficulty] = useState('intermediate');
+  const [difficulty, setDifficulty] = useState('mixed');
+  const [classLevel, setClassLevel] = useState('jhs1');
+  const [assessmentType, setAssessmentType] = useState('quiz');
+  const [topic, setTopic] = useState('');
   const [count, setCount] = useState(10);
   const [generatedQuestions, setGeneratedQuestions] = useState<AIGeneratedQuestion[]>([]);
   const [saving, setSaving] = useState(false);
@@ -88,7 +96,8 @@ export default function AIGenerator() {
 
     if (f.type === 'application/pdf') {
       const arrayBuffer = await f.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
       const pages: string[] = [];
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
@@ -137,16 +146,28 @@ export default function AIGenerator() {
         text: extractedText,
         subject: SUBJECT_META[subject].label,
         difficulty,
-        count: Math.min(count, remaining === Infinity ? 50 : remaining),
+        count: Math.min(count, remaining === Infinity ? MAX_COUNT : remaining),
+        classLevel,
+        assessmentType,
+        topic: topic.trim() || undefined,
       });
       setGeneratedQuestions(result.questions);
       setUsage({ used: result.usage.used, limit: result.usage.limit, month: result.usage.month });
       setStep('results');
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response: { data: { message: string } } }).response?.data?.message
-        : 'Generation failed';
-      setError(msg || 'AI generation failed. Please try again.');
+      console.error('AI generation error:', err);
+      let msg = 'AI generation failed. Please try again.';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { message?: string }; status?: number } };
+        if (axiosErr.response?.status === 503) {
+          msg = 'AI service not configured. Please ask the admin to set the GEMINI_API_KEY.';
+        } else if (axiosErr.response?.status === 403) {
+          msg = axiosErr.response?.data?.message || 'You have reached your AI generation limit.';
+        } else {
+          msg = axiosErr.response?.data?.message || msg;
+        }
+      }
+      setError(msg);
       setStep('configure');
     }
   };
@@ -173,7 +194,7 @@ export default function AIGenerator() {
     setStep('upload');
   };
 
-  const planBadge = plan === 'premium' || plan === 'basic' ? { label: 'QnA Access', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400', icon: Crown }
+  const planBadge = plan === 'premium' || plan === 'basic' ? { label: 'QnA Access', color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400', icon: Gem }
     : { label: 'Free Trial', color: 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-400', icon: Brain };
 
   return (
@@ -269,15 +290,15 @@ export default function AIGenerator() {
                 <select value={subject} onChange={(e) => setSubject(e.target.value as SubjectId)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                   {SUBJECT_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{SUBJECT_META[s].icon} {SUBJECT_META[s].label}</option>
+                    <option key={s} value={s}>{SUBJECT_META[s].label}</option>
                   ))}
                 </select>
               </div>
 
               <div className="mb-4">
                 <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Difficulty</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['beginner', 'intermediate', 'expert'].map((d) => (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {['beginner', 'intermediate', 'expert', 'mixed'].map((d) => (
                     <button key={d} onClick={() => setDifficulty(d)}
                       className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
                         difficulty === d ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-300'
@@ -289,12 +310,49 @@ export default function AIGenerator() {
                 </div>
               </div>
 
+              <div className="mb-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Class Level</label>
+                  <select value={classLevel} onChange={(e) => setClassLevel(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                    {[
+                      { value: 'jhs1', label: 'JHS 1' },
+                      { value: 'jhs2', label: 'JHS 2' },
+                      { value: 'jhs3', label: 'JHS 3' },
+                    ].map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Assessment Type</label>
+                  <select value={assessmentType} onChange={(e) => setAssessmentType(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                    {[
+                      { value: 'quiz', label: 'Quiz' },
+                      { value: 'mock', label: 'Mock Test' },
+                      { value: 'examination', label: 'Examination' },
+                    ].map((a) => (
+                      <option key={a.value} value={a.value}>{a.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Topic <span className="font-normal text-slate-400">(optional)</span>
+                </label>
+                <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Grammar, Fractions, Photosynthesis"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
+              </div>
+
               <div className="mb-6">
                 <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Number of Questions (max {remaining === Infinity ? 50 : remaining})
+                  Number of Questions (max {remaining === Infinity ? MAX_COUNT : Math.min(remaining, MAX_COUNT)})
                 </label>
-                <input type="number" value={count} min={1} max={Math.min(50, remaining === Infinity ? 50 : remaining)}
-                  onChange={(e) => setCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                <input type="number" value={count} min={1} max={Math.min(MAX_COUNT, remaining === Infinity ? MAX_COUNT : remaining)}
+                  onChange={(e) => setCount(Math.max(1, Math.min(MAX_COUNT, parseInt(e.target.value) || 1)))}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white" />
               </div>
 
@@ -370,6 +428,12 @@ export default function AIGenerator() {
                               : q.difficulty === 'expert' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
                               : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
                           }`}>{q.difficulty}</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                            {q.type === 'true-false' ? 'True / False' : 'Multiple Choice'}
+                          </span>
+                          {q.topic && q.topic !== 'General' && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">{q.topic}</span>
+                          )}
                         </div>
                       </div>
                       <button onClick={() => setExpandedQ(expanded ? null : i)} className="shrink-0 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
@@ -381,7 +445,9 @@ export default function AIGenerator() {
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-3 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                         {q.options.map((opt, j) => {
                           const letter = String.fromCharCode(65 + j);
-                          const isCorrect = letter === q.correctAnswer;
+                          const isCorrect = q.type === 'true-false'
+                            ? q.correctAnswer === (j === 0)
+                            : letter === q.correctAnswer;
                           return (
                             <div key={j} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
                               isCorrect ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'

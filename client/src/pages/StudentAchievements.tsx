@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trophy, Award, Star, Medal, Shield, Crown, Gem, Target,
+  Trophy, Award, Star, Medal, Shield, Gem, Target,
   BookOpen, ClipboardCheck, GraduationCap, Brain, Zap, Flame,
   TrendingUp, CheckCircle2, Lock, Download, Printer, Upload,
   ArrowRight, Sparkles, ChevronDown, ChevronUp, Eye, X, FileUp, BadgeCheck,
@@ -10,12 +10,13 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../utils';
 import { fadeUp, slideUp, stagger, bounceIn } from '../utils/animations';
-import { SUBJECT_META, CLASS_META, DIFFICULTY_META, type ClassLevel, type SubjectId } from '../data/questionBank';
+import { SUBJECT_META, CLASS_META, type ClassLevel, type SubjectId } from '../data/questionBank';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 interface LocalAssessment {
   classLevel: ClassLevel;
   subject: string;
-  difficulty: string;
   assessmentType: string;
   totalQuestions: number;
   answeredQuestions: number;
@@ -32,7 +33,7 @@ interface LocalAssessment {
 }
 
 type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
-type BadgeCategory = 'class' | 'level' | 'subject' | 'quiz' | 'mock' | 'exam' | 'score' | 'streak' | 'mastery';
+type BadgeCategory = 'class' | 'subject' | 'mock' | 'exam' | 'score' | 'streak' | 'mastery';
 
 interface Badge {
   id: string;
@@ -92,12 +93,10 @@ const TIER_CONFIG: Record<BadgeTier, { label: string; gradient: string; ring: st
 
 const CATEGORY_CONFIG: Record<BadgeCategory, { label: string; color: string }> = {
   class: { label: 'Class Completion', color: 'text-blue-500' },
-  level: { label: 'Level Mastery', color: 'text-emerald-500' },
   subject: { label: 'Subject Achievement', color: 'text-violet-500' },
-  quiz: { label: 'Quiz Champion', color: 'text-amber-500' },
   mock: { label: 'Mock Excellence', color: 'text-orange-500' },
   exam: { label: 'Exam Mastery', color: 'text-rose-500' },
-  score: { label: 'Score Milestone', color: 'text-indigo-500' },
+  score: { label: 'Score Milestone', color: 'text-blue-500' },
   streak: { label: 'Consistency', color: 'text-emerald-500' },
   mastery: { label: 'Grand Mastery', color: 'text-yellow-500' },
 };
@@ -143,11 +142,9 @@ export default function StudentAchievements() {
   const stats = useMemo(() => {
     const completedClasses = new Set(completed.map(r => r.classLevel));
     const completedSubjects = new Set(completed.map(r => r.subject));
-    const difficulties = new Set(completed.map(r => r.difficulty));
     const assessmentTypes = new Set(completed.map(r => r.assessmentType));
     const avgScore = completed.length > 0 ? Math.round(completed.reduce((s, r) => s + r.percentage, 0) / completed.length) : 0;
     const perfectScores = completed.filter(r => r.percentage === 100).length;
-    const totalQuizzes = completed.filter(r => r.assessmentType === 'quiz').length;
     const totalMocks = completed.filter(r => r.assessmentType === 'mock').length;
     const totalExams = completed.filter(r => r.assessmentType === 'examination').length;
 
@@ -166,18 +163,15 @@ export default function StudentAchievements() {
     return {
       completedClasses: completedClasses.size,
       completedSubjects: completedSubjects.size,
-      difficulties: difficulties.size,
       assessmentTypes: assessmentTypes.size,
       avgScore,
       perfectScores,
-      totalQuizzes,
       totalMocks,
       totalExams,
       totalCompleted: completed.length,
       maxStreak,
       allClasses: 3,
       allSubjects: Object.keys(SUBJECT_META).length,
-      allDifficulties: 3,
     };
   }, [completed]);
 
@@ -203,28 +197,6 @@ export default function StudentAchievements() {
       });
     });
 
-    // Level badges
-    const levels: Array<{ key: string; label: string; req: number }> = [
-      { key: 'beginner', label: 'Beginner Explorer', req: 3 },
-      { key: 'intermediate', label: 'Intermediate Thinker', req: 3 },
-      { key: 'expert', label: 'Expert Analyst', req: 3 },
-    ];
-    levels.forEach(lv => {
-      const count = completed.filter(r => r.difficulty === lv.key).length;
-      const earned = count >= lv.req;
-      b.push({
-        id: `level-${lv.key}`,
-        name: lv.label,
-        description: `Complete ${lv.req} ${lv.key} assessments`,
-        tier: earned ? 'gold' : count > 0 ? 'silver' : 'bronze',
-        category: 'level',
-        icon: Target,
-        earned,
-        progress: Math.min(count, lv.req),
-        maxProgress: lv.req,
-      });
-    });
-
     // Subject badges
     const subjectIds = Object.keys(SUBJECT_META) as SubjectId[];
     subjectIds.forEach(sub => {
@@ -234,7 +206,7 @@ export default function StudentAchievements() {
       const gold = avgPct >= 80 && count >= 3;
       b.push({
         id: `subject-${sub}`,
-        name: `${SUBJECT_META[sub].icon} ${SUBJECT_META[sub].label} Champion`,
+        name: `${SUBJECT_META[sub].label} Champion`,
         description: `Complete 2+ ${SUBJECT_META[sub].label} assessments`,
         tier: gold ? 'gold' : earned ? 'silver' : count > 0 ? 'bronze' : 'bronze',
         category: 'subject',
@@ -243,20 +215,6 @@ export default function StudentAchievements() {
         progress: Math.min(count, 2),
         maxProgress: 2,
       });
-    });
-
-    // Quiz badge
-    const quizDone = stats.totalQuizzes;
-    b.push({
-      id: 'quiz-5',
-      name: 'Quiz Enthusiast',
-      description: 'Complete 5 quizzes',
-      tier: quizDone >= 5 ? 'gold' : quizDone >= 2 ? 'silver' : 'bronze',
-      category: 'quiz',
-      icon: Zap,
-      earned: quizDone >= 5,
-      progress: Math.min(quizDone, 5),
-      maxProgress: 5,
     });
 
     // Mock badge
@@ -329,18 +287,17 @@ export default function StudentAchievements() {
     // Grand mastery
     const allClassesDone = stats.completedClasses >= stats.allClasses;
     const allSubjectsDone = stats.completedSubjects >= stats.allSubjects;
-    const allLevelsDone = stats.difficulties >= stats.allDifficulties;
-    const masteryEarned = allClassesDone && allSubjectsDone && allLevelsDone && stats.avgScore >= 80;
+    const masteryEarned = allClassesDone && allSubjectsDone && stats.avgScore >= 80;
     b.push({
       id: 'mastery-grand',
       name: 'Grand Master',
-      description: 'Complete all classes, subjects, and difficulty levels with 80%+ average',
+      description: 'Complete all classes and subjects with 80%+ average',
       tier: 'diamond',
       category: 'mastery',
-      icon: Crown,
+      icon: Trophy,
       earned: masteryEarned,
-      progress: (stats.completedClasses + stats.completedSubjects + stats.difficulties + (stats.avgScore >= 80 ? 1 : 0)),
-      maxProgress: (stats.allClasses + stats.allSubjects + stats.allDifficulties + 1),
+      progress: (stats.completedClasses + stats.completedSubjects + (stats.avgScore >= 80 ? 1 : 0)),
+      maxProgress: (stats.allClasses + stats.allSubjects + 1),
     });
 
     return b;
@@ -355,15 +312,21 @@ export default function StudentAchievements() {
     return badges;
   }, [badges, badgeFilter]);
 
+  const { page, totalPages, pageItems, goTo, reset } = usePagination(filteredBadges, 12);
+
+  useEffect(() => {
+    reset();
+  }, [badgeFilter, reset]);
+
   const badgeGroups = useMemo(() => {
     const groups = new Map<string, Badge[]>();
-    filteredBadges.forEach(b => {
+    pageItems.forEach(b => {
       const cat = CATEGORY_CONFIG[b.category].label;
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat)!.push(b);
     });
     return Array.from(groups.entries());
-  }, [filteredBadges]);
+  }, [pageItems]);
 
   const isEligibleForCertificate = useMemo(() => {
     return stats.avgScore >= 90 && stats.totalCompleted >= 10;
@@ -428,9 +391,9 @@ export default function StudentAchievements() {
           animate="visible"
         >
           <OverviewCard icon={Medal} value={earnedBadges.length} total={totalBadges} label="Badges Earned" gradient="from-yellow-400 to-amber-500" />
-          <OverviewCard icon={Star} value={stats.avgScore} suffix="%" label="Avg Score" gradient="from-blue-500 to-indigo-600" />
+          <OverviewCard icon={Star} value={stats.avgScore} suffix="%" label="Avg Score" gradient="from-blue-500 to-blue-600" />
           <OverviewCard icon={Flame} value={stats.totalCompleted} label="Assessments" gradient="from-emerald-500 to-teal-600" />
-          <OverviewCard icon={Crown} value={isEligibleForCertificate ? 1 : 0} label="Certificates" gradient="from-violet-500 to-purple-600" />
+          <OverviewCard icon={Award} value={isEligibleForCertificate ? 1 : 0} label="Certificates" gradient="from-violet-500 to-purple-600" />
         </motion.div>
 
         {/* Badge Progress Bar */}
@@ -511,7 +474,7 @@ export default function StudentAchievements() {
             : config.color === 'text-amber-500' ? 'from-amber-400 to-amber-600'
             : config.color === 'text-orange-500' ? 'from-orange-400 to-orange-600'
             : config.color === 'text-rose-500' ? 'from-rose-400 to-rose-600'
-            : config.color === 'text-indigo-500' ? 'from-indigo-400 to-indigo-600'
+            : config.color === 'text-blue-500' ? 'from-blue-400 to-blue-600'
             : config.color === 'text-yellow-500' ? 'from-yellow-400 to-yellow-600'
             : 'from-slate-400 to-slate-600';
 
@@ -528,14 +491,12 @@ export default function StudentAchievements() {
                 <div className="flex items-center gap-3">
                   <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md', catGradient)}>
                     {catKey === 'class' && <GraduationCap className="h-5 w-5" />}
-                    {catKey === 'level' && <Target className="h-5 w-5" />}
                     {catKey === 'subject' && <BookOpen className="h-5 w-5" />}
-                    {catKey === 'quiz' && <Zap className="h-5 w-5" />}
                     {catKey === 'mock' && <ClipboardCheck className="h-5 w-5" />}
                     {catKey === 'exam' && <Brain className="h-5 w-5" />}
                     {catKey === 'score' && <TrendingUp className="h-5 w-5" />}
                     {catKey === 'streak' && <Flame className="h-5 w-5" />}
-                    {catKey === 'mastery' && <Crown className="h-5 w-5" />}
+                    {catKey === 'mastery' && <Trophy className="h-5 w-5" />}
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-800 dark:text-white">{category}</h3>
@@ -562,12 +523,20 @@ export default function StudentAchievements() {
           );
         })}
 
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={filteredBadges.length}
+          perPage={12}
+          onPageChange={goTo}
+        />
+
         {/* Certificate Section */}
         <motion.div variants={slideUp} initial="hidden" animate="visible">
           <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1e3a5f] to-[#0f2340] shadow-lg shadow-blue-900/25">
-                <Crown className="h-6 w-6 text-yellow-400" />
+                <Award className="h-6 w-6 text-yellow-400" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">A+ Certificate Award</h2>
@@ -621,7 +590,7 @@ export default function StudentAchievements() {
                           {adminSignature ? 'Signature uploaded' : 'Upload Director\'s signature'}
                         </span>
                       </div>
-                      <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700">
+                      <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
                         <FileUp className="h-3 w-3" />
                         {adminSignature ? 'Replace' : 'Upload'}
                         <input type="file" accept="image/*" className="hidden" onChange={handleSignatureUpload} />
@@ -646,7 +615,7 @@ export default function StudentAchievements() {
                 </p>
                 <Link
                   to="/assessment/setup"
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
                   Take Assessment <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
@@ -675,7 +644,8 @@ export default function StudentAchievements() {
             >
               <button
                 onClick={() => setShowCertificate(false)}
-                className="absolute -right-3 -top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-lg transition hover:text-slate-900"
+                className="absolute -right-3 -top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 shadow-lg transition hover:text-slate-900"
+                aria-label="Close certificate preview"
               >
                 <X className="h-4 w-4" />
               </button>

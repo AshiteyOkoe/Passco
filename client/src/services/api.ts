@@ -9,12 +9,21 @@ import type {
   Result,
   StudentStats,
   AdminStats,
+  AdminCommandCenter,
   Subscription,
   Payment,
   AIUsageStatus,
   AIGeneratedQuestion,
   Announcement,
   PlanLimits,
+  MySubscriptionResponse,
+  Testimonial,
+  InProgressAttempt,
+  ContactMessage,
+  QuestionReport,
+  ReportCardRecord,
+  ReportSettings,
+  ReportVerifyResponse,
 } from '../types';
 
 const API_BASE = import.meta.env.DEV ? '/api' : '/api';
@@ -24,6 +33,10 @@ export function resolveUploadUrl(path: string): string {
   if (!path) return path;
   if (path.startsWith('http')) return path;
   return path;
+}
+
+export function isCustomAvatar(avatar?: string): boolean {
+  return !!avatar && (avatar.startsWith('/uploads/') || avatar.startsWith('http'));
 }
 
 const api = axios.create({
@@ -107,6 +120,49 @@ export async function uploadAvatar(file: File): Promise<{ avatar: string }> {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return res.data;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+  const res = await api.post('/auth/change-password', { currentPassword, newPassword });
+  return res.data;
+}
+
+export async function revokeSessions(): Promise<{ message: string }> {
+  const res = await api.post('/auth/revoke-sessions');
+  return res.data;
+}
+
+export async function deactivateAccount(): Promise<{ message: string }> {
+  const res = await api.post('/auth/deactivate');
+  return res.data;
+}
+
+export async function deleteAccount(password: string): Promise<{ message: string }> {
+  const res = await api.delete('/auth/profile', { data: { password } });
+  return res.data;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  user_id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  details: Record<string, unknown>;
+  ip_address: string;
+  created_at: string;
+  userName: string;
+  userEmail: string;
+}
+
+export async function getMyActivity(userId: string, limit = 60): Promise<AuditLogEntry[]> {
+  const token = localStorage.getItem('passco-token');
+  const res = await fetch(`/api/audit?userId=${encodeURIComponent(userId)}&limit=${limit}&page=1`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.logs || [];
 }
 
 export async function uploadFile(file: File): Promise<{ document: UploadedDocument }> {
@@ -265,6 +321,11 @@ export async function getAdminDashboard(): Promise<AdminStats> {
   return res.data;
 }
 
+export async function getAdminCommandCenter(range = 30): Promise<AdminCommandCenter> {
+  const res = await api.get('/admin/command-center', { params: { range } });
+  return res.data;
+}
+
 export async function getStudents(): Promise<{
   students: Array<{
     id: string;
@@ -347,17 +408,13 @@ export async function getAdminAnalytics(): Promise<{
   return res.data;
 }
 
-export async function getAdminSubjectCounts(): Promise<{ counts: Record<string, number> }> {
+export async function getAdminSubjectCounts(): Promise<{ counts: Record<string, number>; byClass: Record<string, Record<string, number>> }> {
   const res = await api.get('/admin/subject-counts');
   return res.data;
 }
 
 // Subscription API
-export async function getMySubscription(): Promise<{
-  subscription: Subscription;
-  aiUsage: { used: number; limit: number; month: string };
-  planLimits: PlanLimits;
-}> {
+export async function getMySubscription(): Promise<MySubscriptionResponse> {
   const res = await api.get('/subscriptions/me');
   return res.data;
 }
@@ -372,6 +429,11 @@ export async function suspendUserSubscription(userId: string): Promise<void> {
 }
 
 // Payment API
+export async function getPaystackPublicKey(): Promise<{ publicKey: string }> {
+  const res = await api.get('/payments/public-key');
+  return res.data;
+}
+
 export async function initializePayment(data: { plan: string; email: string }): Promise<{
   authorization_url: string;
   reference: string;
@@ -407,6 +469,9 @@ export async function generateQuestionsAI(data: {
   subject: string;
   difficulty?: string;
   count?: number;
+  classLevel?: string;
+  assessmentType?: string;
+  topic?: string;
 }): Promise<{ questions: AIGeneratedQuestion[]; usage: { used: number; limit: number; remaining: number; month: string } }> {
   const res = await api.post('/ai-generation/generate', data);
   return res.data;
@@ -473,6 +538,46 @@ export async function deleteAnnouncement(id: string): Promise<void> {
   await api.delete(`/announcements/${id}`);
 }
 
+// Quiz Attempt API (auto-save)
+export async function saveQuizAttempt(data: {
+  quizId: string;
+  answers: Array<{ questionId: string; answer: string | boolean | null; flagged: boolean }>;
+  timeRemaining: number;
+  currentIndex: number;
+}): Promise<{ message: string }> {
+  const res = await api.post('/quiz-attempts/save', data);
+  return res.data;
+}
+
+export async function getQuizAttempt(quizId: string): Promise<{
+  attempt: {
+    id: string;
+    quizId: string;
+    answers: Array<{ questionId: string; answer: string | boolean | null; flagged: boolean }>;
+    timeRemaining: number;
+    currentIndex: number;
+    startedAt: string;
+    updatedAt: string;
+  } | null;
+}> {
+  const res = await api.get(`/quiz-attempts/${quizId}`);
+  return res.data;
+}
+
+export async function deleteQuizAttempt(quizId: string): Promise<void> {
+  await api.delete(`/quiz-attempts/${quizId}`);
+}
+
+export async function logAttemptEvent(data: {
+  quizId?: string;
+  assessmentType?: string;
+  eventType: string;
+  questionId?: string;
+  details?: Record<string, unknown>;
+}): Promise<void> {
+  await api.post('/quiz-attempts/events', data);
+}
+
 // Assessment Results API
 export async function saveAssessmentResult(result: Record<string, unknown>) {
   const res = await api.post('/assessment/results', result);
@@ -492,6 +597,207 @@ export async function getAllAssessmentResults(params?: { classLevel?: string; su
 export async function getAssessmentStats() {
   const res = await api.get('/assessment/stats');
   return res.data;
+}
+
+// Question Counts API (public, for Explore Subjects)
+export async function getQuestionCounts(): Promise<{
+  counts: Record<string, number>;
+  byClass: Record<string, Record<string, number>>;
+}> {
+  const res = await api.get('/questions/counts');
+  return res.data;
+}
+
+// Quiz Attempt API (resume)
+export async function getInProgressAttempts(): Promise<{ attempts: InProgressAttempt[] }> {
+  const res = await api.get('/quiz-attempts/in-progress');
+  return res.data;
+}
+
+// Testimonials API
+export async function getTestimonials(): Promise<{ testimonials: Testimonial[] }> {
+  const res = await api.get('/testimonials');
+  return res.data;
+}
+
+export async function getAllTestimonials(): Promise<{ testimonials: Testimonial[] }> {
+  const res = await api.get('/testimonials/all');
+  return res.data;
+}
+
+export async function createTestimonial(data: {
+  name: string;
+  role?: string;
+  school?: string;
+  quote: string;
+  rating?: number;
+  avatarUrl?: string;
+}): Promise<{ testimonial: Testimonial }> {
+  const res = await api.post('/testimonials', data);
+  return res.data;
+}
+
+export async function updateTestimonial(
+  id: string,
+  data: Partial<{
+    name: string;
+    role: string;
+    school: string;
+    quote: string;
+    rating: number;
+    avatarUrl: string;
+    isApproved: boolean;
+  }>
+): Promise<{ testimonial: Testimonial }> {
+  const res = await api.put(`/testimonials/${id}`, data);
+  return res.data;
+}
+
+export async function deleteTestimonial(id: string): Promise<void> {
+  await api.delete(`/testimonials/${id}`);
+}
+
+export async function sendContactMessage(data: {
+  name: string;
+  email: string;
+  accountType?: string;
+  subject: string;
+  category?: string;
+  message: string;
+  attachment?: string;
+  attachmentName?: string;
+}): Promise<{ message: string }> {
+  const res = await api.post('/contact', data);
+  return res.data;
+}
+
+export async function reportQuestion(data: {
+  questionId?: string;
+  questionText?: string;
+  subject?: string;
+  classLevel?: string;
+  assessmentType?: string;
+  assessmentKey?: string;
+  reason: string;
+  note?: string;
+}): Promise<{ message: string }> {
+  const res = await api.post('/contact/report-question', data);
+  return res.data;
+}
+
+export async function getAdminContactMessages(params: {
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  messages: ContactMessage[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const res = await api.get('/contact/admin/messages', { params });
+  return res.data;
+}
+
+export async function updateContactMessageStatus(id: string, status: string): Promise<{ message: string; item: ContactMessage }> {
+  const res = await api.patch(`/contact/admin/messages/${id}/status`, { status });
+  return res.data;
+}
+
+export async function getAdminQuestionReports(params: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{
+  reports: QuestionReport[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const res = await api.get('/contact/admin/question-reports', { params });
+  return res.data;
+}
+
+export async function updateQuestionReportStatus(id: string, status: string): Promise<{ message: string; item: QuestionReport }> {
+  const res = await api.patch(`/contact/admin/question-reports/${id}/status`, { status });
+  return res.data;
+}
+
+// ---- Academic Report Card API ----
+export interface CreateReportPayload {
+  academicYear: string;
+  term: string;
+  periodLabel?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  overallScore: number;
+  overallGrade: string;
+  overallRemark?: string;
+  dataSnapshot: Record<string, unknown>;
+  profilePhotoSnapshotUrl?: string;
+}
+
+export async function getMyReportCards(): Promise<{ reports: ReportCardRecord[] }> {
+  const res = await api.get('/report-cards/my');
+  return res.data;
+}
+
+export async function createReportCard(data: CreateReportPayload): Promise<{ report: ReportCardRecord }> {
+  const res = await api.post('/report-cards', data);
+  return res.data;
+}
+
+export async function getReportCard(id: string): Promise<{ report: ReportCardRecord }> {
+  const res = await api.get(`/report-cards/${id}`);
+  return res.data;
+}
+
+export async function deleteReportCard(id: string): Promise<{ message: string }> {
+  const res = await api.delete(`/report-cards/${id}`);
+  return res.data;
+}
+
+export async function getReportSettings(): Promise<{ settings: ReportSettings }> {
+  const res = await api.get('/report-cards/settings');
+  return res.data;
+}
+
+export async function getAdminReportCards(userId: string): Promise<{ reports: ReportCardRecord[] }> {
+  const res = await api.get('/admin/report-cards', { params: { userId } });
+  return res.data;
+}
+
+export async function createAdminReportCard(userId: string, data: CreateReportPayload): Promise<{ report: ReportCardRecord }> {
+  const res = await api.post('/admin/report-cards', { userId, ...data });
+  return res.data;
+}
+
+export async function adminRegenerateReportCard(userId: string, data: CreateReportPayload): Promise<{ report: ReportCardRecord }> {
+  const res = await api.post('/admin/report-cards/regenerate', { userId, ...data });
+  return res.data;
+}
+
+export async function deleteAdminReportCard(id: string): Promise<{ message: string }> {
+  const res = await api.delete(`/admin/report-cards/${id}`);
+  return res.data;
+}
+
+export async function updateReportSettings(settings: ReportSettings): Promise<{ settings: ReportSettings }> {
+  const res = await api.put('/admin/report-cards/settings', settings);
+  return res.data;
+}
+
+export async function getAdminAssessmentResultsByUser(userId: string): Promise<{ results: unknown[] }> {
+  const res = await api.get(`/assessment/results/admin/user/${userId}`);
+  return res.data;
+}
+
+export async function verifyReportCode(verificationCode: string): Promise<ReportVerifyResponse> {
+  const res = await api.get(`/report-cards/verify/${encodeURIComponent(verificationCode)}`, {
+    validateStatus: (s) => s < 500,
+  });
+  return res.data as ReportVerifyResponse;
 }
 
 export default api;

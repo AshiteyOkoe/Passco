@@ -5,10 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { stagger, fadeUp } from '../utils/animations';
 import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
-  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Crown, ChevronRight, Landmark
+  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Gem, ChevronRight, Landmark, Target, Layers, Lightbulb, HeartHandshake, Quote
 } from 'lucide-react';
-import { resolveUploadUrl, getLeaderboard, type LeaderboardEntry } from '../services/api';
+import { resolveUploadUrl, getLeaderboard, isCustomAvatar, getQuestionCounts, getTestimonials, type LeaderboardEntry } from '../services/api';
+import type { Testimonial } from '../types';
 import { DefaultAvatar } from '../components/DefaultAvatars';
+import FAQSection from '../components/FAQSection';
 import { SUBJECT_META, getQuestions, shuffleArray, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
 
 const fadeUpFast = {
@@ -24,7 +26,7 @@ const ALL_SUBJECTS: SubjectId[] = ['mathematics', 'science', 'english', 'social-
 function generateDemoQuestions() {
   const selected = shuffleArray(ALL_SUBJECTS).slice(0, 5);
   return selected.map((subject) => {
-    const pool = getQuestions('jhs1', 'beginner', 10, subject).filter(
+    const pool = getQuestions('jhs1', 10, subject).filter(
       (q) => q.type === 'multiple-choice' && q.options && q.options.length >= 2,
     );
     if (pool.length === 0) return null;
@@ -47,13 +49,13 @@ const landingPlans = [
   {
     id: 'basic',
     name: 'QnA Access Plan',
-    price: 10,
+    price: 15,
     period: '/14 days',
     description: 'Full access to all features',
-    icon: Crown,
-    color: 'from-indigo-500 to-indigo-600',
-    bg: 'bg-indigo-50 dark:bg-indigo-500/10',
-    border: 'border-indigo-200 dark:border-indigo-800',
+    icon: Gem,
+    color: 'from-blue-500 to-blue-600',
+    bg: 'bg-blue-50 dark:bg-blue-500/10',
+    border: 'border-blue-200 dark:border-blue-800',
     popular: true,
     features: [
       'Access to all subjects',
@@ -135,6 +137,28 @@ export default function Landing() {
   }, [heroData]);
 
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    getTestimonials()
+      .then(({ testimonials: t }) => {
+        if (!cancelled) setTestimonials(t);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getQuestionCounts()
+      .then(({ counts }) => {
+        if (!cancelled) setQuestionCounts(counts);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,7 +203,7 @@ export default function Landing() {
   }, []);
 
   const getRewardLabel = (avg: number) => {
-    if (avg >= 90) return { label: 'Champion', icon: Crown, color: 'text-amber-400' };
+    if (avg >= 90) return { label: 'Champion', icon: Trophy, color: 'text-amber-400' };
     if (avg >= 80) return { label: 'Star Performer', icon: Star, color: 'text-emerald-400' };
     if (avg >= 70) return { label: 'Achiever', icon: Medal, color: 'text-blue-400' };
     if (avg >= 60) return { label: 'Rising Star', icon: TrendingUp, color: 'text-violet-400' };
@@ -191,7 +215,7 @@ export default function Landing() {
     if (user?.avatar === 'avatar:female') return 'female';
     return (user?.gender as 'male' | 'female') || '';
   };
-  const hasCustomAvatar = user?.avatar && user.avatar.startsWith('/uploads/');
+  const hasCustomAvatar = isCustomAvatar(user?.avatar);
 
   return (
     <div className="overflow-hidden">
@@ -199,22 +223,20 @@ export default function Landing() {
       <section className="relative isolate flex min-h-[80vh] items-center sm:min-h-[70vh] lg:min-h-[80vh]">
         {/* Video Background */}
         <div className="absolute inset-0 -z-20 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950" />
           <video
             autoPlay
             loop
             muted
             playsInline
             preload="auto"
-            className="absolute inset-0 h-full w-full object-cover opacity-60"
+            className="absolute inset-0 h-full w-full object-cover opacity-50"
           >
             <source src="/videos/designarena_video_w3fzfn5r.mp4" type="video/mp4" />
           </video>
-          {/* Dark overlay for readability */}
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/40 via-slate-950/30 to-indigo-900/40 dark:from-slate-950/50 dark:via-slate-950/40 dark:to-indigo-950/50" />
-          {/* Subtle gradient accents */}
-          <div className="absolute right-0 top-0 h-[600px] w-[600px] translate-x-1/3 -translate-y-1/4 rounded-full bg-indigo-500/10 blur-3xl" />
-          <div className="absolute left-0 bottom-0 h-[400px] w-[400px] -translate-x-1/4 translate-y-1/4 rounded-full bg-emerald-500/10 blur-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-blue-950/40 to-indigo-950/70" />
+          <div className="absolute right-0 top-0 h-[500px] w-[500px] translate-x-1/3 -translate-y-1/4 rounded-full bg-blue-500/8 blur-3xl" />
+          <div className="absolute left-0 bottom-0 h-[400px] w-[400px] -translate-x-1/4 translate-y-1/4 rounded-full bg-teal-500/8 blur-3xl" />
         </div>
 
         <div className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:px-8 lg:pb-32 lg:pt-32">
@@ -241,7 +263,7 @@ export default function Landing() {
                     <div>
                       <p className="text-sm text-white/70">Welcome back,</p>
                       <p className="text-xl font-bold text-white">{user.name}</p>
-                      <p className="mt-0.5 text-xs text-indigo-200">{encouragement}</p>
+                      <p className="mt-0.5 text-xs text-blue-200">{encouragement}</p>
                     </div>
                   </div>
 
@@ -267,7 +289,7 @@ export default function Landing() {
                   })()}
                 </motion.div>
               ) : (
-                <motion.div variants={fadeUp} className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-semibold text-white backdrop-blur-md">
+                <motion.div variants={fadeUp} className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-semibold text-white backdrop-blur-md">
                   <motion.span
                     animate={{ rotate: [-10, 10, -10] }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -285,16 +307,17 @@ export default function Landing() {
                 {user ? (
                   <>
                     Ready to Ace Your{' '}
-                    <span className="bg-gradient-to-r from-indigo-300 to-emerald-300 bg-clip-text text-transparent">
+                    <span className="bg-gradient-to-r from-blue-300 to-teal-300 bg-clip-text text-transparent">
                       Next Exam?
                     </span>
                   </>
                 ) : (
                   <>
-                    Turn Your Study Materials Into{' '}
-                    <span className="bg-gradient-to-r from-indigo-300 to-emerald-300 bg-clip-text text-transparent">
-                      Smart Quizzes
-                    </span>
+                    Prepare Smarter.{' '}
+                    <span className="bg-gradient-to-r from-blue-300 to-teal-300 bg-clip-text text-transparent">
+                      Practice Better.
+                    </span>{' '}
+                    Perform Better.
                   </>
                 )}
               </motion.h1>
@@ -308,7 +331,7 @@ export default function Landing() {
                   <>
                     <Link
                       to="/assessment/setup"
-                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700"
+                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-700 hover:to-blue-800"
                     >
                       <motion.span
                         animate={{ rotate: [-5, 5, -5] }}
@@ -321,32 +344,41 @@ export default function Landing() {
                     </Link>
                     <Link
                       to="/dashboard"
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15"
                     >
                       <BarChart3 className="h-4 w-4" />
                       View My Progress
                     </Link>
+                    <button
+                      onClick={() => document.getElementById('subjects')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15"
+                    >
+                      <Layers className="h-4 w-4" />
+                      Explore Subjects
+                    </button>
                   </>
                 ) : (
                   <>
                     <Link
                       to="/register"
-                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700"
+                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-700 hover:to-blue-800"
                     >
                       Get Started Free
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </Link>
                     <button
                       onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15"
                     >
-                      <motion.span
-                        animate={{ rotate: [-8, 8, -8] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <Play className="h-4 w-4" />
-                      </motion.span>
+                      <Play className="h-4 w-4" />
                       Try Demo Quiz
+                    </button>
+                    <button
+                      onClick={() => document.getElementById('subjects')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15"
+                    >
+                      <Layers className="h-4 w-4" />
+                      Explore Subjects
                     </button>
                   </>
                 )}
@@ -354,30 +386,15 @@ export default function Landing() {
               {!user && (
                 <motion.div variants={fadeUp} className="mt-8 flex items-center gap-6 text-sm text-white/50">
                   <div className="flex items-center gap-2">
-                    <motion.span
-                      animate={{ rotate: [-10, 10, -10] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0 }}
-                    >
-                      <Check className="h-4 w-4 text-emerald-400" />
-                    </motion.span>
+                    <Check className="h-4 w-4 text-teal-400" />
                     No credit card
                   </div>
                   <div className="flex items-center gap-2">
-                    <motion.span
-                      animate={{ rotate: [-10, 10, -10] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-                    >
-                      <Check className="h-4 w-4 text-emerald-400" />
-                    </motion.span>
+                    <Check className="h-4 w-4 text-teal-400" />
                     Free to start
                   </div>
                   <div className="flex items-center gap-2">
-                    <motion.span
-                      animate={{ rotate: [-10, 10, -10] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-                    >
-                      <Check className="h-4 w-4 text-emerald-400" />
-                    </motion.span>
+                    <Check className="h-4 w-4 text-teal-400" />
                     Cancel anytime
                   </div>
                 </motion.div>
@@ -390,7 +407,7 @@ export default function Landing() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="relative"
             >
-              <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-emerald-500/10 blur-2xl" />
+              <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-blue-500/10 to-teal-500/10 blur-2xl" />
 
               {user ? (
                 /* Stats Card for logged-in users */
@@ -414,7 +431,7 @@ export default function Landing() {
                     </div>
                     <div className="rounded-xl bg-white/10 p-3 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <p className="text-2xl font-bold text-indigo-300">{leaderboardEntries.findIndex((e: any) => e.name === user?.name) + 1 || '-'}</p>
+                        <p className="text-2xl font-bold text-blue-300">{leaderboardEntries.findIndex((e: any) => e.name === user?.name) + 1 || '-'}</p>
                       </div>
                       <p className="text-[10px] text-white/50">Leaderboard Rank</p>
                     </div>
@@ -445,7 +462,7 @@ export default function Landing() {
                 /* Stats Card for non-logged-in users */
                 <div className="relative rounded-2xl border border-white/20 bg-white/10 p-5 shadow-xl backdrop-blur-md">
                   <div className="mb-4 flex items-center gap-2">
-                    <Rocket className="h-4 w-4 text-indigo-300" />
+                    <Rocket className="h-4 w-4 text-blue-300" />
                     <p className="text-xs font-semibold text-white/80">Why Passco?</p>
                   </div>
                   <div className="space-y-3">
@@ -457,7 +474,7 @@ export default function Landing() {
                     ].map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3 rounded-xl bg-white/5 p-3">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                          <item.icon className="h-4 w-4 text-indigo-300" />
+                          <item.icon className="h-4 w-4 text-blue-300" />
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-white">{item.label}</p>
@@ -468,7 +485,7 @@ export default function Landing() {
                   </div>
                   <button
                     onClick={() => navigate('/register')}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-emerald-500 py-2.5 text-xs font-bold text-white shadow-lg transition hover:from-indigo-600 hover:to-emerald-600"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-teal-500 py-2.5 text-xs font-bold text-white shadow-lg transition hover:from-blue-600 hover:to-teal-600"
                   >
                     Get Started Free
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -476,6 +493,110 @@ export default function Landing() {
                 </div>
               )}
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* What is Passco + Why Students Choose */}
+      <section className="border-t border-slate-200 bg-slate-50/50 py-20 dark:border-slate-800 dark:bg-slate-950/50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="mx-auto mb-14 max-w-3xl text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <BookOpen className="h-3.5 w-3.5" />
+              What is Passco?
+            </span>
+            <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
+              Your JHS Self-Examination Companion
+            </h2>
+            <p className="mt-4 text-slate-500 dark:text-slate-400">
+              Passco is a practice platform built for Ghanaian junior high students. Take realistic,
+              curriculum-aligned assessments across 8 subjects, get instant results, and watch your
+              scores improve — one practice session at a time.
+            </p>
+          </motion.div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { icon: Target, title: 'JHS 1–3 Aligned', desc: 'Questions mapped to the Ghanaian curriculum for all junior high levels.' },
+              { icon: Layers, title: '8 Core Subjects', desc: 'Mathematics, Science, English, Social Studies, ICT, RME, Creative Arts and Career Technology.' },
+              { icon: Clock, title: 'Real Exam Conditions', desc: 'Timed quizzes, mock tests and full examinations that mirror BECE-style questions.' },
+              { icon: BarChart3, title: 'Instant Results & Grades', desc: 'Scores, A+ to F grades, and question-by-question feedback the moment you submit.' },
+              { icon: Award, title: 'Badges & Rewards', desc: 'Unlock achievements as you improve and climb the weekly leaderboard.' },
+              { icon: Shield, title: 'Safe & Private', desc: 'Your data is protected and never shared. Payments are handled securely by Paystack.' },
+            ].map((item, i) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-500/10">
+                  <item.icon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">{item.title}</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Explore Subjects */}
+      <section id="subjects" className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="mx-auto mb-14 max-w-2xl text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-xs font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+              <Layers className="h-3.5 w-3.5" />
+              Explore Subjects
+            </span>
+            <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
+              Pick a Subject and Start Practicing
+            </h2>
+            <p className="mt-3 text-slate-500 dark:text-slate-400">
+              Every subject comes with a rich bank of objective questions across all three JHS levels.
+            </p>
+          </motion.div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {ALL_SUBJECTS.map((subject, i) => {
+              const meta = SUBJECT_META[subject];
+              const count = questionCounts[subject] || 0;
+              return (
+                <motion.div
+                  key={subject}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.05 }}
+                  className="group flex flex-col rounded-2xl border border-slate-200 bg-slate-50/50 p-6 transition-all hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950 dark:hover:border-blue-700 dark:hover:bg-blue-500/5"
+                >
+                  <meta.icon className="h-7 w-7" aria-hidden="true" />
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">{meta.label}</h3>
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    {count > 0 ? `${count} question${count !== 1 ? 's' : ''} available` : 'Question bank available'}
+                  </p>
+                  <Link
+                    to={user ? '/assessment/setup' : '/register'}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 transition group-hover:gap-2.5 dark:text-blue-400"
+                  >
+                    Start Practice
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -521,7 +642,7 @@ export default function Landing() {
                       rank <= 3
                         ? 'border-amber-200 dark:border-amber-800/50'
                         : 'border-slate-200 dark:border-slate-800'
-                    } ${isCurrentUser ? 'ring-2 ring-indigo-500/30 dark:ring-indigo-400/30' : ''}`}
+                    } ${isCurrentUser ? 'ring-2 ring-blue-500/30 dark:ring-blue-400/30' : ''}`}
                   >
                     {/* Top Row: Rank + Profile + Name + Score */}
                     <div className="flex items-center gap-3 sm:gap-4">
@@ -537,7 +658,7 @@ export default function Landing() {
 
                       {/* Profile Image */}
                       <div className="relative shrink-0">
-                        {entry.avatar && entry.avatar.startsWith('/uploads/') ? (
+                        {isCustomAvatar(entry.avatar) ? (
                           <img
                             src={resolveUploadUrl(entry.avatar)}
                             alt={entry.name}
@@ -559,19 +680,19 @@ export default function Landing() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className={`text-sm font-bold truncate sm:text-base ${
-                            isCurrentUser ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'
+                            isCurrentUser ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'
                           }`}>
                             {entry.name}
                           </p>
                           {isCurrentUser && (
-                            <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                            <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
                               You
                             </span>
                           )}
                         </div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                           {entry.classLevel && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                               <GraduationCap className="h-2.5 w-2.5" />
                               {CLASS_META[entry.classLevel as ClassLevel]?.label || entry.classLevel}
                             </span>
@@ -646,7 +767,7 @@ export default function Landing() {
                       </button>
                       <button
                         onClick={() => user ? navigate('/analytics/performance') : navigate('/login')}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
                       >
                         <BarChart3 className="h-3.5 w-3.5" />
                         Performance
@@ -675,7 +796,7 @@ export default function Landing() {
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Be the first to take an assessment and claim the top spot!</p>
               <button
                 onClick={() => user ? navigate('/assessment/setup') : navigate('/login')}
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
               >
                 <Play className="h-4 w-4" />
                 Take an Assessment
@@ -689,7 +810,7 @@ export default function Landing() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="mt-8 rounded-2xl bg-gradient-to-r from-indigo-500 to-emerald-500 p-6 text-center shadow-lg sm:p-8"
+              className="mt-8 rounded-2xl bg-gradient-to-r from-blue-500 to-teal-500 p-6 text-center shadow-lg sm:p-8"
             >
               <p className="text-lg font-bold text-white sm:text-xl">
                 Join {leaderboardEntries.length} student{leaderboardEntries.length !== 1 ? 's' : ''} already competing!
@@ -697,7 +818,7 @@ export default function Landing() {
               <p className="mt-1 text-sm text-white/80">Sign up free to claim your spot on the leaderboard</p>
               <button
                 onClick={() => navigate('/register')}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-indigo-600 shadow-lg transition hover:bg-slate-50"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-blue-600 shadow-lg transition hover:bg-slate-50"
               >
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
@@ -736,7 +857,7 @@ export default function Landing() {
             transition={{ duration: 0.5 }}
             className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"
           >
-            <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-white" />
@@ -752,7 +873,9 @@ export default function Landing() {
                     Answer all questions then hit Submit to see your score.
                   </p>
                   <div className="space-y-4">
-                    {demoQuestions.map((item, i) => (
+                    {demoQuestions.map((item, i) => {
+                      const subMeta = SUBJECT_META[item.subject];
+                      return (
                       <motion.div
                         key={i}
                         initial={{ opacity: 0, x: -10 }}
@@ -764,8 +887,8 @@ export default function Landing() {
                         <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-white">
                           {i + 1}. {item.q}
                         </p>
-                        <span className="mb-2 inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
-                          {SUBJECT_META[item.subject]?.icon} {SUBJECT_META[item.subject]?.label}
+                        <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                          {subMeta && <subMeta.icon className="h-3.5 w-3.5" aria-hidden="true" />} {subMeta?.label}
                         </span>
                         <div className="space-y-2">
                           {item.options.map((opt, j) => (
@@ -778,13 +901,13 @@ export default function Landing() {
                               }}
                               className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition ${
                                 demoAnswers[i] === j
-                                  ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-500/15'
-                                  : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 dark:border-slate-700 dark:hover:border-indigo-600 dark:hover:bg-indigo-500/10'
+                                  ? 'border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-500/15'
+                                  : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-600 dark:hover:bg-blue-500/10'
                               }`}
                             >
                               <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition ${
                                 demoAnswers[i] === j
-                                  ? 'border-indigo-500 bg-indigo-500'
+                                  ? 'border-blue-500 bg-blue-500'
                                   : 'border-slate-300 dark:border-slate-600'
                               }`}>
                                 {demoAnswers[i] === j && (
@@ -796,7 +919,8 @@ export default function Landing() {
                           ))}
                         </div>
                       </motion.div>
-                    ))}
+                    );
+                  })}
                   </div>
                   <div className="mt-6 text-center">
                     <button
@@ -804,7 +928,7 @@ export default function Landing() {
                         if (demoAnswers.every((a) => a !== null)) setDemoSubmitted(true);
                       }}
                       disabled={demoAnswers.some((a) => a === null)}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-600 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Check className="h-4 w-4" />
                       Submit Answers
@@ -885,7 +1009,7 @@ export default function Landing() {
                     </button>
                     <button
                       onClick={() => navigate(user ? '/dashboard' : '/register')}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700"
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-600 hover:to-blue-700"
                     >
                       {user ? 'Go to Dashboard' : 'Create Account for Full Access'}
                       <ArrowRight className="h-4 w-4" />
@@ -930,7 +1054,7 @@ export default function Landing() {
                 transition={{ delay: i * 0.1 }}
                 className="relative text-center"
               >
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100 text-2xl font-bold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-2xl font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                   <motion.span
                     animate={{ rotate: [-8, 8, -8] }}
                     transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 }}
@@ -956,7 +1080,7 @@ export default function Landing() {
       </section>
 
       {/* Stats */}
-      <section className="border-t border-slate-200 bg-gradient-to-br from-indigo-500 to-indigo-700 py-16 dark:from-indigo-600 dark:to-indigo-900">
+      <section className="border-t border-slate-200 bg-gradient-to-br from-blue-500 to-blue-700 py-16 dark:from-blue-600 dark:to-blue-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-8 text-center sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -977,19 +1101,90 @@ export default function Landing() {
                   transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.3 }}
                   className="inline-block"
                 >
-                  <stat.icon className="mx-auto mb-3 h-8 w-8 text-indigo-200" />
+                  <stat.icon className="mx-auto mb-3 h-8 w-8 text-blue-200" />
                 </motion.div>
                 <p className="text-3xl font-bold text-white">{stat.value}</p>
-                <p className="text-sm text-indigo-200">{stat.label}</p>
+                <p className="text-sm text-blue-200">{stat.label}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Testimonials */}
+      <section id="testimonials" className="border-t border-slate-200 bg-slate-50/50 py-20 dark:border-slate-800 dark:bg-slate-950/50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="mx-auto mb-14 max-w-2xl text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-1.5 text-xs font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
+              <Quote className="h-3.5 w-3.5" />
+              Student Stories
+            </span>
+            <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
+              What Students Say
+            </h2>
+            <p className="mt-3 text-slate-500 dark:text-slate-400">
+              Real experiences from students preparing for their exams with Passco.
+            </p>
+          </motion.div>
+
+          {testimonials.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-3">
+              {testimonials.slice(0, 3).map((t, i) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.05 }}
+                  className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="mb-3 flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <Star
+                        key={s}
+                        className={`h-4 w-4 ${s < (t.rating || 5) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200 dark:fill-slate-700 dark:text-slate-700'}`}
+                      />
+                    ))}
+                  </div>
+                  <p className="flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">"{t.quote}"</p>
+                  <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                    {isCustomAvatar(t.avatar_url) ? (
+                      <img src={resolveUploadUrl(t.avatar_url)} alt={t.name} className="h-10 w-10 rounded-full object-cover ring-2 ring-rose-200 dark:ring-rose-800" />
+                    ) : (
+                      <DefaultAvatar gender="" size={40} className="rounded-full ring-2 ring-rose-200 dark:ring-rose-800" />
+                    )}
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{t.name}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        {[t.role, t.school].filter(Boolean).join(' · ') || 'Passco Student'}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900"
+            >
+              <Quote className="mx-auto mb-3 h-8 w-8 text-slate-300 dark:text-slate-700" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">Student testimonials are on their way. Check back soon!</p>
+            </motion.div>
+          )}
+        </div>
+      </section>
+
       {/* Subscription Plans */}
       {!user && (
-        <section className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+        <section id="plans" className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1001,39 +1196,64 @@ export default function Landing() {
                 Choose a Plan That Fits Your Goals
               </h2>
               <p className="mx-auto mt-4 max-w-lg text-slate-500 dark:text-slate-400">
-                Get full access for just GH₵10 every 14 days — no long-term commitments.
+                Get full access for just GH₵15 every 14 days — no long-term commitments.
               </p>
             </motion.div>
 
-            <div className="mx-auto mt-12 max-w-md">
-              {landingPlans.map((plan, i) => (
-                <motion.div
+            <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2">
+              {/* Free Trial */}
+              <div className="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+                <div className="p-6">
+                  <div className="mb-4 inline-flex rounded-xl bg-slate-200 p-2.5 dark:bg-slate-700">
+                    <Users className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Free Trial</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Start exploring Passco at no cost.</p>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white">GH₵0</span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">/ 3 days</span>
+                  </div>
+                  <ul className="mt-4 space-y-2">
+                    {[
+                      '3-day full access trial',
+                      'Practice across all 8 subjects',
+                      'Basic progress tracking',
+                      'Public leaderboard',
+                    ].map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-auto p-6 pt-0">
+                  <Link
+                    to="/register"
+                    className="block w-full rounded-xl border border-slate-300 py-2.5 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Get Started Free
+                  </Link>
+                </div>
+              </div>
+
+              {/* Premium plan from landingPlans */}
+              {landingPlans.map((plan) => (
+                <div
                   key={plan.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className={`relative rounded-2xl border p-6 ${plan.border} ${plan.bg} ${
-                    plan.popular ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''
-                  }`}
+                  className={`relative flex flex-col rounded-2xl border p-6 ${plan.border} ${plan.bg} ring-2 ring-amber-400 dark:ring-amber-500`}
                 >
-                  {plan.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-bold text-white">
-                      MOST POPULAR
-                    </span>
-                  )}
-                  <div className={`mb-4 inline-flex rounded-xl p-2.5 bg-gradient-to-br ${plan.color} text-white`}>
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1 text-xs font-bold text-white">
+                    MOST POPULAR
+                  </span>
+                  <div className={`mb-4 inline-flex self-start rounded-xl bg-gradient-to-br p-2.5 ${plan.color} text-white`}>
                     <plan.icon className="h-5 w-5" />
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">{plan.name}</h3>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{plan.description}</p>
                   <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-slate-900 dark:text-white">
-                      {plan.price === 0 ? 'Free' : `GH₵${plan.price}`}
-                    </span>
-                    {plan.price > 0 && (
-                      <span className="text-sm text-slate-500 dark:text-slate-400">{plan.period}</span>
-                    )}
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white">GH₵{plan.price}</span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">{plan.period}</span>
                   </div>
                   <ul className="mt-4 space-y-2">
                     {plan.features.map((f) => (
@@ -1045,20 +1265,99 @@ export default function Landing() {
                   </ul>
                   <Link
                     to="/register"
-                    className={`mt-6 block w-full rounded-xl py-2.5 text-center text-sm font-semibold transition ${
-                      plan.popular
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-orange-600'
-                        : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
-                    }`}
+                    className="mt-6 block w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-center text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:from-amber-600 hover:to-orange-600"
                   >
                     Get Started
                   </Link>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
         </section>
       )}
+
+      {/* FAQ */}
+      <section id="faq" className="border-t border-slate-200 bg-slate-50/50 py-20 dark:border-slate-800 dark:bg-slate-950/50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="mx-auto mb-14 max-w-2xl text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              FAQ
+            </span>
+            <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-3 text-slate-500 dark:text-slate-400">
+              Quick answers about Passco, subscriptions and assessments.
+            </p>
+          </motion.div>
+          <FAQSection />
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 to-indigo-800 py-20 dark:from-blue-800 dark:to-indigo-950">
+        <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 h-72 w-72 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Rocket className="mx-auto mb-4 h-12 w-12 text-blue-200" />
+            <h2 className="text-3xl font-bold text-white sm:text-4xl">
+              Ready to Prepare Smarter?
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-blue-100">
+              Join students across Ghana practicing daily with Passco. Practice a subject now and see your scores improve.
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <Link
+                to={user ? '/assessment/setup' : '/register'}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-blue-700 shadow-lg transition hover:bg-slate-50"
+              >
+                Start Practicing
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              {user ? (
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/how-it-works"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/15"
+                >
+                  See How It Works
+                </Link>
+              )}
+            </div>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-blue-100">
+              <span className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-teal-300" />
+                Secure payments
+              </span>
+              <span className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-300" />
+                Instant results
+              </span>
+              <span className="flex items-center gap-2">
+                <HeartHandshake className="h-4 w-4 text-rose-300" />
+                Built for JHS students
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }

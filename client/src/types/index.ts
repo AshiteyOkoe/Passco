@@ -49,6 +49,16 @@ export interface User {
   dateOfBirth?: string | null;
   classLevel?: string;
   createdAt?: string;
+  phone?: string;
+  username?: string;
+  jobTitle?: string;
+  department?: string;
+  lastLogin?: string | null;
+  timezone?: string;
+  language?: string;
+  preferences?: Record<string, unknown>;
+  isActive?: boolean;
+  hasPassword?: boolean;
 }
 
 export interface AuthResponse {
@@ -168,6 +178,47 @@ export interface AdminStats {
   }>;
 }
 
+export interface AdminCommandCenter {
+  kpis: {
+    students: { value: number; delta: number };
+    results: { value: number; delta: number };
+    questions: { value: number; delta: number };
+    documents: { value: number; delta: number };
+    pendingQuestions: number;
+    activeSubscriptions: number;
+    revenueThisMonth: number;
+  };
+  activity: Array<{ date: string; attempts: number; activeStudents: number }>;
+  assessment: {
+    total: number;
+    avgScore: number;
+    passRate: number;
+    completionRate: number;
+    avgTimeMin: number;
+    series: Array<{ date: string; count: number }>;
+  };
+  subjects: Array<{ subject: string; students: number; attempts: number; avgScore: number; passRate: number }>;
+  questionBank: Array<{ subject: string; count: number }>;
+  pipeline: {
+    total: number;
+    processing: number;
+    failed: number;
+    ready: number;
+    queued: number;
+    items: Array<{ id: string; name: string; uploadedBy: string; status: string; questionsGenerated: number; createdAt: string }>;
+  };
+  subscriptionOverview: {
+    active: number;
+    expired: number;
+    cancelled: number;
+    newThisMonth: number;
+    revenueThisMonth: number;
+    revenueSeries: Array<{ month: string; total: number }>;
+  };
+  pendingActions: Array<{ id: string; label: string; count: number; to: string; severity: 'warning' | 'danger' | 'info' }>;
+  recentActivity: Array<{ id: string; kind: string; actor: string; text: string; meta: string; time: string }>;
+}
+
 export interface Subscription {
   id: string;
   user_id: string;
@@ -209,11 +260,15 @@ export interface AIUsageStatus {
 export interface AIGeneratedQuestion {
   question: string;
   options: string[];
-  correctAnswer: string;
+  correctAnswer: string | boolean;
   explanation: string;
   difficulty: string;
   subject: string;
   type: 'multiple-choice' | 'true-false';
+  topic?: string;
+  classLevel?: string;
+  assessmentType?: string;
+  fingerprint?: string;
 }
 
 export interface Announcement {
@@ -233,5 +288,135 @@ export interface PlanLimits {
   quizzes: boolean;
   mocks: boolean;
   examinations: boolean;
+  documentUploads: boolean;
   price: number;
+}
+
+export interface MySubscriptionResponse {
+  subscription: Subscription;
+  aiUsage: { used: number; limit: number; month: string };
+  planLimits: PlanLimits;
+  effectivePlan: 'free' | 'basic' | 'premium';
+  isTrial: boolean;
+  trialDays: number;
+  trialDaysLeft: number;
+}
+
+export interface Testimonial {
+  id: string;
+  name: string;
+  role: string;
+  school: string;
+  quote: string;
+  rating: number;
+  avatar_url: string;
+  is_approved: boolean;
+  created_at: string;
+}
+
+export interface InProgressAttempt {
+  id: string;
+  quizId: string;
+  title: string;
+  difficulty: string;
+  timeRemaining: number;
+  currentIndex: number;
+  answersCount: number;
+  updatedAt: string;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  account_type: string;
+  subject: string;
+  category: string;
+  message: string;
+  attachment?: string | null;
+  attachment_name?: string;
+  user_id?: string | null;
+  status: 'new' | 'in_progress' | 'closed';
+  ip_address?: string;
+  created_at: string;
+}
+
+export interface QuestionReport {
+  id: string;
+  question_id: string;
+  question_text: string;
+  subject: string;
+  class_level: string;
+  assessment_type: string;
+  assessment_key: string;
+  user_id?: string | null;
+  userName?: string;
+  userEmail?: string;
+  reason: string;
+  note: string;
+  status: 'new' | 'in_progress' | 'closed';
+  ip_address?: string;
+  created_at: string;
+}
+
+// ---- Academic Report Card ----
+export interface ReportGradeRow {
+  grade: string;
+  min: number;
+  max: number;
+  remark: string;
+}
+
+export interface ReportBranding {
+  reportTitle: string;
+  subtitle: string;
+  schoolName: string;
+  directorName: string;
+  directorTitle: string;
+  footerNote: string;
+}
+
+export interface ReportThresholds {
+  pass: number;
+  improve: number;
+  strength: number;
+}
+
+export interface ReportSettings {
+  gradeConfig: ReportGradeRow[];
+  thresholds: ReportThresholds;
+  branding: ReportBranding;
+}
+
+export interface ReportCardRecord {
+  id: string;
+  userId: string;
+  reportNumber: string;
+  verificationCode: string;
+  academicYear: string;
+  term: string;
+  periodLabel: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  overallScore: number;
+  overallGrade: string;
+  overallRemark: string;
+  status: 'current' | 'superseded' | 'void';
+  dataSnapshot: Record<string, unknown>;
+  profilePhotoSnapshotUrl: string;
+  generatedAt: string;
+  generatedBy: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface ReportVerifyResponse {
+  found: boolean;
+  reportNumber?: string;
+  academicYear?: string;
+  term?: string;
+  overallGrade?: string;
+  overallScore?: number;
+  generatedAt?: string;
+  studentNameMasked?: string;
 }

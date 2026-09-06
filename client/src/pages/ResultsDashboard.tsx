@@ -8,7 +8,7 @@ import {
 import {
   BarChart3, TrendingUp, Target, BookOpen, ArrowRight, Flame,
   Calendar, Clock, Brain, Zap, Trophy, Star, AlertTriangle,
-  CheckCircle2, Activity, ArrowLeft,
+  CheckCircle2, Activity, ArrowLeft, FileText,
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useAuth } from '../context/AuthContext';
@@ -237,7 +237,7 @@ export default function ResultsDashboard() {
       return {
         subject,
         label: meta?.label || subject,
-        icon: meta?.icon || '📝',
+        icon: meta?.icon || BookOpen,
         color: meta?.color || 'slate',
         avgScore,
         latestScore,
@@ -275,7 +275,7 @@ export default function ResultsDashboard() {
         score: r.percentage,
         movingAvg,
         date: new Date(r.timestamp || r.completedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        label: `${SUBJECT_META[r.subject as SubjectId]?.icon || ''} ${r.assessmentType}`,
+        label: `${SUBJECT_META[r.subject as SubjectId]?.label || r.subject} — ${r.assessmentType}`,
         grade: getGradeLabel(r.percentage),
       };
     });
@@ -317,7 +317,7 @@ export default function ResultsDashboard() {
             <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Complete some assessments to see your results dashboard.</p>
             <Link
               to="/assessment/setup"
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
               Take an Assessment <ArrowRight className="h-4 w-4" />
             </Link>
@@ -348,13 +348,22 @@ export default function ResultsDashboard() {
                 </p>
               </div>
             </div>
-            <Link
-              to="/performance"
-              className="hidden items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 sm:inline-flex"
-            >
-              <Activity className="h-4 w-4" />
-              Analytics
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/reports"
+                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Report Card</span>
+              </Link>
+              <Link
+                to="/performance"
+                className="hidden items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 sm:inline-flex"
+              >
+                <Activity className="h-4 w-4" />
+                Analytics
+              </Link>
+            </div>
           </div>
         </motion.div>
 
@@ -410,7 +419,7 @@ export default function ResultsDashboard() {
           animate="visible"
         >
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-            <Calendar className="h-4 w-4 text-indigo-500" /> Score Heatmap — Last 90 Days
+            <Calendar className="h-4 w-4 text-blue-500" /> Score Heatmap — Last 90 Days
           </h2>
           <div className="mb-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-rose-400" /> 0-39%</span>
@@ -514,7 +523,7 @@ export default function ResultsDashboard() {
             </h2>
             <div className="flex flex-col items-center">
               <motion.div
-                className="flex h-32 w-32 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-indigo-500/20"
+                className="flex h-32 w-32 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 shadow-lg shadow-blue-500/20"
                 initial={{ scale: 0, rotate: -90 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
@@ -656,7 +665,7 @@ export default function ResultsDashboard() {
           animate="visible"
         >
           <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-            <BookOpen className="h-4 w-4 text-indigo-500" /> Subject Mastery Timeline
+            <BookOpen className="h-4 w-4 text-blue-500" /> Subject Mastery Timeline
           </h2>
           {subjectMastery.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -670,7 +679,7 @@ export default function ResultsDashboard() {
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">{sub.icon}</span>
+                      <sub.icon className="h-5 w-5" aria-hidden="true" />
                       <div>
                         <p className="text-sm font-bold text-slate-800 dark:text-white">{sub.label}</p>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400">{sub.attempts} attempt{sub.attempts !== 1 ? 's' : ''}</p>
@@ -752,7 +761,7 @@ export default function ResultsDashboard() {
           animate="visible"
         >
           <Link to="/assessment/setup" className="group block">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-6 shadow-xl transition-all hover:shadow-2xl hover:scale-[1.01]">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 p-6 shadow-xl transition-all hover:shadow-2xl hover:scale-[1.01]">
               <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-white">Keep Improving!</h2>

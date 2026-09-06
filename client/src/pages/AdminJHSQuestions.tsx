@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { jhs1Beginner, jhs1Intermediate, jhs1Expert } from '../data/jhs1Questions';
-import { jhs2Beginner, jhs2Intermediate, jhs2Expert } from '../data/jhs2Questions';
-import { jhs3Beginner, jhs3Intermediate, jhs3Expert } from '../data/jhs3Questions';
-import { CLASS_META, SUBJECT_META, type ClassLevel, type BankQuestion } from '../data/questionBank';
+import { jhs1Questions } from '../data/jhs1Questions';
+import { jhs2Questions } from '../data/jhs2Questions';
+import { jhs3Questions } from '../data/jhs3Questions';
+import { CLASS_META, SUBJECT_META, normalizeSubject, type ClassLevel, type BankQuestion } from '../data/questionBank';
 import { getApprovedBankQuestions } from '../services/api';
 import {
   Search, BookOpen, ChevronLeft, ChevronRight,
@@ -15,32 +15,19 @@ import { cn } from '../utils';
 
 interface QuestionWithMeta extends BankQuestion {
   classLevel: ClassLevel;
-  difficulty: string;
   source?: 'static' | 'bank';
 }
 
 const allStaticQuestions: QuestionWithMeta[] = [
-  ...jhs1Beginner.map((q) => ({ ...q, classLevel: 'jhs1' as const, difficulty: 'beginner' })),
-  ...jhs1Intermediate.map((q) => ({ ...q, classLevel: 'jhs1' as const, difficulty: 'intermediate' })),
-  ...jhs1Expert.map((q) => ({ ...q, classLevel: 'jhs1' as const, difficulty: 'expert' })),
-  ...jhs2Beginner.map((q) => ({ ...q, classLevel: 'jhs2' as const, difficulty: 'beginner' })),
-  ...jhs2Intermediate.map((q) => ({ ...q, classLevel: 'jhs2' as const, difficulty: 'intermediate' })),
-  ...jhs2Expert.map((q) => ({ ...q, classLevel: 'jhs2' as const, difficulty: 'expert' })),
-  ...jhs3Beginner.map((q) => ({ ...q, classLevel: 'jhs3' as const, difficulty: 'beginner' })),
-  ...jhs3Intermediate.map((q) => ({ ...q, classLevel: 'jhs3' as const, difficulty: 'intermediate' })),
-  ...jhs3Expert.map((q) => ({ ...q, classLevel: 'jhs3' as const, difficulty: 'expert' })),
+  ...jhs1Questions.map((q) => ({ ...q, classLevel: 'jhs1' as const })),
+  ...jhs2Questions.map((q) => ({ ...q, classLevel: 'jhs2' as const })),
+  ...jhs3Questions.map((q) => ({ ...q, classLevel: 'jhs3' as const })),
 ];
 
 const CLASS_COLORS: Record<ClassLevel, string> = {
   jhs1: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
   jhs2: 'bg-violet-100 text-violet-700 dark:bg-violet-500/10 dark:text-violet-400',
   jhs3: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400',
-};
-
-const DIFFICULTY_COLORS: Record<string, string> = {
-  beginner: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
-  intermediate: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
-  expert: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400',
 };
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -72,7 +59,6 @@ const SUBJECT_MAP: Record<string, string> = {
 export default function AdminJHSQuestions() {
   const [classFilter, setClassFilter] = useState<'all' | ClassLevel>('all');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
-  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'multiple-choice' | 'true-false'>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -91,7 +77,6 @@ export default function AdminJHSQuestions() {
           subject: SUBJECT_MAP[q.subject] || q.subject || 'english',
           explanation: q.explanation,
           classLevel: CLASS_MAP[q.classLevel] || 'jhs2',
-          difficulty: q.difficulty || 'intermediate',
           source: 'bank' as const,
         }));
         setBackendQuestions(mapped);
@@ -108,13 +93,12 @@ export default function AdminJHSQuestions() {
   const filtered = useMemo(() => {
     return allQuestions.filter((q) => {
       if (classFilter !== 'all' && q.classLevel !== classFilter) return false;
-      if (subjectFilter !== 'all' && q.subject.toLowerCase() !== subjectFilter.toLowerCase()) return false;
-      if (difficultyFilter !== 'all' && q.difficulty !== difficultyFilter) return false;
+      if (subjectFilter !== 'all' && normalizeSubject(q.subject) !== subjectFilter) return false;
       if (typeFilter !== 'all' && q.type !== typeFilter) return false;
       if (search && !q.question.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [allQuestions, classFilter, subjectFilter, difficultyFilter, typeFilter, search]);
+  }, [allQuestions, classFilter, subjectFilter, typeFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
@@ -126,7 +110,8 @@ export default function AdminJHSQuestions() {
   const subjectCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const q of filtered) {
-      counts[q.subject] = (counts[q.subject] || 0) + 1;
+      const key = normalizeSubject(q.subject) || q.subject;
+      counts[key] = (counts[key] || 0) + 1;
     }
     return counts;
   }, [filtered]);
@@ -235,39 +220,16 @@ export default function AdminJHSQuestions() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => { setSubjectFilter(key); setPage(1); }}
                   className={cn(
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition',
+                    'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition',
                     subjectFilter === key
                       ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
                   )}
                 >
-                  {meta.icon} {meta.label}
+                  <meta.icon className="h-4 w-4" aria-hidden="true" /> {meta.label}
                 </motion.button>
               );
             })}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="w-16 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Level</span>
-            {(['all', 'beginner', 'intermediate', 'expert'] as const).map((f) => (
-              <motion.button
-                key={f}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => { setDifficultyFilter(f); setPage(1); }}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                  difficultyFilter === f
-                    ? f === 'beginner' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                      : f === 'intermediate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
-                        : f === 'expert' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
-                          : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
-                )}
-              >
-                {f === 'all' ? 'All Levels' : f.charAt(0).toUpperCase() + f.slice(1)}
-              </motion.button>
-            ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -327,8 +289,8 @@ export default function AdminJHSQuestions() {
               const meta = SUBJECT_META[key];
               const colorClass = SUBJECT_COLORS[meta.color] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
               return (
-                <span key={key} className={cn('rounded-md px-2 py-0.5 text-[10px] font-semibold', colorClass)}>
-                  {meta.icon} {count}
+                <span key={key} className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold', colorClass)}>
+                  <meta.icon className="h-4 w-4" aria-hidden="true" /> {count}
                 </span>
               );
             })}
@@ -339,11 +301,11 @@ export default function AdminJHSQuestions() {
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
           {paginated.map((q, i) => {
-            const subjectMeta = SUBJECT_META[q.subject as keyof typeof SUBJECT_META];
+            const subjectMeta = normalizeSubject(q.subject) ? SUBJECT_META[normalizeSubject(q.subject)!] : undefined;
             const subjectColor = subjectMeta ? SUBJECT_COLORS[subjectMeta.color] : '';
             return (
               <motion.div
-                key={`${q.classLevel}-${q.difficulty}-${q.id}`}
+                key={`${q.classLevel}-${q.id}`}
                 layout
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -359,13 +321,10 @@ export default function AdminJHSQuestions() {
                     {CLASS_META[q.classLevel].label}
                   </span>
                   {subjectMeta && (
-                    <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-semibold', subjectColor)}>
-                      {subjectMeta.icon} {subjectMeta.label}
+                    <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold', subjectColor)}>
+                      <subjectMeta.icon className="h-4 w-4" aria-hidden="true" /> {subjectMeta.label}
                     </span>
                   )}
-                  <span className={cn('rounded-md px-2 py-0.5 text-[11px] font-semibold', DIFFICULTY_COLORS[q.difficulty] || '')}>
-                    {q.difficulty.charAt(0).toUpperCase() + q.difficulty.slice(1)}
-                  </span>
                   <span className={cn(
                     'rounded-md px-2 py-0.5 text-[11px] font-semibold',
                     q.type === 'multiple-choice'

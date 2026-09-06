@@ -1,7 +1,7 @@
 import type { BankQuestion } from './questionBank';
 
-export const jhs3Beginner: BankQuestion[] = [
-  { id: 'jhs3-b-m1', question: 'Solve: 4x - 7 = 21', type: 'multiple-choice', options: ['x = 5', 'x = 7', 'x = 9', 'x = 3'], correctAnswer: 'x = 7', subject: 'Mathematics', explanation: '4x = 28 → x = 7' },
+export const jhs3Questions: BankQuestion[] = [
+{ id: 'jhs3-b-m1', question: 'Solve: 4x - 7 = 21', type: 'multiple-choice', options: ['x = 5', 'x = 7', 'x = 9', 'x = 3'], correctAnswer: 'x = 7', subject: 'Mathematics', explanation: '4x = 28 → x = 7' },
   { id: 'jhs3-b-m2', question: 'Area of circle r=7cm? (π=22/7)', type: 'multiple-choice', options: ['154 cm²', '144 cm²', '44 cm²', '49 cm²'], correctAnswer: '154 cm²', subject: 'Mathematics', explanation: '(22/7)×49 = 154' },
   { id: 'jhs3-b-m3', question: '3/8 as a decimal?', type: 'multiple-choice', options: ['0.38', '0.375', '0.83', '0.75'], correctAnswer: '0.375', subject: 'Mathematics', explanation: '3 ÷ 8 = 0.375' },
   { id: 'jhs3-b-m4', question: 'Three consecutive even numbers sum to 48. Middle number?', type: 'multiple-choice', options: ['14', '16', '18', '12'], correctAnswer: '16', subject: 'Mathematics', explanation: '14+16+18 = 48' },
@@ -81,10 +81,7 @@ export const jhs3Beginner: BankQuestion[] = [
   { id: 'jhs3-b-t8', question: 'An entrepreneur is someone who...', type: 'multiple-choice', options: ['Works only for the government', 'Starts and runs a business', 'Teaches at school', 'Buys things only'], correctAnswer: 'Starts and runs a business', subject: 'Career Technology', explanation: 'Entrepreneurs create and manage businesses.' },
   { id: 'jhs3-b-t9', question: 'Bricklaying requires mixing cement, sand, and water.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'Mortar for bricklaying is made from cement, sand, and water.' },
   { id: 'jhs3-b-t10', question: 'A blueprint in technical drawing is...', type: 'multiple-choice', options: ['A type of paint', 'A detailed technical drawing or plan', 'A photograph', 'A sculpture'], correctAnswer: 'A detailed technical drawing or plan', subject: 'Career Technology', explanation: 'Blueprints show detailed plans for construction or manufacturing.' },
-];
-
-export const jhs3Intermediate: BankQuestion[] = [
-  { id: 'jhs3-i-m1', question: 'Solve: 3x - 5 > 7', type: 'multiple-choice', options: ['x > 4', 'x > 2', 'x < 4', 'x > 12'], correctAnswer: 'x > 4', subject: 'Mathematics', explanation: '3x > 12 → x > 4' },
+{ id: 'jhs3-i-m1', question: 'Solve: 3x - 5 > 7', type: 'multiple-choice', options: ['x > 4', 'x > 2', 'x < 4', 'x > 12'], correctAnswer: 'x > 4', subject: 'Mathematics', explanation: '3x > 12 → x > 4' },
   { id: 'jhs3-i-m2', question: 'Determinant of |2 3; 4 5|?', type: 'multiple-choice', options: ['22', '-2', '2', '7'], correctAnswer: '-2', subject: 'Mathematics', explanation: '(2×5)-(3×4) = -2' },
   { id: 'jhs3-i-m3', question: 'log₁₀(x) + log₁₀(3) = log₁₀(27)', type: 'multiple-choice', options: ['x = 3', 'x = 6', 'x = 9', 'x = 12'], correctAnswer: 'x = 9', subject: 'Mathematics', explanation: 'log(3x) = log(27) → 3x = 27' },
   { id: 'jhs3-i-m4', question: 'Man walks 5km on bearing 045°. How far north?', type: 'multiple-choice', options: ['2.5km', '3.5km', '5cos45° km', '5sin45° km'], correctAnswer: '5cos45° km', subject: 'Mathematics', explanation: 'North = 5cos45°' },
@@ -164,10 +161,7 @@ export const jhs3Intermediate: BankQuestion[] = [
   { id: 'jhs3-i-t8', question: 'An apprenticeship involves learning a trade through...', type: 'multiple-choice', options: ['Only reading textbooks', 'Practical training under a skilled worker', 'Watching TV', 'Avoiding practical work'], correctAnswer: 'Practical training under a skilled worker', subject: 'Career Technology', explanation: 'Apprenticeships combine hands-on learning with mentorship.' },
   { id: 'jhs3-i-t9', question: 'In technical drawing, a "cross-section" shows the interior of an object.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'A cross-section reveals internal features of an object.' },
   { id: 'jhs3-i-t10', question: 'Which type of soil is best for building construction foundations?', type: 'multiple-choice', options: ['Sandy soil', 'Clay soil', 'Rocky/compacted soil', 'Loose topsoil'], correctAnswer: 'Rocky/compacted soil', subject: 'Career Technology', explanation: 'Hard, compacted soil provides strong foundation support.' },
-];
-
-export const jhs3Expert: BankQuestion[] = [
-  { id: 'jhs3-e-m1', question: 'Solve simultaneously: 2x + y = 7 and x - y = 2', type: 'multiple-choice', options: ['x=3, y=1', 'x=2, y=3', 'x=4, y=-1', 'x=1, y=5'], correctAnswer: 'x=3, y=1', subject: 'Mathematics', explanation: 'Adding: 3x = 9, x=3, y=1.' },
+{ id: 'jhs3-e-m1', question: 'Solve simultaneously: 2x + y = 7 and x - y = 2', type: 'multiple-choice', options: ['x=3, y=1', 'x=2, y=3', 'x=4, y=-1', 'x=1, y=5'], correctAnswer: 'x=3, y=1', subject: 'Mathematics', explanation: 'Adding: 3x = 9, x=3, y=1.' },
   { id: 'jhs3-e-m2', question: 'Solve: x² - 4x - 5 = 0', type: 'multiple-choice', options: ['x=5, x=-1', 'x=-5, x=1', 'x=5, x=1', 'x=-5, x=-1'], correctAnswer: 'x=5, x=-1', subject: 'Mathematics', explanation: '(x-5)(x+1) = 0' },
   { id: 'jhs3-e-m3', question: 'The nth term of a sequence is 3n + 2. What is the 5th term?', type: 'multiple-choice', options: ['15', '17', '13', '20'], correctAnswer: '17', subject: 'Mathematics', explanation: '3(5)+2 = 17' },
   { id: 'jhs3-e-m4', question: 'Matrix multiplication: [1 2; 3 4] × [2; 1] = ?', type: 'multiple-choice', options: ['[4; 10]', '[2; 4]', '[3; 7]', '[5; 11]'], correctAnswer: '[4; 10]', subject: 'Mathematics', explanation: '1×2+2×1=4, 3×2+4×1=10.' },

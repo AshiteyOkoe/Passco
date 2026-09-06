@@ -1,17 +1,29 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { getAdminDashboard, getStudents } from '../services/api';
+import { motion } from 'framer-motion';
+import { getAdminCommandCenter, getStudents } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  Users, FileText, Library, BarChart3, GraduationCap, CheckCircle2,
-  XCircle, Clock, Search, Building2,
+  Users, FileText, Library, CheckCircle2, XCircle, Clock, Search, Building2,
+  GraduationCap, BookOpen, Wallet, CreditCard, HelpCircle,
 } from 'lucide-react';
 import { cn } from '../utils';
-import { AdminPanel } from '../components/icons/Illustrations';
-import { bounceIn, fadeUp, slideUp, stagger } from '../utils/animations';
+import { fadeUp, slideUp, stagger } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
-import type { AdminStats } from '../types';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
+import WelcomeStrip from '../components/admin/WelcomeStrip';
+import KpiCard from '../components/admin/KpiCard';
+import ActivityChart from '../components/admin/ActivityChart';
+import ExamPerformanceCard from '../components/admin/ExamPerformanceCard';
+import SubjectPerformanceTable from '../components/admin/SubjectPerformanceTable';
+import PendingActions from '../components/admin/PendingActions';
+import QuestionBankCard from '../components/admin/QuestionBankCard';
+import ContentPipelineCard from '../components/admin/ContentPipelineCard';
+import SubscriptionsOverviewCard from '../components/admin/SubscriptionsOverviewCard';
+import RecentActivityFeed from '../components/admin/RecentActivityFeed';
+import QuickActions from '../components/admin/QuickActions';
+import type { AdminCommandCenter } from '../types';
 
 interface Student {
   id: string;
@@ -27,7 +39,7 @@ interface Student {
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [data, setData] = useState<AdminStats | null>(null);
+  const [data, setData] = useState<AdminCommandCenter | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -35,7 +47,7 @@ export default function AdminDashboard() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
-    Promise.all([getAdminDashboard(), getStudents()])
+    Promise.all([getAdminCommandCenter(30), getStudents()])
       .then(([d, s]) => {
         setData(d);
         setStudents(s.students);
@@ -68,10 +80,12 @@ export default function AdminDashboard() {
     else { setSortField(field); setSortDir('asc'); }
   };
 
+  const { page, totalPages, pageItems, goTo } = usePagination(filteredStudents, 8);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <AnimatedSpinner label="Loading dashboard..." />
+        <AnimatedSpinner label="Loading command center..." />
       </div>
     );
   }
@@ -85,22 +99,11 @@ export default function AdminDashboard() {
     );
   }
 
-  const { stats } = data;
+  const { kpis, assessment, subjects, questionBank, pipeline, subscriptionOverview, pendingActions, recentActivity } = data;
 
   return (
     <div className="p-4 sm:p-6">
-      <motion.div
-        className="mb-6"
-        variants={fadeUp}
-        initial="hidden"
-        animate="visible"
-      >
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Dashboard</h1>
-          <AdminPanel className="hidden sm:block" size="sm" />
-        </div>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Welcome back. Here's your platform overview.</p>
-      </motion.div>
+      <WelcomeStrip name={user?.name} processing={pipeline.processing + pipeline.queued} failed={pipeline.failed} />
 
       {user?.dateOfBirth && (() => {
         const today = new Date();
@@ -126,21 +129,60 @@ export default function AdminDashboard() {
       })()}
 
       <motion.div
-        className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+        className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
         variants={stagger}
         initial="hidden"
         animate="visible"
       >
-        <StatCard icon={Users} value={stats.totalStudents} label="Students" color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" to="/admin/student-performance" />
-        <StatCard icon={GraduationCap} value={stats.totalQuizzes} label="Quizzes" color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" to="/admin/create-quiz" />
-        <StatCard icon={Library} value={stats.totalQuestions} label="Questions" color="text-violet-500" bg="bg-violet-50 dark:bg-violet-500/10" to="/admin/jhs-questions" />
-        <StatCard icon={FileText} value={stats.totalDocuments} label="Documents" color="text-blue-500" bg="bg-blue-50 dark:bg-blue-500/10" to="/admin/files" />
-        <StatCard icon={Clock} value={stats.pendingQuestions} label="Pending Review" color="text-amber-500" bg="bg-amber-50 dark:bg-amber-500/10" to="/admin/jhs-questions" />
-        <StatCard icon={BarChart3} value={stats.totalResults} label="Results" color="text-rose-500" bg="bg-rose-50 dark:bg-rose-500/10" to="/admin/analytics" />
+        <KpiCard icon={Users} value={kpis.students.value} label="Students" delta={kpis.students.delta} caption="this month" color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" to="/admin/analytics" />
+        <KpiCard icon={BookOpen} value={kpis.results.value} label="Exams Taken" delta={kpis.results.delta} caption="vs last month" color="text-rose-500" bg="bg-rose-50 dark:bg-rose-500/10" to="/admin/analytics" />
+        <KpiCard icon={Library} value={kpis.questions.value} label="Questions" delta={kpis.questions.delta} caption="this week" color="text-violet-500" bg="bg-violet-50 dark:bg-violet-500/10" to="/admin/jhs-questions" />
+        <KpiCard icon={FileText} value={kpis.documents.value} label="Resources" delta={kpis.documents.delta} caption="this month" color="text-blue-500" bg="bg-blue-50 dark:bg-blue-500/10" to="/admin/files" />
+        <KpiCard icon={HelpCircle} value={kpis.pendingQuestions} label="Pending Review" caption="awaiting approval" color="text-amber-500" bg="bg-amber-50 dark:bg-amber-500/10" to="/admin/questions?status=pending" />
+        <KpiCard icon={CreditCard} value={kpis.activeSubscriptions} label="Active Subs" caption="paid plans" color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" to="/admin/subscriptions" />
+        <KpiCard icon={Wallet} value={kpis.revenueThisMonth} label="Revenue (GH₵)" caption="this month" color="text-cyan-500" bg="bg-cyan-50 dark:bg-cyan-500/10" to="/admin/subscriptions" />
       </motion.div>
 
+      <div className="mb-6 grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <ActivityChart />
+        </div>
+        <PendingActions actions={pendingActions} />
+      </div>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <motion.div variants={slideUp} initial="hidden" animate="visible">
+          <ExamPerformanceCard assessment={assessment} />
+        </motion.div>
+        <motion.div variants={slideUp} initial="hidden" animate="visible">
+          <SubjectPerformanceTable subjects={subjects} />
+        </motion.div>
+      </div>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <motion.div variants={slideUp} initial="hidden" animate="visible">
+          <QuestionBankCard total={kpis.questions.value} breakdown={questionBank} />
+        </motion.div>
+        <motion.div variants={slideUp} initial="hidden" animate="visible">
+          <ContentPipelineCard pipeline={pipeline} />
+        </motion.div>
+      </div>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <motion.div variants={slideUp} initial="hidden" animate="visible">
+          <SubscriptionsOverviewCard overview={subscriptionOverview} />
+        </motion.div>
+        <motion.div variants={slideUp} initial="hidden" animate="visible">
+          <RecentActivityFeed items={recentActivity} />
+        </motion.div>
+      </div>
+
+      <div className="mb-8">
+        <QuickActions />
+      </div>
+
       <motion.div
-        className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
+        className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6"
         variants={slideUp}
         initial="hidden"
         animate="visible"
@@ -148,7 +190,7 @@ export default function AdminDashboard() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
             <Users className="h-4 w-4 text-indigo-500" />
-            Students
+            User Management — Students
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               {filteredStudents.length}
             </span>
@@ -164,6 +206,12 @@ export default function AdminDashboard() {
                 className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-10 pr-4 text-sm outline-none ring-indigo-500/20 transition focus:border-indigo-500 focus:ring-2 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-indigo-400"
               />
             </div>
+            <Link
+              to="/admin/analytics"
+              className="hidden rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-300 dark:hover:text-indigo-400 sm:block"
+            >
+              Manage Users
+            </Link>
           </div>
         </div>
 
@@ -176,245 +224,157 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800">
-                    {[
-                      { key: 'name' as const, label: 'Student' },
-                      { key: 'name' as const, label: 'Institution' },
-                      { key: 'quizzesTaken' as const, label: 'Quizzes' },
-                      { key: 'avgScore' as const, label: 'Avg Score' },
-                      { key: 'name' as const, label: 'Documents' },
-                      { key: 'createdAt' as const, label: 'Joined' },
-                    ].map((col, i) => (
-                      <th
-                        key={i}
-                        className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                  <AnimatePresence>
-                    {filteredStudents.map((student, i) => (
-                      <motion.tr
-                        key={student.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ delay: i * 0.03, duration: 0.25 }}
-                        className="group"
-                      >
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-bold text-white">
-                              {student.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-slate-800 dark:text-white">{student.name}</p>
-                              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{student.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="h-3 w-3 text-slate-400" />
-                            <span className="text-xs text-slate-600 dark:text-slate-400">{student.institution || '-'}</span>
-                          </div>
-                          {student.gradeLevel && (
-                            <span className="mt-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                              {student.gradeLevel}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.quizzesTaken}</span>
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className={cn(
-                            'text-sm font-bold',
-                            student.avgScore >= 75 ? 'text-emerald-500' : student.avgScore >= 50 ? 'text-amber-500' : 'text-rose-500'
-                          )}>
-                            {student.avgScore}%
-                          </span>
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className="text-sm text-slate-600 dark:text-slate-400">{student.documentsUploaded}</span>
-                        </td>
-                        <td className="py-3 pr-4">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                            {new Date(student.createdAt).toLocaleDateString()}
-                          </span>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
-
-            <div className="grid gap-3 lg:hidden">
-              {filteredStudents.map((student, i) => (
-                <motion.div
-                  key={student.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04, duration: 0.3 }}
-                  className="rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50"
-                >
-                  <div className="mb-3 flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-sm font-bold text-white">
-                      {student.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{student.name}</p>
-                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">{student.email}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg bg-white p-2 dark:bg-slate-900">
-                      <p className="text-lg font-bold text-slate-800 dark:text-white">{student.quizzesTaken}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Quizzes</p>
-                    </div>
-                    <div className="rounded-lg bg-white p-2 dark:bg-slate-900">
-                      <p className={cn(
-                        'text-lg font-bold',
+          <div className="hidden md:block">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px]">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800">
+                  {[
+                    { key: 'name' as const, label: 'Student' },
+                    { key: 'name' as const, label: 'Institution' },
+                    { key: 'quizzesTaken' as const, label: 'Quizzes' },
+                    { key: 'avgScore' as const, label: 'Avg Score' },
+                    { key: 'name' as const, label: 'Documents' },
+                    { key: 'createdAt' as const, label: 'Joined' },
+                  ].map((col) => (
+                    <th
+                      key={col.label}
+                      className="cursor-pointer pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      onClick={() => toggleSort(col.key as typeof sortField)}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                {pageItems.map((student) => (
+                  <tr key={student.id} className="group">
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-bold text-white">
+                          {student.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-800 dark:text-white">{student.name}</p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{student.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3 text-slate-400" />
+                        <span className="text-xs text-slate-600 dark:text-slate-400">{student.institution || '-'}</span>
+                      </div>
+                      {student.gradeLevel && (
+                        <span className="mt-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                          {student.gradeLevel}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.quizzesTaken}</span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={cn(
+                        'text-sm font-bold',
                         student.avgScore >= 75 ? 'text-emerald-500' : student.avgScore >= 50 ? 'text-amber-500' : 'text-rose-500'
                       )}>
                         {student.avgScore}%
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Avg Score</p>
-                    </div>
-                    <div className="rounded-lg bg-white p-2 dark:bg-slate-900">
-                      <p className="text-lg font-bold text-slate-800 dark:text-white">{student.documentsUploaded}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Docs</p>
-                    </div>
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{student.documentsUploaded}</span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {new Date(student.createdAt).toLocaleDateString()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          </div>
+
+          <div className="grid gap-3 md:hidden">
+            {pageItems.map((student) => (
+              <div
+                key={student.id}
+                className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition hover:shadow-sm dark:border-slate-800 dark:bg-slate-800/50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-bold text-white">
+                    {student.name.charAt(0).toUpperCase()}
                   </div>
-                </motion.div>
-              ))}
-            </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-white">{student.name}</p>
+                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">{student.email}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <Building2 className="h-3 w-3 shrink-0 text-slate-400" />
+                      <span className="truncate">{student.institution || '-'}</span>
+                      {student.gradeLevel && (
+                        <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                          {student.gradeLevel}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">Quizzes</dt>
+                    <dd className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.quizzesTaken}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">Avg Score</dt>
+                    <dd className={cn(
+                      'text-sm font-bold',
+                      student.avgScore >= 75 ? 'text-emerald-500' : student.avgScore >= 50 ? 'text-amber-500' : 'text-rose-500'
+                    )}>
+                      {student.avgScore}%
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">Documents</dt>
+                    <dd className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.documentsUploaded}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">Joined</dt>
+                    <dd className="text-sm text-slate-600 dark:text-slate-400">{new Date(student.createdAt).toLocaleDateString()}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))}
+          </div>
+
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={filteredStudents.length}
+            perPage={8}
+            onPageChange={goTo}
+            className="mt-5"
+          />
           </>
         )}
+
+        <div className="mt-5 flex justify-end lg:hidden">
+          <Link
+            to="/admin/analytics"
+            className="flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300"
+          >
+            Manage Users
+          </Link>
+        </div>
       </motion.div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <motion.div
-          className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
-          variants={slideUp}
-          initial="hidden"
-          animate="visible"
-        >
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-            <FileText className="h-4 w-4 text-blue-500" />
-            Recent Documents
-          </h2>
-          {data.recentDocuments.length === 0 ? (
-            <div className="flex flex-col items-center py-8">
-              <FileText className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">No documents uploaded yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {data.recentDocuments.map((doc, i) => (
-                <motion.div
-                  key={doc.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-lg',
-                    doc.status === 'ready' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-                      : doc.status === 'failed' ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
-                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  )}>
-                    {doc.status === 'ready' ? <CheckCircle2 className="h-4 w-4" /> : doc.status === 'failed' ? <XCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800 dark:text-white">{doc.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">by {doc.uploadedBy}</p>
-                  </div>
-                  <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(doc.createdAt).toLocaleDateString()}</span>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-
-        <motion.div
-          className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
-          variants={slideUp}
-          initial="hidden"
-          animate="visible"
-        >
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-            <BarChart3 className="h-4 w-4 text-rose-500" />
-            Recent Results
-          </h2>
-          {data.recentResults.length === 0 ? (
-            <div className="flex flex-col items-center py-8">
-              <BarChart3 className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">No quiz results yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {data.recentResults.map((r, i) => (
-                <motion.div
-                  key={r.id}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-lg',
-                    r.score >= 75 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
-                  )}>
-                    <BarChart3 className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800 dark:text-white">{r.studentName}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{r.quizTitle}</p>
-                  </div>
-                  <span className={cn(
-                    'text-sm font-bold',
-                    r.score >= 75 ? 'text-emerald-500' : 'text-amber-500'
-                  )}>
-                    {r.score}%
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-      </div>
+      <motion.p variants={fadeUp} initial="hidden" animate="visible" className="mt-8 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400 dark:text-slate-500">
+        <GraduationCap className="h-3.5 w-3.5" />
+        <span>{pendingActions.length > 0 ? `${pendingActions.length} item${pendingActions.length === 1 ? '' : 's'} need your attention` : 'Everything is up to date'} — PASSCO Command Center</span>
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+      </motion.p>
     </div>
-  );
-}
-
-function StatCard({ icon: Icon, value, label, color, bg, to }: { icon: React.ComponentType<{ className?: string }>; value: number; label: string; color: string; bg: string; to: string }) {
-  return (
-    <Link to={to}>
-      <motion.div
-        variants={bounceIn}
-        whileHover={{ y: -4, boxShadow: '0 8px 25px rgba(0,0,0,0.08)' }}
-        className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition hover:ring-2 hover:ring-indigo-500/20 dark:border-slate-800 dark:bg-slate-900"
-      >
-      <motion.div
-        className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-xl', bg)}
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-      >
-        <Icon className={cn('h-5 w-5', color)} />
-      </motion.div>
-      <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-      </motion.div>
-    </Link>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Crown, Upload, FileUp, Trash2, Eye, Image, Shield, CheckCircle2,
+  Upload, FileUp, Trash2, Eye, Image, Shield, CheckCircle2,
   AlertCircle, Save, RotateCcw, BadgeCheck, Award, Star, Gem,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -134,7 +134,7 @@ export default function AdminCertificates() {
         <motion.div variants={fadeUp} initial="hidden" animate="visible">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1e3a5f] to-[#0f2340] shadow-lg shadow-blue-900/25">
-              <Crown className="h-6 w-6 text-yellow-400" />
+              <Award className="h-6 w-6 text-yellow-400" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white">Certificate Settings</h1>

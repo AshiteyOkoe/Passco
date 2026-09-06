@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -113,6 +115,8 @@ export default function StudentPerformanceAnalytics() {
 
   const filteredResults = useMemo(() => allResults, [allResults]);
 
+  const { page, totalPages, pageItems, goTo } = usePagination(filteredResults, 10);
+
   const kpis = useMemo(() => {
     const totalAssessments = filteredResults.length;
     const avgScore = totalAssessments > 0
@@ -149,7 +153,7 @@ export default function StudentPerformanceAnalytics() {
       const meta = SUBJECT_META[subject as SubjectId];
       return {
         subject: meta?.label || subject,
-        icon: meta?.icon || '📝',
+        icon: meta?.icon || BookOpen,
         score: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
         correct: data.correct,
         total: data.total,
@@ -161,7 +165,7 @@ export default function StudentPerformanceAnalytics() {
 
   const radarData = useMemo(() => {
     return subjectPerformance.map(sp => ({
-      subject: sp.icon + ' ' + sp.subject.split(' ')[0],
+      subject: sp.subject.split(' ')[0],
       score: sp.score,
       fullMark: 100,
     }));
@@ -172,7 +176,7 @@ export default function StudentPerformanceAnalytics() {
     return sorted.map((r, i) => ({
       index: i + 1,
       score: r.percentage,
-      label: `${SUBJECT_META[r.subject as SubjectId]?.icon || ''} ${r.assessmentType}`,
+      label: `${SUBJECT_META[r.subject as SubjectId]?.label || r.subject} — ${r.assessmentType}`,
       date: new Date(r.timestamp || r.completedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     }));
   }, [filteredResults]);
@@ -579,7 +583,7 @@ export default function StudentPerformanceAnalytics() {
                   <div key={i}>
                     <div className="mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                        <span>{s.icon}</span> {s.subject}
+                        <s.icon className="h-4 w-4" aria-hidden="true" /> {s.subject}
                       </span>
                       <span className="text-sm font-bold text-emerald-500">{s.score}%</span>
                     </div>
@@ -615,7 +619,7 @@ export default function StudentPerformanceAnalytics() {
                   <div key={i}>
                     <div className="mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                        <span>{w.icon}</span> {w.subject}
+                        <w.icon className="h-4 w-4" aria-hidden="true" /> {w.subject}
                       </span>
                       <span className="text-sm font-bold text-rose-500">{w.score}%</span>
                     </div>
@@ -746,7 +750,7 @@ export default function StudentPerformanceAnalytics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                {filteredResults.slice(0, 10).map((r, i) => {
+                {pageItems.map((r, i) => {
                   const meta = SUBJECT_META[r.subject as SubjectId];
                   const grade = getGradeLabel(r.percentage);
                   return (
@@ -758,7 +762,7 @@ export default function StudentPerformanceAnalytics() {
                     >
                       <td className="py-3 pr-4">
                         <span className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-white">
-                          {meta?.icon} {meta?.label || r.subject}
+                          {meta && <meta.icon className="h-4 w-4" aria-hidden="true" />} {meta?.label || r.subject}
                         </span>
                       </td>
                       <td className="py-3 pr-4">
@@ -794,11 +798,19 @@ export default function StudentPerformanceAnalytics() {
                 })}
               </tbody>
             </table>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={filteredResults.length}
+              perPage={10}
+              onPageChange={goTo}
+              className="mt-4"
+            />
           </div>
 
           {/* Mobile Cards */}
           <div className="space-y-2 md:hidden">
-            {filteredResults.slice(0, 10).map((r, i) => {
+            {pageItems.map((r, i) => {
               const meta = SUBJECT_META[r.subject as SubjectId];
               const grade = getGradeLabel(r.percentage);
               return (
@@ -811,7 +823,7 @@ export default function StudentPerformanceAnalytics() {
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-800 dark:text-white">
-                      {meta?.icon} {meta?.label || r.subject}
+                      {meta && <meta.icon className="h-4 w-4" aria-hidden="true" />} {meta?.label || r.subject}
                     </span>
                     <span className={cn('inline-block rounded-lg px-2 py-0.5 text-xs font-bold', getGradeBg(grade))}>
                       {grade}
@@ -830,6 +842,15 @@ export default function StudentPerformanceAnalytics() {
                 </motion.div>
               );
             })}
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={filteredResults.length}
+              perPage={10}
+              onPageChange={goTo}
+              className="pt-2"
+            />
           </div>
         </motion.div>
 

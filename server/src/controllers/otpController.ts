@@ -4,6 +4,7 @@ import { AuthRequest } from '../types';
 import { createOTP, verifyOTP, sendOTPEmail } from '../utils/otp';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../middleware/auth';
+import { grantTrial } from '../services/subscriptionService';
 
 interface DbUser {
   id: string;
@@ -107,6 +108,8 @@ export async function verifyOTPAndRegister(req: AuthRequest, res: Response): Pro
         role: role || 'student',
         institution: institution || '',
         grade_level: gradeLevel || classLevel || '',
+        gender: gender || null,
+        class_level: classLevel || '',
         date_of_birth: dateOfBirth ? new Date(dateOfBirth).toISOString() : null,
       })
       .select()
@@ -114,18 +117,15 @@ export async function verifyOTPAndRegister(req: AuthRequest, res: Response): Pro
 
     if (error) throw error;
 
-    const optionalUpdates: Record<string, unknown> = {};
-    if (gender) optionalUpdates.gender = gender;
-    if (classLevel) optionalUpdates.class_level = classLevel;
-    if (Object.keys(optionalUpdates).length > 0) {
-      await supabase.from('users').update(optionalUpdates).eq('id', user.id);
-    }
-
     const token = generateToken({
       id: user.id,
       role: user.role,
       email: user.email,
     });
+
+    if (user.role === 'student') {
+      await grantTrial(user.id);
+    }
 
     res.status(201).json({ token, user: userResponse(user as DbUser) });
   } catch (error) {

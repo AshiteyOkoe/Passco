@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ClipboardEvent, type KeyboardEvent, useR
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { sendOTP, verifyOTPAndRegister } from '../services/api';
+import { useModalA11y } from '../hooks/useModalA11y';
 import { LogIn, UserPlus, Mail, Lock, User, Building2, GraduationCap, Eye, EyeOff, AlertCircle, X, BookOpen, Chrome, Github, Calendar, Shield, Loader2 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -12,6 +13,7 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, initialTab = 'login', onClose }: AuthModalProps) {
   const { login, register } = useAuth();
+  const { dialogRef } = useModalA11y(isOpen, { onClose });
   const [tab, setTab] = useState<'login' | 'register'>(initialTab);
 
   // Login state
@@ -168,11 +170,16 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
             onClick={onClose}
           />
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Authentication"
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+            className="relative flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-800 dark:bg-slate-900"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-800">
@@ -184,7 +191,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
               </div>
               <button
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -217,7 +224,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
               </button>
             </div>
 
-            <div className="px-6 py-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-6">
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -248,7 +255,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           value={loginEmail}
                           onChange={(e) => setLoginEmail(e.target.value)}
                           required
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                           placeholder="student@example.com"
                         />
                       </div>
@@ -262,7 +269,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
                           required
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-10 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-10 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                           placeholder="Enter your password"
                         />
                         <button
@@ -312,7 +319,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           value={digit}
                           onChange={(e) => handleOTPChange(i, e.target.value)}
                           onKeyDown={(e) => handleOTPKeyDown(i, e)}
-                          className="h-11 w-11 rounded-xl border border-slate-300 bg-white text-center text-lg font-bold text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="h-10 w-10 rounded-xl border border-slate-300 bg-white text-center text-lg font-bold text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white sm:h-11 sm:w-11"
                         />
                       ))}
                     </div>
@@ -342,6 +349,12 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                     transition={{ duration: 0.2 }}
                     onSubmit={handleRegister}
                   >
+                    <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <p>
+                        <span className="font-semibold">Please ensure your details are accurate.</span> Your name, gender, date of birth, institution and class level <span className="font-semibold">cannot be edited</span> after registration. Only your profile photo can be changed later.
+                      </p>
+                    </div>
                     <div className="mb-3">
                       <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
                       <div className="relative">
@@ -351,7 +364,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           required
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                           placeholder="John Doe"
                         />
                       </div>
@@ -365,7 +378,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           value={regEmail}
                           onChange={(e) => setRegEmail(e.target.value)}
                           required
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                           placeholder="student@example.com"
                         />
                       </div>
@@ -380,7 +393,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           onChange={(e) => setRegPassword(e.target.value)}
                           required
                           minLength={6}
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-10 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-10 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                           placeholder="At least 6 characters"
                         />
                         <button
@@ -403,7 +416,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           onChange={(e) => setRegConfirmPassword(e.target.value)}
                           required
                           minLength={6}
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                           placeholder="Re-enter your password"
                         />
                       </div>
@@ -416,7 +429,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           type="text"
                           value={institution}
                           onChange={(e) => setInstitution(e.target.value)}
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                           placeholder="Your school or university"
                         />
                       </div>
@@ -437,7 +450,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                           value={dateOfBirth}
                           onChange={(e) => setDateOfBirth(e.target.value)}
                           required
-                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         />
                       </div>
                     </div>
@@ -448,7 +461,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                         <select
                           value={classLevel}
                           onChange={(e) => setClassLevel(e.target.value)}
-                          className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-base sm:text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         >
                           <option value="">Select class level</option>
 <option value="JHS">JHS</option>
@@ -485,8 +498,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                   <button
                     type="button"
                     onClick={() => {
-                      // Placeholder for Google OAuth
-                      setError('Social login coming soon. Use email/password for now.');
+                      window.location.href = '/api/auth/google';
                     }}
                     className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
@@ -496,8 +508,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                   <button
                     type="button"
                     onClick={() => {
-                      // Placeholder for GitHub OAuth
-                      setError('Social login coming soon. Use email/password for now.');
+                      setError('GitHub login coming soon. Use email/password or Google for now.');
                     }}
                     className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                   >

@@ -218,6 +218,10 @@ CREATE INDEX IF NOT EXISTS idx_bulk_uploads_status ON bulk_uploads (status);
 -- ============================================================
 -- 12. SUBSCRIPTIONS
 -- ============================================================
+-- Note: free premium trials are stored as rows with
+--   plan = 'premium', status = 'active', payment_provider = '',
+--   payment_reference = 'TRIAL-<user_id>', expires_at = now + 14 days
+-- They are granted once per user on registration (first login backfill).
 CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -329,3 +333,72 @@ CREATE POLICY "Allow all for authenticated" ON subscriptions FOR ALL USING (true
 CREATE POLICY "Allow all for authenticated" ON payments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for authenticated" ON ai_usage FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for authenticated" ON announcements FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- 16. AUDIT_LOGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT DEFAULT '',
+  details JSONB DEFAULT '{}',
+  ip_address TEXT DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs (user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs (action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_type ON audit_logs (entity_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC);
+
+-- ============================================================
+-- 17. QUIZ_ATTEMPTS (server-side auto-save)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+  answers JSONB DEFAULT '[]',
+  time_remaining INTEGER NOT NULL DEFAULT 0,
+  current_index INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'expired')),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, quiz_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_user_id ON quiz_attempts (user_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_quiz_id ON quiz_attempts (quiz_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_status ON quiz_attempts (status);
+
+-- ============================================================
+-- 18. ATTEMPT_EVENTS (tracking during quiz/assessment)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS attempt_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
+  assessment_type TEXT DEFAULT '',
+  event_type TEXT NOT NULL CHECK (event_type IN ('start', 'answer_change', 'flag', 'unflag', 'tab_switch', 'time_warning', 'auto_submit', 'submit', 'resume')),
+  question_id TEXT DEFAULT '',
+  details JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_attempt_events_user_id ON attempt_events (user_id);
+CREATE INDEX IF NOT EXISTS idx_attempt_events_quiz_id ON attempt_events (quiz_id);
+CREATE INDEX IF NOT EXISTS idx_attempt_events_event_type ON attempt_events (event_type);
+CREATE INDEX IF NOT EXISTS idx_attempt_events_created_at ON attempt_events (created_at DESC);
+
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE attempt_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all for authenticated" ON audit_logs;
+CREATE POLICY "Allow all for authenticated" ON audit_logs FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for authenticated" ON quiz_attempts;
+CREATE POLICY "Allow all for authenticated" ON quiz_attempts FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for authenticated" ON attempt_events;
+CREATE POLICY "Allow all for authenticated" ON attempt_events FOR ALL USING (true) WITH CHECK (true);

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, GraduationCap, Trophy, Brain, Zap, Target, Shield, ChevronRight, ChevronLeft, Clock, CheckCircle2, ArrowLeft, Sparkles } from 'lucide-react';
-import { CLASS_META, DIFFICULTY_META, ASSESSMENT_META, SUBJECT_META, getSubjectQuestionCount, getSubjectsForClassLevel, type SubjectId, type ClassLevel, type DifficultyLevel, type AssessmentType } from '../data/questionBank';
+import { BookOpen, GraduationCap, Trophy, Shield, ChevronRight, ChevronLeft, Clock, CheckCircle2, ArrowLeft, Sparkles, Lock, Gem } from 'lucide-react';
+import { CLASS_META, ASSESSMENT_META, SUBJECT_META, getSubjectQuestionCount, getSubjectsForClassLevel, type SubjectId, type ClassLevel, type AssessmentType } from '../data/questionBank';
+import { useSubscription } from '../context/SubscriptionContext';
 
 const classIcons: Record<ClassLevel, React.ReactNode> = {
   jhs1: <BookOpen className="h-8 w-8" />,
@@ -16,22 +17,7 @@ const classDescriptions: Record<ClassLevel, string> = {
   jhs3: 'Master challenging topics and prepare thoroughly for your final examinations.',
 };
 
-const difficultyIcons: Record<DifficultyLevel, React.ReactNode> = {
-  beginner: <Brain className="h-8 w-8" />,
-  intermediate: <Zap className="h-8 w-8" />,
-  expert: <Target className="h-8 w-8" />,
-};
-
-const difficultyColors: Record<DifficultyLevel, { border: string; bg: string; text: string; ring: string; iconBg: string }> = {
-  beginner: { border: 'border-emerald-400 dark:border-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-400 dark:ring-emerald-500', iconBg: 'bg-emerald-100 dark:bg-emerald-900/60' },
-  intermediate: { border: 'border-amber-400 dark:border-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', ring: 'ring-amber-400 dark:ring-amber-500', iconBg: 'bg-amber-100 dark:bg-amber-900/60' },
-  expert: { border: 'border-rose-400 dark:border-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-300', ring: 'ring-rose-400 dark:ring-rose-500', iconBg: 'bg-rose-100 dark:bg-rose-900/60' },
-};
-
-const difficultyComplexity: Record<DifficultyLevel, number> = { beginner: 1, intermediate: 2, expert: 3 };
-
 const assessmentIcons: Record<AssessmentType, React.ReactNode> = {
-  quiz: <Sparkles className="h-8 w-8" />,
   mock: <Shield className="h-8 w-8" />,
   examination: <Trophy className="h-8 w-8" />,
 };
@@ -49,7 +35,7 @@ const subjectColorMap: Record<string, { border: string; bg: string; text: string
   teal: { border: 'border-teal-400 dark:border-teal-500', bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300', ring: 'ring-teal-400 dark:ring-teal-500', iconBg: 'bg-teal-100 dark:bg-teal-900/60' },
 };
 
-const steps = [{ label: 'Class', step: 1 }, { label: 'Subject', step: 2 }, { label: 'Difficulty', step: 3 }, { label: 'Assessment', step: 4 }];
+const steps = [{ label: 'Class', step: 1 }, { label: 'Subject', step: 2 }, { label: 'Assessment', step: 3 }];
 
 const slideVariants = {
   enter: (direction: number) => ({ x: direction > 0 ? 300 : -300, opacity: 0 }),
@@ -59,18 +45,21 @@ const slideVariants = {
 
 export default function AssessmentSetup() {
   const navigate = useNavigate();
+  const { hasFeature, isTrial, trialDaysLeft } = useSubscription();
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [classLevel, setClassLevel] = useState<ClassLevel | null>(null);
   const [subject, setSubject] = useState<SubjectId | null>(null);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel | null>(null);
   const [assessmentType, setAssessmentType] = useState<AssessmentType | null>(null);
 
-  const handleNext = () => { if (currentStep < 4) { setDirection(1); setCurrentStep(p => p + 1); } };
+  const isTypeLocked = (type: AssessmentType): boolean =>
+    !hasFeature(type === 'mock' ? 'mocks' : 'examinations');
+
+  const handleNext = () => { if (currentStep < 3) { setDirection(1); setCurrentStep(p => p + 1); } };
   const handleBack = () => { if (currentStep > 1) { setDirection(-1); setCurrentStep(p => p - 1); } };
   const handleStart = () => {
-    if (classLevel && subject && difficulty && assessmentType) {
-      const config = { classLevel, subject, difficulty, assessmentType };
+    if (classLevel && subject && assessmentType) {
+      const config = { classLevel, subject, assessmentType };
       try {
         localStorage.setItem('passco-assessment-config', JSON.stringify(config));
       } catch {
@@ -82,20 +71,19 @@ export default function AssessmentSetup() {
   const canProceed = () => {
     if (currentStep === 1) return classLevel !== null;
     if (currentStep === 2) return subject !== null;
-    if (currentStep === 3) return difficulty !== null;
     return assessmentType !== null;
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 dark:from-indigo-800 dark:via-indigo-900 dark:to-purple-950">
+      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 dark:from-blue-800 dark:via-blue-900 dark:to-indigo-950">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-          <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-2 text-indigo-200 transition-colors hover:text-white">
+          <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-2 text-blue-200 transition-colors hover:text-white">
             <ArrowLeft className="h-5 w-5" />
             <span className="text-sm font-medium">Back to Dashboard</span>
           </button>
           <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">Set Up Your Assessment</h1>
-          <p className="text-lg text-indigo-200">Choose your class, subject, difficulty, and assessment type to get started.</p>
+          <p className="text-lg text-blue-200">Choose your class, subject, and assessment type to get started.</p>
         </div>
       </div>
 
@@ -104,17 +92,17 @@ export default function AssessmentSetup() {
           <div className="mb-3 flex items-center justify-between">
             {steps.map(s => (
               <div key={s.step} className="flex items-center gap-2">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all duration-300 ${currentStep >= s.step ? 'bg-indigo-600 text-white dark:bg-indigo-500' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all duration-300 ${currentStep >= s.step ? 'bg-blue-600 text-white dark:bg-blue-500' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
                   {currentStep > s.step ? <CheckCircle2 className="h-5 w-5" /> : s.step}
                 </div>
-                <span className={`hidden text-sm font-medium sm:block ${currentStep >= s.step ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`}>{s.label}</span>
+                <span className={`hidden text-sm font-medium sm:block ${currentStep >= s.step ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>{s.label}</span>
               </div>
             ))}
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-            <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500" initial={{ width: '0%' }} animate={{ width: `${(currentStep / 4) * 100}%` }} transition={{ type: 'spring', stiffness: 100, damping: 20 }} />
+            <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-teal-500" initial={{ width: '0%' }} animate={{ width: `${(currentStep / 3) * 100}%` }} transition={{ type: 'spring', stiffness: 100, damping: 20 }} />
           </div>
-          <p className="mt-2 text-right text-sm text-slate-500 dark:text-slate-400">Step {currentStep} of 4</p>
+          <p className="mt-2 text-right text-sm text-slate-500 dark:text-slate-400">Step {currentStep} of 3</p>
         </div>
 
         <div className="relative min-h-[320px] overflow-hidden">
@@ -130,11 +118,11 @@ export default function AssessmentSetup() {
                   const meta = CLASS_META[cls];
                   const isSelected = classLevel === cls;
                   return (
-                    <motion.button key={cls} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => { setClassLevel(cls); setSubject(null); }} className={`relative cursor-pointer rounded-2xl border-2 p-5 text-left transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-200 ring-2 ring-indigo-400/50 dark:border-indigo-400 dark:bg-indigo-950/50 dark:shadow-indigo-900/40' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
-                      {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" /></motion.div>}
-                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${isSelected ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{classIcons[cls]}</div>
+                    <motion.button key={cls} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => { setClassLevel(cls); setSubject(null); }} className={`relative cursor-pointer rounded-2xl border-2 p-5 text-left transition-all duration-200 ${isSelected ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-200 ring-2 ring-blue-400/50 dark:border-blue-400 dark:bg-blue-950/50 dark:shadow-blue-900/40' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
+                      {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-5 w-5 text-blue-500 dark:text-blue-400" /></motion.div>}
+                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${isSelected ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{classIcons[cls]}</div>
                       <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-white">{meta.label}</h3>
-                      <p className="mb-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">{meta.icon}</p>
+                      <meta.icon className="h-4 w-4" aria-hidden="true" />
                       <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{classDescriptions[cls]}</p>
                     </motion.button>
                   );
@@ -153,10 +141,10 @@ export default function AssessmentSetup() {
                   return (
                     <motion.button key={subId} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setSubject(subId)} className={`relative cursor-pointer rounded-2xl border-2 p-5 text-left transition-all duration-200 ${isSelected ? `${colors.border} ${colors.bg} ring-2 ${colors.ring}/50 shadow-lg` : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
                       {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className={`h-5 w-5 ${colors.text}`} /></motion.div>}
-                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${isSelected ? `${colors.iconBg}` : 'bg-slate-100 dark:bg-slate-700'}`}>{meta.icon}</div>
+                      <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${isSelected ? `${colors.iconBg}` : 'bg-slate-100 dark:bg-slate-700'}`}><meta.icon className="h-6 w-6" aria-hidden="true" /></div>
                       <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">{meta.label}</h3>
                       <p className="mb-2 text-xs font-semibold text-slate-400 dark:text-slate-500">{questionCount} questions</p>
-                      <p className={`text-xs font-medium ${isSelected ? colors.text : 'text-indigo-500 dark:text-indigo-400'}`}>Take Assessment</p>
+                      <p className={`text-xs font-medium ${isSelected ? colors.text : 'text-blue-500 dark:text-blue-400'}`}>Take Assessment</p>
                     </motion.button>
                   );
                 })}
@@ -164,47 +152,49 @@ export default function AssessmentSetup() {
             )}
 
             {currentStep === 3 && (
-              <motion.div key="step3" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {(Object.keys(DIFFICULTY_META) as DifficultyLevel[]).map(level => {
-                  const meta = DIFFICULTY_META[level];
-                  const colors = difficultyColors[level];
-                  const isSelected = difficulty === level;
-                  return (
-                    <motion.button key={level} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setDifficulty(level)} className={`relative cursor-pointer rounded-2xl border-2 p-6 text-left transition-all duration-200 ${isSelected ? `${colors.border} ${colors.bg} ring-2 ${colors.ring}/50 shadow-lg` : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
-                      {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className={`h-6 w-6 ${colors.text}`} /></motion.div>}
-                      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${isSelected ? `${colors.iconBg} ${colors.text}` : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{difficultyIcons[level]}</div>
-                      <h3 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">{meta.label}</h3>
-                      <p className={`mb-3 text-sm font-medium ${isSelected ? colors.text : 'text-slate-500 dark:text-slate-400'}`}>{meta.description}</p>
-                      <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                        <span>Complexity:</span>
-                        <div className="flex gap-1">
-                          {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-1.5 w-6 rounded-full ${i <= difficultyComplexity[level] ? 'bg-indigo-400 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
-                          ))}
-                        </div>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </motion.div>
-            )}
-
-            {currentStep === 4 && (
-              <motion.div key="step4" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <motion.div key="step3" custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {(Object.keys(ASSESSMENT_META) as AssessmentType[]).map(type => {
                   const meta = ASSESSMENT_META[type];
                   const isSelected = assessmentType === type;
+                  const locked = isTypeLocked(type);
                   return (
-                    <motion.button key={type} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setAssessmentType(type)} className={`relative cursor-pointer rounded-2xl border-2 p-6 text-left transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-200 ring-2 ring-indigo-400/50 dark:border-indigo-400 dark:bg-indigo-950/50 dark:shadow-indigo-900/40' : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
-                      {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-6 w-6 text-indigo-500 dark:text-indigo-400" /></motion.div>}
-                      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${isSelected ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{assessmentIcons[type]}</div>
+                    <motion.button
+                      key={type}
+                      whileHover={locked ? { scale: 1 } : { scale: 1.03 }}
+                      whileTap={locked ? { scale: 1 } : { scale: 0.97 }}
+                      onClick={() => {
+                        if (locked) { navigate('/subscription'); return; }
+                        setAssessmentType(type);
+                      }}
+                      className={`relative cursor-pointer rounded-2xl border-2 p-6 text-left transition-all duration-200 ${
+                        locked
+                          ? 'border-slate-200 bg-white opacity-80 dark:border-slate-700 dark:bg-slate-800'
+                          : isSelected
+                            ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-200 ring-2 ring-blue-400/50 dark:border-blue-400 dark:bg-blue-950/50 dark:shadow-blue-900/40'
+                            : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'
+                      }`}
+                    >
+                      {!locked && isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-6 w-6 text-blue-500 dark:text-blue-400" /></motion.div>}
+                      {locked && (
+                        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                          <Gem className="h-3 w-3" /> Premium
+                        </div>
+                      )}
+                      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${locked ? 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : isSelected ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                        {locked ? <Lock className="h-7 w-7" /> : assessmentIcons[type]}
+                      </div>
                       <h3 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">{meta.label}</h3>
-                      <p className="mb-3 text-sm font-medium text-indigo-600 dark:text-indigo-400">{meta.icon}</p>
+                      <meta.icon className="h-4 w-4" aria-hidden="true" />
                       <div className="mb-3 flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
                         <span className="flex items-center gap-1"><BookOpen className="h-4 w-4" />{meta.questionCount} Qs</span>
                         <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{meta.timeLimit / 60} min</span>
                       </div>
                       <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{meta.description}</p>
+                      {locked && (
+                        <p className="mt-3 text-xs font-medium text-amber-600 dark:text-amber-400">
+                          Requires a subscription{isTrial ? '' : ` — subscribe to keep using after your 3-day trial${trialDaysLeft > 0 ? ` (${trialDaysLeft} days left)` : ''} ends`}
+                        </p>
+                      )}
                     </motion.button>
                   );
                 })}
@@ -217,12 +207,12 @@ export default function AssessmentSetup() {
           <button onClick={handleBack} disabled={currentStep === 1} className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${currentStep === 1 ? 'pointer-events-none opacity-0' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>
             <ChevronLeft className="h-4 w-4" />Back
           </button>
-          {currentStep < 4 ? (
-            <motion.button whileHover={{ scale: canProceed() ? 1.03 : 1 }} whileTap={{ scale: canProceed() ? 0.97 : 1 }} onClick={handleNext} disabled={!canProceed()} className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all duration-200 ${canProceed() ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 dark:bg-indigo-500 dark:shadow-indigo-900/40 dark:hover:bg-indigo-600' : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600'}`}>
+          {currentStep < 3 ? (
+            <motion.button whileHover={{ scale: canProceed() ? 1.03 : 1 }} whileTap={{ scale: canProceed() ? 0.97 : 1 }} onClick={handleNext} disabled={!canProceed()} className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all duration-200 ${canProceed() ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700 dark:bg-blue-500 dark:shadow-blue-900/40 dark:hover:bg-blue-600' : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600'}`}>
               Continue<ChevronRight className="h-4 w-4" />
             </motion.button>
           ) : (
-            <motion.button whileHover={{ scale: canProceed() ? 1.03 : 1 }} whileTap={{ scale: canProceed() ? 0.97 : 1 }} onClick={handleStart} disabled={!canProceed()} className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all duration-200 ${canProceed() ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200 hover:from-indigo-700 hover:to-purple-700 dark:shadow-indigo-900/40' : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600'}`}>
+            <motion.button whileHover={{ scale: canProceed() ? 1.03 : 1 }} whileTap={{ scale: canProceed() ? 0.97 : 1 }} onClick={handleStart} disabled={!canProceed()} className={`flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all duration-200 ${canProceed() ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-lg shadow-blue-200 hover:from-blue-700 hover:to-teal-700 dark:shadow-blue-900/40' : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600'}`}>
               <Sparkles className="h-4 w-4" />Start Assessment
             </motion.button>
           )}

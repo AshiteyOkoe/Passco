@@ -3,19 +3,18 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BookOpen, GraduationCap, BarChart3, ArrowRight,
-  Layers, Trophy, TrendingUp,
+  Layers,
 } from 'lucide-react';
 import { cn } from '../utils';
 import {
   CLASS_META, SUBJECT_META, getSubjectQuestionCount,
-  type ClassLevel, type SubjectId, type DifficultyLevel,
+  type ClassLevel, type SubjectId,
 } from '../data/questionBank';
 import { getApprovedBankQuestions } from '../services/api';
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 
 const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
-const DIFFICULTIES: DifficultyLevel[] = ['beginner', 'intermediate', 'expert'];
 
 const CLASS_MAP: Record<string, ClassLevel> = {
   'JHS 1': 'jhs1', 'JHS 2': 'jhs2', 'JHS 3': 'jhs3',
@@ -27,12 +26,6 @@ const SUBJECT_MAP: Record<string, string> = {
   'Social Studies': 'social-studies', 'ICT': 'ict',
   'Religious and Moral Education': 'rme', 'Religious & Moral Education': 'rme',
   'Creative Arts and Design': 'creative-arts', 'Career Technology': 'career-tech',
-};
-
-const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
-  beginner: 'bg-emerald-500',
-  intermediate: 'bg-amber-500',
-  expert: 'bg-rose-500',
 };
 
 export default function AdminClasses() {
@@ -63,34 +56,18 @@ export default function AdminClasses() {
 
       const totalQuestions = subjectBreakdown.reduce((sum, s) => sum + s.count, 0);
 
-      const difficultyBreakdown = DIFFICULTIES.map((d) => ({
-        level: d,
-        count: subjectBreakdown.reduce(
-          (sum, s) => sum + getSubjectQuestionCount(cls, s.id, d),
-          0
-        ),
-      }));
-
       return {
         key: cls,
         ...CLASS_META[cls],
         subjects: subjectBreakdown,
         totalQuestions,
-        difficultyBreakdown,
       };
     });
   }, [uploadedCounts]);
 
   const aggregate = useMemo(() => {
     const totalQuestions = classData.reduce((sum, c) => sum + c.totalQuestions, 0);
-    const diffAgg = DIFFICULTIES.map((d) => ({
-      level: d,
-      count: classData.reduce((sum, c) => {
-        const found = c.difficultyBreakdown.find((db) => db.level === d);
-        return sum + (found?.count ?? 0);
-      }, 0),
-    }));
-    return { totalClasses: CLASS_KEYS.length, totalQuestions, diffAgg };
+    return { totalClasses: CLASS_KEYS.length, totalQuestions };
   }, [classData]);
 
   const maxSubjectCount = Math.max(
@@ -132,16 +109,6 @@ export default function AdminClasses() {
           color="text-violet-500"
           bg="bg-violet-50 dark:bg-violet-500/10"
         />
-        {aggregate.diffAgg.map((d) => (
-          <StatCard
-            key={d.level}
-            icon={TrendingUp}
-            value={d.count}
-            label={`${d.level.charAt(0).toUpperCase() + d.level.slice(1)}`}
-            color={d.level === 'beginner' ? 'text-emerald-500' : d.level === 'intermediate' ? 'text-amber-500' : 'text-rose-500'}
-            bg={d.level === 'beginner' ? 'bg-emerald-50 dark:bg-emerald-500/10' : d.level === 'intermediate' ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-rose-50 dark:bg-rose-500/10'}
-          />
-        ))}
       </motion.div>
 
       <motion.div
@@ -164,7 +131,7 @@ export default function AdminClasses() {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 200, delay: idx * 0.1 }}
                 >
-                  {cls.icon}
+                  <cls.icon className="h-5 w-5 text-white" aria-hidden="true" />
                 </motion.div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">{cls.label}</h2>
@@ -181,7 +148,7 @@ export default function AdminClasses() {
                   </div>
                 </div>
               </div>
-              <Link to={`/admin/question-bank?class=${cls.key}`}>
+              <Link to={`/admin/questions?class=${cls.key}`}>
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
@@ -193,21 +160,6 @@ export default function AdminClasses() {
               </Link>
             </div>
 
-            <div className="mb-5 grid grid-cols-3 gap-3">
-              {cls.difficultyBreakdown.map((d) => (
-                <div
-                  key={d.level}
-                  className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50"
-                >
-                  <div className={cn('mx-auto mb-1.5 h-2 w-8 rounded-full', DIFFICULTY_COLORS[d.level])} />
-                  <p className="text-lg font-bold text-slate-800 dark:text-white">{d.count}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    {d.level}
-                  </p>
-                </div>
-              ))}
-            </div>
-
             <div>
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Subject Breakdown
@@ -216,10 +168,10 @@ export default function AdminClasses() {
                 {cls.subjects.map((sub) => (
                   <Link
                     key={sub.id}
-                    to={`/admin/question-bank?class=${cls.key}&subject=${sub.id}`}
+                    to={`/admin/questions?class=${cls.key}&subject=${sub.id}`}
                     className="group flex items-center gap-3 rounded-xl px-2 py-1 transition hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
                   >
-                    <span className="w-5 text-center text-base">{sub.icon}</span>
+                    <sub.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                     <span className="w-40 shrink-0 truncate text-sm font-medium text-slate-700 group-hover:text-indigo-600 dark:text-slate-300 dark:group-hover:text-indigo-400">
                       {sub.label}
                     </span>

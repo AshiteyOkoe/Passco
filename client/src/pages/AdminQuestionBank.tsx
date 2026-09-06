@@ -12,7 +12,9 @@ import {
 } from 'lucide-react';
 import { fadeUp } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
-import { SUBJECT_META, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
+import { SUBJECT_META, CLASS_META, normalizeSubject, type SubjectId, type ClassLevel } from '../data/questionBank';
 import type { Question, UploadedDocument, Difficulty } from '../types';
 
 export default function AdminQuestionBank() {
@@ -32,8 +34,10 @@ export default function AdminQuestionBank() {
   useEffect(() => {
     const cls = searchParams.get('class') as ClassLevel | null;
     const subj = searchParams.get('subject') as SubjectId | null;
+    const status = searchParams.get('status') as 'pending' | 'approved' | null;
     if (cls === 'jhs1' || cls === 'jhs2' || cls === 'jhs3') setClassFilter(cls);
     if (subj && SUBJECT_META[subj]) setSubjectFilter(subj);
+    if (status === 'pending' || status === 'approved') setFilter(status);
   }, [searchParams]);
 
   const [formQuestion, setFormQuestion] = useState('');
@@ -152,7 +156,7 @@ export default function AdminQuestionBank() {
         explanation: formExplanation,
         difficulty: formDifficulty,
         topic: formTopic,
-        subject: SUBJECT_META[formSubject].label,
+        subject: formSubject,
         classLevel: formClassLevel,
       });
       setFormQuestion('');
@@ -184,12 +188,18 @@ export default function AdminQuestionBank() {
       if (filter === 'approved' && !q.approved) return false;
       if (typeFilter !== 'all' && q.type !== typeFilter) return false;
       if (difficultyFilter !== 'all' && q.difficulty !== difficultyFilter) return false;
-      if (subjectFilter !== 'all' && q.subject && q.subject.toLowerCase() !== SUBJECT_META[subjectFilter].label.toLowerCase()) return false;
+      if (subjectFilter !== 'all' && q.subject && normalizeSubject(q.subject) !== subjectFilter) return false;
       if (classFilter !== 'all' && q.classLevel && q.classLevel.toLowerCase() !== classFilter) return false;
       if (search && !q.question.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
   }, [questions, filter, typeFilter, difficultyFilter, subjectFilter, classFilter, search]);
+
+  const { page, totalPages, pageItems, goTo, reset } = usePagination(filtered, 20);
+
+  useEffect(() => {
+    reset();
+  }, [reset, filter, typeFilter, difficultyFilter, subjectFilter, classFilter, search]);
 
   if (loading) {
     return (
@@ -355,7 +365,7 @@ export default function AdminQuestionBank() {
                                   ? 'bg-emerald-500 text-white'
                                   : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
                               )}
-                              title="Mark as correct"
+                              aria-label="Mark as correct"
                             >
                               {letter}
                             </motion.button>
@@ -445,6 +455,8 @@ export default function AdminQuestionBank() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setFormAutoApprove(!formAutoApprove)}
+                    aria-label="Toggle auto-approve"
+                    aria-pressed={formAutoApprove}
                     className={cn(
                       'relative h-6 w-11 rounded-full transition-colors',
                       formAutoApprove ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'
@@ -635,7 +647,7 @@ export default function AdminQuestionBank() {
 
       <div className="space-y-2">
         <AnimatePresence>
-          {filtered.map((q, i) => (
+          {pageItems.map((q, i) => (
             <motion.div
               key={q._id}
               layout
@@ -654,6 +666,7 @@ export default function AdminQuestionBank() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => toggleSelect(q._id)}
+                aria-label={selectedQuestions.has(q._id) ? 'Deselect question' : 'Select question'}
                 className={cn(
                   'mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition',
                   selectedQuestions.has(q._id)
@@ -698,7 +711,7 @@ export default function AdminQuestionBank() {
                     <>
                       <span className="text-xs text-slate-300 dark:text-slate-600">·</span>
                       <span className="rounded bg-cyan-100 px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400">
-                        {q.subject}
+                        {normalizeSubject(q.subject) ? SUBJECT_META[normalizeSubject(q.subject)!].label : q.subject}
                       </span>
                     </>
                   )}
@@ -739,8 +752,8 @@ export default function AdminQuestionBank() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => handleApprove(q._id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-500 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
-                    title="Approve"
+                    className="flex h-10 min-w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-500 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
+                    aria-label="Approve question"
                   >
                     <CheckSquare className="h-4 w-4" />
                   </motion.button>
@@ -749,8 +762,8 @@ export default function AdminQuestionBank() {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => handleDelete(q._id)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                  title="Delete"
+                  className="flex h-10 min-w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                  aria-label="Delete question"
                 >
                   <Trash2 className="h-4 w-4" />
                 </motion.button>
@@ -779,6 +792,15 @@ export default function AdminQuestionBank() {
           </motion.div>
         )}
       </div>
+
+      <Pagination
+        className="mt-4"
+        page={page}
+        totalPages={totalPages}
+        totalItems={filtered.length}
+        perPage={20}
+        onPageChange={goTo}
+      />
     </div>
   );
 }

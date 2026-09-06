@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
+import { getEffectivePlan, PLAN_LIMITS } from '../services/subscriptionService';
 
 export async function saveAssessmentResult(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -8,6 +9,21 @@ export async function saveAssessmentResult(req: AuthRequest, res: Response): Pro
     if (!userId) {
       res.status(401).json({ message: 'Unauthorized' });
       return;
+    }
+
+    if (req.user?.role === 'student') {
+      const effective = await getEffectivePlan(userId);
+      const limits = PLAN_LIMITS[effective.plan];
+      const assessmentType = (req.body as { assessmentType?: string }).assessmentType || '';
+
+      const feature = assessmentType === 'examination' ? 'examinations' : assessmentType === 'mock' ? 'mocks' : null;
+      if (feature && !limits[feature]) {
+        res.status(403).json({
+          message: `${assessmentType} assessments require an active subscription. Your free trial has ended or is not active.`,
+          requiresPlan: 'premium',
+        });
+        return;
+      }
     }
 
     const { answers, ...rest } = req.body;
@@ -124,6 +140,28 @@ export async function getAllAssessmentResults(req: AuthRequest, res: Response): 
     });
   } catch (error) {
     console.error('Get all assessment results error:', error);
+    res.status(500).json({ message: 'Failed to fetch assessment results' });
+  }
+}
+
+export async function getAdminAssessmentResultsByUser(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = String(req.params.userId || '');
+    if (!userId) {
+      res.status(400).json({ message: 'userId is required' });
+      return;
+    }
+    const { data: results, error } = await supabase
+      .from('assessment_results')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+    res.json({ results });
+  } catch (error) {
+    console.error('Get admin user assessment results error:', error);
     res.status(500).json({ message: 'Failed to fetch assessment results' });
   }
 }

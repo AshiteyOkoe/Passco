@@ -1,31 +1,41 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { useTheme } from '../context/ThemeContext';
 import {
   BookOpen, Home, BarChart3, FileText, Library, PlusCircle,
-  Users, LogOut, Menu, X, GraduationCap, Sun, Moon, ClipboardCheck, History,
-  Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, ChevronDown, Award, Crown,
-  Sparkles, CreditCard, LayoutDashboard
+  LogOut, GraduationCap, Sun, Moon, ClipboardCheck, History,
+  Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, Award, Gem,
+  Sparkles, CreditCard, LayoutDashboard, Quote, Bell, Settings, Megaphone, MessageSquare, Flag
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DefaultAvatar } from './DefaultAvatars';
-import { resolveUploadUrl } from '../services/api';
+import { resolveUploadUrl, isCustomAvatar, getAdminCommandCenter, getAnnouncements } from '../services/api';
+import type { AdminCommandCenter, Announcement } from '../types';
 import InstallPrompt from './InstallPrompt';
+import MobileBottomNav from './MobileBottomNav';
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { isPremium, isTrial, trialDaysLeft, loading: subLoading } = useSubscription();
   const { dark, toggle } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const [cmd, setCmd] = useState<AdminCommandCenter | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -33,6 +43,15 @@ export default function Layout() {
   }, []);
 
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    if (isAdmin) {
+      getAdminCommandCenter(7).then(setCmd).catch(console.error);
+      getAnnouncements()
+        .then((r) => setAnnouncements(r.announcements.slice(0, 3)))
+        .catch(console.error);
+    }
+  }, [isAdmin]);
 
   const studentLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: Home },
@@ -43,28 +62,69 @@ export default function Layout() {
     { to: '/results-dashboard', label: 'Results Dashboard', icon: LayoutDashboard },
     { to: '/achievements', label: 'Achievements', icon: Award },
     { to: '/assessment/history', label: 'Results History', icon: History },
+    { to: '/reports', label: 'Report Cards', icon: FileText },
     { to: '/subscription', label: 'Subscription', icon: CreditCard },
     { to: '/profile', label: 'My Profile', icon: User },
   ];
 
-  const adminLinks = [
-    { to: '/admin', label: 'Admin Dashboard', icon: Users },
-    { to: '/admin/classes', label: 'JHS Classes', icon: Building2 },
-    { to: '/admin/subjects', label: 'Subjects', icon: BookMarked },
-    { to: '/admin/jhs-questions', label: 'JHS Questions', icon: HelpCircle },
-    { to: '/admin/bulk-upload', label: 'Bulk Upload', icon: FileUp },
-    { to: '/admin/student-performance', label: 'Student Performance', icon: TrendingUp },
-    { to: '/admin/files', label: 'All Files', icon: FileText },
-    { to: '/admin/questions', label: 'Question Bank', icon: Library },
-    { to: '/admin/create-quiz', label: 'Create Quiz', icon: PlusCircle },
-    { to: '/admin/ai-generator', label: 'AI Generator', icon: Sparkles },
-    { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-    { to: '/admin/certificates', label: 'Certificates', icon: Crown },
-    { to: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
-    { to: '/profile', label: 'My Profile', icon: User },
+  const adminGroups = [
+    {
+      title: 'Dashboard',
+      links: [{ to: '/admin', label: 'Admin Dashboard', icon: LayoutDashboard }],
+    },
+    {
+      title: 'Academics',
+      links: [
+        { to: '/admin/classes', label: 'JHS Classes', icon: Building2 },
+        { to: '/admin/subjects', label: 'Subjects', icon: BookMarked },
+      ],
+    },
+    {
+      title: 'Assessments',
+      links: [
+        { to: '/admin/jhs-questions', label: 'JHS Questions', icon: HelpCircle },
+        { to: '/admin/create-quiz', label: 'Create Quiz', icon: PlusCircle },
+        { to: '/admin/questions', label: 'Question Bank', icon: Library },
+        { to: '/admin/ai-generator', label: 'AI Generator', icon: Sparkles },
+      ],
+    },
+    {
+      title: 'Resources',
+      links: [
+        { to: '/admin/bulk-upload', label: 'Bulk Upload', icon: FileUp },
+        { to: '/admin/files', label: 'All Files', icon: FileText },
+        { to: '/admin/testimonials', label: 'Testimonials', icon: Quote },
+      ],
+    },
+    {
+      title: 'Analytics & Finance',
+      links: [
+        { to: '/admin/analytics', label: 'Reports', icon: BarChart3 },
+        { to: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
+      ],
+    },
+    {
+      title: 'Academic Reports',
+      links: [
+        { to: '/admin/reports', label: 'Report Cards', icon: FileText },
+        { to: '/admin/report-settings', label: 'Report Settings', icon: Settings },
+      ],
+    },
+    {
+      title: 'Support',
+      links: [
+        { to: '/admin/support', label: 'Contact & Reports', icon: MessageSquare },
+        { to: '/admin/certificates', label: 'Certificates', icon: Award },
+        { to: '/profile', label: 'My Profile', icon: User },
+      ],
+    },
   ];
 
-  const links = isAdmin ? adminLinks : studentLinks;
+  const links = isAdmin ? adminGroups.flatMap((g) => g.links) : studentLinks;
+
+  const pendingCount = cmd
+    ? cmd.kpis.pendingQuestions + cmd.pipeline.processing + cmd.pipeline.queued + cmd.pipeline.failed
+    : 0;
 
   const handleLogout = () => {
     setProfileOpen(false);
@@ -87,22 +147,21 @@ export default function Layout() {
     return (user?.gender as 'male' | 'female') || '';
   };
 
-  const hasCustomAvatar = user?.avatar && user.avatar.startsWith('/uploads/');
+  const hasCustomAvatar = isCustomAvatar(user?.avatar);
   const avatarGender = resolveAvatarGender();
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 transition-colors duration-300 dark:bg-slate-950">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl safe-area-top transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950/90">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 sm:hidden dark:bg-slate-800 dark:text-slate-400"
-              aria-label="Toggle sidebar"
-            >
-              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
             <Link to="/" className="flex items-center gap-2.5">
               <img
                 src="/images/logos/qna.svg"
@@ -111,12 +170,110 @@ export default function Layout() {
               />
             </Link>
             {isAdmin && (
-              <span className="ml-2 rounded-lg bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <span className="ml-2 rounded-lg bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                 Admin
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setNotifOpen(!notifOpen)}
+                  className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  {pendingCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                      {pendingCount > 9 ? '9+' : pendingCount}
+                    </span>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {notifOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
+                    >
+                      <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Notifications</p>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto p-2">
+                        <Link
+                          to="/admin/jhs-questions"
+                          onClick={() => setNotifOpen(false)}
+                          className="flex items-center justify-between rounded-lg px-3 py-2.5 transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                          <span className="text-sm text-slate-600 dark:text-slate-300">Questions pending review</span>
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                            {cmd ? cmd.kpis.pendingQuestions : 0}
+                          </span>
+                        </Link>
+                        <Link
+                          to="/admin/files"
+                          onClick={() => setNotifOpen(false)}
+                          className="flex items-center justify-between rounded-lg px-3 py-2.5 transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                          <span className="text-sm text-slate-600 dark:text-slate-300">Files processing / queued</span>
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                            {cmd ? cmd.pipeline.processing + cmd.pipeline.queued : 0}
+                          </span>
+                        </Link>
+                        <Link
+                          to="/admin/files"
+                          onClick={() => setNotifOpen(false)}
+                          className="flex items-center justify-between rounded-lg px-3 py-2.5 transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                          <span className="text-sm text-slate-600 dark:text-slate-300">Failed processing</span>
+                          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-400">
+                            {cmd ? cmd.pipeline.failed : 0}
+                          </span>
+                        </Link>
+
+                        {announcements.length > 0 && (
+                          <>
+                            <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+                            <p className="flex items-center gap-1.5 px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              <Megaphone className="h-3.5 w-3.5" /> Announcements
+                            </p>
+                            {announcements.map((a) => (
+                              <Link
+                                key={a.id}
+                                to="/admin/subscriptions"
+                                onClick={() => setNotifOpen(false)}
+                                className="block rounded-lg px-3 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                              >
+                                <p className="truncate text-sm font-medium text-slate-800 dark:text-white">{a.title}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(a.created_at).toLocaleDateString()}</p>
+                              </Link>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                      <div className="border-t border-slate-100 px-4 py-2.5 dark:border-slate-800">
+                        <p className="text-center text-xs text-slate-400 dark:text-slate-500">Live from PASSCO Command Center</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {isAdmin && (
+              <Link
+                to="/admin/profile"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                aria-label="My Profile"
+              >
+                <Settings className="h-5 w-5" />
+              </Link>
+            )}
+
             <motion.button
               onClick={toggle}
               className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
@@ -136,19 +293,35 @@ export default function Layout() {
               </AnimatePresence>
             </motion.button>
 
-            {/* Profile Dropdown */}
+            {!isAdmin && !subLoading && (
+              <Link
+                to="/subscription"
+                className={`hidden sm:inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                  isPremium
+                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                <Gem className="h-3.5 w-3.5" />
+                {isPremium
+                  ? isTrial && trialDaysLeft > 0
+                    ? `Premium · ${trialDaysLeft}d left`
+                    : 'Premium'
+                  : 'Go Premium'}
+              </Link>
+            )}
+
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                className={`flex h-9 w-9 items-center justify-center rounded-full transition ${profileOpen ? 'ring-2 ring-blue-300 dark:ring-blue-600' : 'hover:ring-2 hover:ring-blue-200 dark:hover:ring-blue-800'}`}
+                aria-label="Profile menu"
               >
                 {hasCustomAvatar ? (
-                  <img src={resolveUploadUrl(user!.avatar!)} alt={user?.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700" />
+                  <img src={resolveUploadUrl(user!.avatar!)} alt={user?.name} className="h-9 w-9 rounded-full object-cover ring-2 ring-blue-200 dark:ring-blue-800" />
                 ) : (
-                  <DefaultAvatar gender={avatarGender} size={32} className="rounded-full ring-2 ring-slate-200 dark:ring-slate-700" />
+                  <DefaultAvatar gender={avatarGender} size={36} className="rounded-full ring-2 ring-blue-200 dark:ring-blue-800" />
                 )}
-                <span className="hidden text-sm font-medium text-slate-700 dark:text-slate-200 md:inline">{user?.name}</span>
-                <ChevronDown className={`hidden h-4 w-4 text-slate-400 transition-transform md:inline ${profileOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
@@ -160,13 +333,12 @@ export default function Layout() {
                     transition={{ duration: 0.15 }}
                     className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
                   >
-                    {/* Profile Header */}
                     <div className="border-b border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-800/50">
                       <div className="flex items-center gap-3">
                         {hasCustomAvatar ? (
-                          <img src={resolveUploadUrl(user!.avatar!)} alt={user?.name} className="h-12 w-12 rounded-full object-cover ring-2 ring-indigo-200 dark:ring-indigo-800" />
+                          <img src={resolveUploadUrl(user!.avatar!)} alt={user?.name} className="h-12 w-12 rounded-full object-cover ring-2 ring-blue-200 dark:ring-blue-800" />
                         ) : (
-                          <DefaultAvatar gender={avatarGender} size={48} className="rounded-full ring-2 ring-indigo-200 dark:ring-indigo-800" />
+                          <DefaultAvatar gender={avatarGender} size={48} className="rounded-full ring-2 ring-blue-200 dark:ring-blue-800" />
                         )}
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user?.name}</p>
@@ -175,7 +347,6 @@ export default function Layout() {
                       </div>
                     </div>
 
-                    {/* Profile Details */}
                     <div className="px-5 py-3">
                       {profileDetails.map((item) => (
                         <div key={item.label} className="flex items-center justify-between py-1.5">
@@ -185,15 +356,14 @@ export default function Layout() {
                       ))}
                     </div>
 
-                    {/* Actions */}
                     <div className="border-t border-slate-100 px-3 py-2 dark:border-slate-800">
                       <Link
-                        to="/profile"
+                        to={isAdmin ? '/admin/profile' : '/profile'}
                         onClick={() => setProfileOpen(false)}
                         className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                       >
                         <User className="h-4 w-4" />
-                        Edit Profile
+                        View Profile
                       </Link>
                       <button
                         onClick={handleLogout}
@@ -207,59 +377,118 @@ export default function Layout() {
                 )}
               </AnimatePresence>
             </div>
-          </div>
+            </div>
         </div>
       </nav>
 
       <div className="mx-auto flex w-full max-w-7xl flex-1">
-        {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'fixed inset-y-16 left-0 z-40 w-64' : 'hidden'} sm:relative sm:flex sm:w-64 sm:shrink-0 border-r border-slate-200 bg-white transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950`}>
+        {/* Sidebar - hidden on mobile, visible on sm+ */}
+        <aside className="hidden sm:flex sm:w-64 sm:shrink-0 border-r border-slate-200 bg-white transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950">
           <nav className="w-full p-4">
-            {links.map((link) => {
-              const Icon = link.icon;
-              const isActive = location.pathname === link.to || (link.to !== '/dashboard' && location.pathname.startsWith(link.to));
-              return (
+            {isAdmin ? (
+              adminGroups.map((group) => (
+                <div key={group.title} className="mb-2">
+                  <p className="mb-1 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {group.title}
+                  </p>
+                  {group.links.map((link) => {
+                    const Icon = link.icon;
+                    const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to));
+                    return (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-all mb-0.5 ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-500/10 dark:text-blue-400'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))
+            ) : (
+              links.map((link) => {
+                const Icon = link.icon;
+                const isActive = location.pathname === link.to || (link.to !== '/dashboard' && location.pathname.startsWith(link.to));
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all mb-1 ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-500/10 dark:text-blue-400'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    {link.label}
+                  </Link>
+                );
+              })
+            )}
+
+            {!isAdmin && !subLoading && (
+              <div className={`mt-4 rounded-xl p-4 ${isPremium ? 'bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800' : 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white'}`}>
+                <div className="flex items-center gap-2">
+                  <Gem className={`h-5 w-5 ${isPremium ? 'text-amber-500' : 'text-amber-300'}`} />
+                  <p className={`text-sm font-bold ${isPremium ? 'text-amber-800 dark:text-amber-300' : ''}`}>
+                    {isPremium ? 'Premium Active' : 'Go Premium'}
+                  </p>
+                </div>
+                <p className={`mt-1 text-xs leading-relaxed ${isPremium ? 'text-amber-700/80 dark:text-amber-200/70' : 'text-blue-100'}`}>
+                  {isPremium
+                    ? isTrial
+                      ? `Free trial active — ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left.`
+                      : 'All premium features unlocked.'
+                    : 'Unlock mock exams, examinations & longer AI access.'}
+                </p>
                 <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all mb-1 ${
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                  to="/subscription"
+                  className={`mt-3 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                    isPremium
+                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300'
+                      : 'bg-white text-indigo-700 hover:bg-blue-50'
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  {link.label}
+                  <CreditCard className="h-3.5 w-3.5" />
+                  {isPremium ? 'Manage' : 'Subscribe Now'}
                 </Link>
-              );
-            })}
+              </div>
+            )}
           </nav>
         </aside>
 
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-30 bg-black/30 sm:hidden" onClick={() => setSidebarOpen(false)} />
-        )}
-
-        <main className="min-h-[calc(100vh-4rem)] flex-1">
+        <main id="main-content" className="min-h-[calc(100vh-4rem)] flex-1 pb-20 sm:pb-0">
           <Outlet />
         </main>
       </div>
 
+      <MobileBottomNav />
       <InstallPrompt />
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+      <footer className="border-t border-slate-200 bg-white transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950 sm:block">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-center text-xs text-slate-400 dark:text-slate-500 sm:text-left">
             &copy; {new Date().getFullYear()} Passco. All rights reserved.
           </p>
-          <div className="flex items-center gap-4">
-            <Link to="/about" className="text-xs text-slate-400 hover:text-indigo-500 dark:text-slate-500 dark:hover:text-indigo-400">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 sm:gap-x-4">
+            <Link to="/about" className="rounded-lg px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-blue-500 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-blue-400 sm:py-2">
               About
             </Link>
-            <Link to="/contact" className="text-xs text-slate-400 hover:text-indigo-500 dark:text-slate-500 dark:hover:text-indigo-400">
+            <Link to="/contact" className="rounded-lg px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-blue-500 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-blue-400 sm:py-2">
               Contact
+            </Link>
+            <Link to="/faq" className="rounded-lg px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-blue-500 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-blue-400 sm:py-2">
+              FAQ
+            </Link>
+            <Link to="/contact?subject=Report+a+Question" className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:text-slate-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 sm:py-2">
+              <Flag className="h-3 w-3" /> Report Issue
             </Link>
           </div>
         </div>

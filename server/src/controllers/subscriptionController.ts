@@ -1,50 +1,61 @@
 import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
+import { logAuditEvent } from '../services/auditService';
+import { getEffectivePlan, grantTrial, PLAN_LIMITS, TRIAL_DAYS, PlanType } from '../services/subscriptionService';
 
-export const PLAN_LIMITS = {
-  free: { aiQuestions: 20, label: 'Free Trial', quizzes: true, mocks: true, examinations: false, price: 0 },
-  basic: { aiQuestions: -1, label: 'QnA Access', quizzes: true, mocks: true, examinations: true, price: 10 },
-  premium: { aiQuestions: -1, label: 'QnA Access', quizzes: true, mocks: true, examinations: true, price: 10 },
-} as const;
-
-export type PlanType = keyof typeof PLAN_LIMITS;
+export { PLAN_LIMITS };
+export type { PlanType };
 
 function getCurrentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function getTrialDaysLeft(expiresAt: string | null): number {
+  if (!expiresAt) return 0;
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
+
 export async function getMySubscription(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { data: sub } = await supabase
+    const userId = req.user!.id;
+
+    const { count: subCount } = await supabase
       .from('subscriptions')
-      .select('*')
-      .eq('user_id', req.user!.id)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (!subCount && req.user!.role === 'student') {
+      await grantTrial(userId);
+    }
+
+    const effective = await getEffectivePlan(userId);
+    const plan = effective.plan;
 
     const month = getCurrentMonth();
     const { data: usage } = await supabase
       .from('ai_usage')
       .select('questions_generated')
-      .eq('user_id', req.user!.id)
+      .eq('user_id', userId)
       .eq('month', month)
       .maybeSingle();
 
-    const plan = (sub?.plan as PlanType) || 'free';
     const limits = PLAN_LIMITS[plan];
 
     res.json({
-      subscription: sub || { plan: 'free', status: 'active', expires_at: null },
+      subscription: effective.subscription || { plan: 'free', status: 'active', expires_at: null },
       aiUsage: {
         used: usage?.questions_generated || 0,
         limit: limits.aiQuestions,
         month,
       },
       planLimits: limits,
+      effectivePlan: plan,
+      isTrial: effective.isTrial,
+      trialDays: TRIAL_DAYS,
+      trialDaysLeft: getTrialDaysLeft(effective.expiresAt),
     });
   } catch (error) {
     console.error('Get subscription error:', error);
@@ -89,6 +100,15 @@ export async function suspendUser(req: AuthRequest, res: Response): Promise<void
       .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('user_id', id)
       .eq('status', 'active');
+
+    await logAuditEvent({
+      userId: req.user!.id,
+      action: 'suspend_user',
+      entityType: 'subscription',
+      entityId: id,
+      details: { suspendedBy: req.user!.email },
+      ipAddress: req.ip as string,
+    });
 
     res.json({ message: 'User subscription suspended' });
   } catch (error) {

@@ -2,9 +2,15 @@ import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 import crypto from 'crypto';
+import { logAuditEvent } from '../services/auditService';
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || '';
+const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY || '';
 const PAYSTACK_BASE = 'https://api.paystack.co';
+
+export async function getPaystackPublicKey(_req: AuthRequest, res: Response): Promise<void> {
+  res.json({ publicKey: PAYSTACK_PUBLIC_KEY });
+}
 
 async function paystackRequest(path: string, options: RequestInit = {}) {
   const res = await fetch(`${PAYSTACK_BASE}${path}`, {
@@ -25,7 +31,7 @@ export async function initializePayment(req: AuthRequest, res: Response): Promis
       res.status(400).json({ message: 'Invalid plan' }); return;
     }
 
-    const amounts: Record<string, number> = { basic: 10, premium: 10 };
+    const amounts: Record<string, number> = { basic: 15, premium: 15 };
     const amount = amounts[plan];
 
     const callback_url = `${process.env.CLIENT_URL || 'https://selfexamine.vercel.app'}/subscription?payment=success`;
@@ -92,6 +98,15 @@ export async function verifyPayment(req: AuthRequest, res: Response): Promise<vo
     if (existingPayment?.status === 'success') {
       res.json({ message: 'Payment already processed', plan }); return;
     }
+
+    await logAuditEvent({
+      userId: userId,
+      action: 'payment_verified',
+      entityType: 'payment',
+      entityId: reference,
+      details: { plan, amount: result.data?.amount / 100 },
+      ipAddress: req.ip as string,
+    });
 
     await supabase
       .from('payments')

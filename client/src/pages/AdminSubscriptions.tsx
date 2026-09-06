@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { fadeUp, stagger } from '../utils/animations';
 import { CreditCard, Users, Megaphone, Trash2, Plus, DollarSign, TrendingUp } from 'lucide-react';
 import AnimatedSpinner from '../components/AnimatedSpinner';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 import type { Payment, Subscription, Announcement } from '../types';
 
 export default function AdminSubscriptions() {
@@ -51,6 +53,10 @@ export default function AdminSubscriptions() {
     } catch { /* ignore */ }
   };
 
+  const paymentsPagination = usePagination(payments, 10);
+  const subscriptionsPagination = usePagination(subscriptions, 10);
+  const announcementsPagination = usePagination(announcements, 10);
+
   if (loading) return <div className="flex items-center justify-center p-12"><AnimatedSpinner label="Loading..." /></div>;
 
   const successPayments = payments.filter((p) => p.status === 'success');
@@ -90,69 +96,164 @@ export default function AdminSubscriptions() {
       </div>
 
       {tab === 'payments' && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Student</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Plan</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-              {payments.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 text-sm text-slate-800 dark:text-white">{p.userName}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">{p.plan}</span></td>
-                  <td className="px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300">GH₵ {p.amount}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    p.status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-                      : p.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
-                      : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
-                  }`}>{p.status}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(p.created_at).toLocaleDateString()}</td>
-                </tr>
+        <div>
+          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Student</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Plan</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                  {paymentsPagination.pageItems.map((p) => (
+                    <tr key={p.id}>
+                      <td className="px-4 py-3 text-sm text-slate-800 dark:text-white">{p.userName}</td>
+                      <td className="px-4 py-3"><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">{p.plan}</span></td>
+                      <td className="px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300">GH₵ {p.amount}</td>
+                      <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        p.status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                          : p.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
+                          : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                      }`}>{p.status}</span></td>
+                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(p.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                  {payments.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">No payments yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="divide-y divide-slate-50 dark:divide-slate-800/50 md:hidden">
+              {paymentsPagination.pageItems.map((p) => (
+                <div key={p.id} className="p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Student</p>
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{p.userName}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      p.status === 'success' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                        : p.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
+                        : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300'
+                    }`}>{p.status}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Plan</p>
+                      <span className="mt-0.5 inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">{p.plan}</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Amount</p>
+                      <p className="mt-0.5 text-sm font-medium text-slate-700 dark:text-slate-300">GH₵ {p.amount}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Date</p>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{new Date(p.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
               ))}
               {payments.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">No payments yet</td></tr>
+                <p className="px-4 py-8 text-center text-sm text-slate-400">No payments yet</p>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+
+          <Pagination
+            className="mt-4"
+            page={paymentsPagination.page}
+            totalPages={paymentsPagination.totalPages}
+            totalItems={payments.length}
+            perPage={10}
+            onPageChange={paymentsPagination.goTo}
+          />
         </div>
       )}
 
       {tab === 'subscriptions' && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Student</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Plan</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Expires</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Started</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-              {subscriptions.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-3 text-sm text-slate-800 dark:text-white">{s.userName}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">{s.plan}</span></td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    s.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                  }`}>{s.status}</span></td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(s.starts_at).toLocaleDateString()}</td>
-                </tr>
+        <div>
+          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Student</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Plan</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Expires</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Started</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                  {subscriptionsPagination.pageItems.map((s) => (
+                    <tr key={s.id}>
+                      <td className="px-4 py-3 text-sm text-slate-800 dark:text-white">{s.userName}</td>
+                      <td className="px-4 py-3"><span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">{s.plan}</span></td>
+                      <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        s.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>{s.status}</span></td>
+                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '-'}</td>
+                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{new Date(s.starts_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                  {subscriptions.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">No subscriptions yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="divide-y divide-slate-50 dark:divide-slate-800/50 md:hidden">
+              {subscriptionsPagination.pageItems.map((s) => (
+                <div key={s.id} className="p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Student</p>
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">{s.userName}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      s.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>{s.status}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Plan</p>
+                      <span className="mt-0.5 inline-block rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">{s.plan}</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Expires</p>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '-'}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Started</p>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{new Date(s.starts_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
               ))}
               {subscriptions.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">No subscriptions yet</td></tr>
+                <p className="px-4 py-8 text-center text-sm text-slate-400">No subscriptions yet</p>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+
+          <Pagination
+            className="mt-4"
+            page={subscriptionsPagination.page}
+            totalPages={subscriptionsPagination.totalPages}
+            totalItems={subscriptions.length}
+            perPage={10}
+            onPageChange={subscriptionsPagination.goTo}
+          />
         </div>
       )}
 
@@ -199,7 +300,7 @@ export default function AdminSubscriptions() {
           )}
 
           <div className="space-y-3">
-            {announcements.map((a) => (
+            {announcementsPagination.pageItems.map((a) => (
               <div key={a.id} className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <div>
                   <div className="flex items-center gap-2">
@@ -213,7 +314,7 @@ export default function AdminSubscriptions() {
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{a.body}</p>
                   <p className="mt-1 text-[10px] text-slate-400">{new Date(a.created_at).toLocaleDateString()} · {a.target_audience}</p>
                 </div>
-                <button onClick={() => handleDeleteAnnouncement(a.id)} className="shrink-0 p-2 text-slate-400 hover:text-rose-500">
+                <button onClick={() => handleDeleteAnnouncement(a.id)} aria-label="Delete announcement" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -224,6 +325,15 @@ export default function AdminSubscriptions() {
               </div>
             )}
           </div>
+
+          <Pagination
+            className="mt-4"
+            page={announcementsPagination.page}
+            totalPages={announcementsPagination.totalPages}
+            totalItems={announcements.length}
+            perPage={10}
+            onPageChange={announcementsPagination.goTo}
+          />
         </div>
       )}
     </div>

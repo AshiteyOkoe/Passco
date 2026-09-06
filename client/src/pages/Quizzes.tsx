@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getQuizzes } from '../services/api';
 import { cn } from '../utils';
 import { fadeUp, stagger } from '../utils/animations';
 import {
   BookOpen, Clock, ListChecks, Play, Loader2, Trophy,
-  FileQuestion, ClipboardList
+  FileQuestion, ClipboardList, Trash2,
 } from 'lucide-react';
 
 interface QuizListItem {
@@ -32,6 +34,15 @@ export default function Quizzes() {
   const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('hidden-quizzes');
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [deleteTarget, setDeleteTarget] = useState<QuizListItem | null>(null);
 
   useEffect(() => {
     getQuizzes()
@@ -43,11 +54,27 @@ export default function Quizzes() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleHide = (id: string) => {
+    const next = new Set(hiddenIds);
+    next.add(id);
+    setHiddenIds(next);
+    localStorage.setItem('hidden-quizzes', JSON.stringify(Array.from(next)));
+    setDeleteTarget(null);
+  };
+
+  const visibleQuizzes = quizzes.filter((q) => !hiddenIds.has(q._id));
+
+  const { page, totalPages, pageItems, goTo, reset } = usePagination(visibleQuizzes, 12);
+
+  useEffect(() => {
+    reset();
+  }, [hiddenIds, reset]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           <p className="text-sm text-slate-500 dark:text-slate-400">Loading quizzes...</p>
         </div>
       </div>
@@ -63,8 +90,8 @@ export default function Quizzes() {
           initial="hidden"
           animate="visible"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-500/10">
-            <ClipboardList className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/10">
+            <ClipboardList className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Quizzes</h1>
@@ -78,7 +105,7 @@ export default function Quizzes() {
           </div>
         )}
 
-        {quizzes.length === 0 ? (
+        {visibleQuizzes.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -99,7 +126,7 @@ export default function Quizzes() {
             initial="hidden"
             animate="visible"
           >
-            {quizzes.map((quiz, i) => {
+            {pageItems.map((quiz, i) => {
               const questionCount = quiz.questions?.length ?? 0;
               const creatorName = typeof quiz.createdBy === 'object' ? quiz.createdBy?.name : undefined;
               return (
@@ -109,8 +136,8 @@ export default function Quizzes() {
                   custom={i}
                   className="group flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center"
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/10">
-                    <BookOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
+                    <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -140,20 +167,84 @@ export default function Quizzes() {
                     </div>
                   </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => navigate(`/quiz/${quiz._id}`)}
-                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                  >
-                    <Play className="h-4 w-4" /> Start Quiz
-                  </motion.button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => navigate(`/quiz/${quiz._id}`)}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    >
+                      <Play className="h-4 w-4" /> Start Quiz
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setDeleteTarget(quiz)}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                      aria-label="Remove quiz from my list"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </motion.button>
+                  </div>
                 </motion.div>
               );
             })}
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={visibleQuizzes.length}
+              perPage={12}
+              onPageChange={goTo}
+            />
           </motion.div>
         )}
       </div>
+
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setDeleteTarget(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-500/10">
+                <Trash2 className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              </div>
+              <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">Remove Quiz?</h3>
+              <p className="mb-1 text-sm text-slate-500 dark:text-slate-400">
+                Remove <span className="font-semibold text-slate-700 dark:text-slate-300">{deleteTarget.title}</span> from your quiz list?
+              </p>
+              <p className="mb-6 text-xs text-slate-400 dark:text-slate-500">
+                This only hides it from your view. The quiz still exists and your teacher can reassign it.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteTarget && handleHide(deleteTarget._id)}
+                  className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+                >
+                  Remove
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

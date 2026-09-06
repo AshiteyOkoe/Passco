@@ -18,6 +18,13 @@ import aiGenerationRoutes from './routes/aiGeneration';
 import announcementRoutes from './routes/announcements';
 import leaderboardRoutes from './routes/leaderboard';
 import otpRoutes from './routes/otp';
+import auditRoutes from './routes/audit';
+import quizAttemptRoutes from './routes/quizAttempts';
+import testimonialRoutes from './routes/testimonials';
+import contactRoutes from './routes/contact';
+import reportCardRoutes from './routes/reportCards';
+
+console.log('dotenv loaded, GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY, 'prefix:', process.env.GEMINI_API_KEY?.substring(0, 8));
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -59,6 +66,11 @@ app.use('/api/ai-generation', aiGenerationRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api/audit', auditRoutes);
+app.use('/api/quiz-attempts', quizAttemptRoutes);
+app.use('/api/testimonials', testimonialRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/report-cards', reportCardRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
@@ -68,9 +80,8 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 async function start() {
   await connectDatabase();
   await seedUsers();
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT, () => {});
 }
 
 start();

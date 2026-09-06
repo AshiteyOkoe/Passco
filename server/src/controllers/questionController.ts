@@ -1,6 +1,55 @@
 import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
+import { logAuditEvent } from '../services/auditService';
+
+const SUBJECT_KEYS = ['mathematics', 'science', 'english', 'social-studies', 'ict', 'rme', 'creative-arts', 'career-tech'];
+
+const SUBJECT_LABEL_TO_KEY: Record<string, string> = {
+  mathematics: 'mathematics', maths: 'mathematics', math: 'mathematics',
+  science: 'science',
+  'english language': 'english', english: 'english',
+  'social studies': 'social-studies',
+  ict: 'ict', 'information technology': 'ict',
+  'religious and moral education': 'rme', 'religious & moral education': 'rme', rme: 'rme',
+  'creative arts and design': 'creative-arts', 'creative arts': 'creative-arts',
+  'career technology': 'career-tech',
+};
+
+function normalizeSubject(value: string): string {
+  const trimmed = (value || '').trim();
+  const lower = trimmed.toLowerCase();
+  if (SUBJECT_KEYS.includes(lower)) return lower;
+  return SUBJECT_LABEL_TO_KEY[lower] || trimmed;
+}
+
+function normalizeClass(value: string): string {
+  return (value || '').toLowerCase().replace(/\s+/g, '');
+}
+
+export async function getQuestionCounts(_req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { data: questions } = await supabase
+      .from('questions')
+      .select('subject, class_level');
+
+    const counts: Record<string, number> = {};
+    const byClass: Record<string, Record<string, number>> = {};
+
+    for (const q of questions || []) {
+      const subj = normalizeSubject(q.subject || '');
+      const cls = normalizeClass(q.class_level) || 'unassigned';
+      if (subj) counts[subj] = (counts[subj] || 0) + 1;
+      byClass[cls] = byClass[cls] || {};
+      byClass[cls][subj] = (byClass[cls][subj] || 0) + 1;
+    }
+
+    res.json({ counts, byClass });
+  } catch (error) {
+    console.error('Get question counts error:', error);
+    res.status(500).json({ message: 'Failed to fetch question counts' });
+  }
+}
 
 function normalizeText(text: string): string {
   return text.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
@@ -321,6 +370,15 @@ export async function approveQuestion(req: AuthRequest, res: Response): Promise<
       res.status(404).json({ message: 'Question not found' });
       return;
     }
+
+    await logAuditEvent({
+      userId: req.user!.id,
+      action: 'approve_question',
+      entityType: 'question',
+      entityId: req.params.id,
+      details: { subject: question.subject, classLevel: question.class_level },
+      ipAddress: req.ip as string,
+    });
 
     res.json({ message: 'Question approved', question });
   } catch (error) {

@@ -8,6 +8,9 @@ import Features from './pages/Features';
 import HowItWorks from './pages/HowItWorks';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import FAQ from './pages/FAQ';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import StudentDashboard from './pages/StudentDashboard';
 import TakeQuiz from './pages/TakeQuiz';
 import Quizzes from './pages/Quizzes';
@@ -28,15 +31,25 @@ import AdminAnalytics from './pages/AdminAnalytics';
 import AdminClasses from './pages/AdminClasses';
 import AdminSubjects from './pages/AdminSubjects';
 import AdminJHSQuestions from './pages/AdminJHSQuestions';
-import AdminStudentPerformance from './pages/AdminStudentPerformance';
 import AdminBulkUpload from './pages/AdminBulkUpload';
 import AdminCertificates from './pages/AdminCertificates';
 import Profile from './pages/Profile';
+import AdminProfile from './pages/AdminProfile';
 import Subscription from './pages/Subscription';
 import AIGenerator from './pages/AIGenerator';
 import AdminSubscriptions from './pages/AdminSubscriptions';
+import AdminTestimonials from './pages/AdminTestimonials';
+import AdminAuditLogs from './pages/AdminAuditLogs';
+import AdminContactMessages from './pages/AdminContactMessages';
+import VerifyReport from './pages/VerifyReport';
+import ReportsPage from './pages/ReportsPage';
+import AdminReports from './pages/AdminReports';
+import AdminReportSettings from './pages/AdminReportSettings';
 import VerifyOTP from './pages/VerifyOTP';
+import GoogleCallback from './pages/GoogleCallback';
 import { useState, useCallback, useEffect } from 'react';
+import { MotionConfig } from 'framer-motion';
+import { ToastProvider } from './components/toast/ToastProvider';
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
   const { user, loading } = useAuth();
@@ -94,72 +107,85 @@ export default function App() {
   }
 
   return (
-    <>
-      <Routes>
-        {/* Public routes */}
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<Landing />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-        </Route>
+    <MotionConfig reducedMotion="user">
+      <ToastProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+          </Route>
 
-        {/* Legacy direct login/register pages redirect to home */}
-        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/?auth=login" replace />} />
-        <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/?auth=register" replace />} />
-        <Route path="/verify-otp" element={<VerifyOTP />} />
+          {/* Legacy direct login/register pages redirect to home */}
+          <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/?auth=login" replace />} />
+          <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/?auth=register" replace />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
+          <Route path="/verify/report/:code" element={<VerifyReport />} />
+          <Route path="/auth/callback" element={<GoogleCallback />} />
 
-        {/* Protected student routes */}
-        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="/dashboard" element={<StudentDashboard />} />
-          <Route path="/quizzes" element={<Quizzes />} />
-          <Route path="/quiz/:id" element={<TakeQuiz />} />
-          <Route path="/quiz/:id/results" element={<QuizResults />} />
-          <Route path="/analytics" element={<StudentAnalytics />} />
-          <Route path="/analytics/performance" element={<StudentPerformanceAnalytics />} />
-          <Route path="/results-dashboard" element={<ResultsDashboard />} />
-          <Route path="/achievements" element={<StudentAchievements />} />
-          <Route path="/assessment/setup" element={<AssessmentSetup />} />
-          <Route path="/assessment/take" element={<TakeAssessment />} />
-          <Route path="/assessment/result" element={<AssessmentResult />} />
-          <Route path="/assessment/history" element={<AssessmentHistory />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/subscription" element={<Subscription />} />
-        </Route>
+          {/* Protected student routes */}
+          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<StudentDashboard />} />
+            <Route path="/quizzes" element={<Quizzes />} />
+            <Route path="/quiz/:id" element={<TakeQuiz />} />
+            <Route path="/quiz/:id/results" element={<QuizResults />} />
+            <Route path="/analytics" element={<StudentAnalytics />} />
+            <Route path="/analytics/performance" element={<StudentPerformanceAnalytics />} />
+            <Route path="/results-dashboard" element={<ResultsDashboard />} />
+            <Route path="/achievements" element={<StudentAchievements />} />
+            <Route path="/assessment/setup" element={<AssessmentSetup />} />
+            <Route path="/assessment/take" element={<TakeAssessment />} />
+            <Route path="/assessment/result" element={<AssessmentResult />} />
+            <Route path="/assessment/history" element={<AssessmentHistory />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/subscription" element={<Subscription />} />
+          </Route>
 
-        {/* Protected admin routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute role="admin">
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="classes" element={<AdminClasses />} />
-          <Route path="subjects" element={<AdminSubjects />} />
-          <Route path="jhs-questions" element={<AdminJHSQuestions />} />
-          <Route path="student-performance" element={<AdminStudentPerformance />} />
-          <Route path="bulk-upload" element={<AdminBulkUpload />} />
-          <Route path="files" element={<AdminFiles />} />
-          <Route path="questions" element={<AdminQuestionBank />} />
-          <Route path="create-quiz" element={<AdminCreateQuiz />} />
-          <Route path="ai-generator" element={<AIGenerator />} />
-          <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="certificates" element={<AdminCertificates />} />
-          <Route path="subscriptions" element={<AdminSubscriptions />} />
-        </Route>
+          {/* Protected admin routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute role="admin">
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="classes" element={<AdminClasses />} />
+            <Route path="subjects" element={<AdminSubjects />} />
+            <Route path="jhs-questions" element={<AdminJHSQuestions />} />
+            <Route path="bulk-upload" element={<AdminBulkUpload />} />
+            <Route path="files" element={<AdminFiles />} />
+            <Route path="questions" element={<AdminQuestionBank />} />
+            <Route path="create-quiz" element={<AdminCreateQuiz />} />
+            <Route path="ai-generator" element={<AIGenerator />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+            <Route path="certificates" element={<AdminCertificates />} />
+            <Route path="subscriptions" element={<AdminSubscriptions />} />
+            <Route path="testimonials" element={<AdminTestimonials />} />
+            <Route path="audit-logs" element={<AdminAuditLogs />} />
+            <Route path="support" element={<AdminContactMessages />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="report-settings" element={<AdminReportSettings />} />
+            <Route path="profile" element={<AdminProfile />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
 
-      <AuthModal
-        isOpen={authModal.open}
-        initialTab={authModal.tab}
-        onClose={() => setAuthModal({ open: false, tab: 'login' })}
-      />
-    </>
+        <AuthModal
+          isOpen={authModal.open}
+          initialTab={authModal.tab}
+          onClose={() => setAuthModal({ open: false, tab: 'login' })}
+        />
+      </ToastProvider>
+    </MotionConfig>
   );
 }

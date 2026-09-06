@@ -18,7 +18,8 @@ interface AuthContextType {
     classLevel?: string;
   }) => Promise<void>;
   logout: () => void;
-  updateProfile: (data: Partial<User>) => Promise<void>;
+  completeGoogleOAuth: (token: string) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<User>;
   updateAvatar: (file: File) => Promise<string>;
 }
 
@@ -85,9 +86,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const updateProfile = async (data: Partial<User>) => {
+  const completeGoogleOAuth = async (token: string) => {
+    localStorage.setItem('passco-token', token);
+    const user = await api.getProfile();
+    localStorage.removeItem('assessment-history');
+    localStorage.setItem('passco-user', JSON.stringify(user));
+    setToken(token);
+    setUser(user);
+  };
+
+  const updateProfile = async (data: Partial<User>): Promise<User> => {
     const res = await api.updateProfile(data);
     persistUser(res.user);
+    return res.user;
   };
 
   const updateAvatar = async (file: File): Promise<string> => {
@@ -101,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login: loginHandler, register: registerHandler, logout, updateProfile, updateAvatar }}
+      value={{ user, token, loading, login: loginHandler, register: registerHandler, logout, completeGoogleOAuth, updateProfile, updateAvatar }}
     >
       {children}
     </AuthContext.Provider>

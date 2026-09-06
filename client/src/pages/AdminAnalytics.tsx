@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getAdminAnalytics, getStudents, getAdminStudentDetail } from '../services/api';
@@ -11,6 +11,8 @@ import { cn } from '../utils';
 import { AnalyticsChart } from '../components/icons/Illustrations';
 import { bounceIn, fadeUp, slideUp, stagger } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
 
 interface Student {
   id: string;
@@ -70,6 +72,13 @@ export default function AdminAnalytics() {
   const [loading, setLoading] = useState(true);
   const [studentLoading, setStudentLoading] = useState(false);
 
+  const topStudents = useMemo(
+    () => [...students].sort((a, b) => b.avgScore - a.avgScore),
+    [students]
+  );
+  const topStudentsPagination = usePagination(topStudents, 10);
+  const allStudentsPagination = usePagination(students, 10);
+
   useEffect(() => {
     if (studentId) {
       setStudentLoading(true);
@@ -128,7 +137,6 @@ export default function AdminAnalytics() {
     );
   }
 
-  const topStudents = [...students].sort((a, b) => b.avgScore - a.avgScore).slice(0, 10);
   const maxCount = analytics ? Math.max(...analytics.scoreDistribution.map((d) => d.count), 1) : 1;
 
   return (
@@ -228,7 +236,7 @@ export default function AdminAnalytics() {
             <GraduationCap className="h-4 w-4 text-indigo-500" /> Top Performing Students
           </h3>
           <div className="space-y-3">
-            {topStudents.map((s, i) => (
+            {topStudentsPagination.pageItems.map((s, i) => (
               <motion.div
                 key={s.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -239,13 +247,13 @@ export default function AdminAnalytics() {
                 <motion.span
                   className={cn(
                     'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold',
-                    i < 3 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                    topStudentsPagination.startIndex + i <= 3 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                   )}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300, delay: i * 0.05 }}
                 >
-                  {i + 1}
+                  {topStudentsPagination.startIndex + i}
                 </motion.span>
                 <div className="min-w-0 flex-1">
                   <Link to={`/admin/analytics?student=${s.id}`} className="truncate text-sm font-medium text-slate-800 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400">
@@ -268,6 +276,14 @@ export default function AdminAnalytics() {
               </div>
             )}
           </div>
+          <Pagination
+            page={topStudentsPagination.page}
+            totalPages={topStudentsPagination.totalPages}
+            totalItems={topStudents.length}
+            perPage={10}
+            onPageChange={topStudentsPagination.goTo}
+            className="mt-5"
+          />
         </motion.div>
 
         {analytics && analytics.resultsByDay.length > 0 && (
@@ -320,7 +336,7 @@ export default function AdminAnalytics() {
             </div>
           ) : (
             <div className="space-y-2">
-              {students.map((s, i) => (
+              {allStudentsPagination.pageItems.map((s, i) => (
                 <motion.div
                   key={s.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -367,6 +383,14 @@ export default function AdminAnalytics() {
               ))}
             </div>
           )}
+          <Pagination
+            page={allStudentsPagination.page}
+            totalPages={allStudentsPagination.totalPages}
+            totalItems={students.length}
+            perPage={10}
+            onPageChange={allStudentsPagination.goTo}
+            className="mt-5"
+          />
         </motion.div>
       </div>
     </div>
@@ -375,6 +399,9 @@ export default function AdminAnalytics() {
 
 function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () => void }) {
   const { student, results, documents, stats } = detail;
+
+  const quizPagination = usePagination(results, 10);
+  const documentsPagination = usePagination(documents, 10);
 
   const quizTitle = (qId: string | { _id: string; title: string }) => {
     if (typeof qId === 'object' && qId !== null) return qId.title;
@@ -446,7 +473,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
             </div>
           ) : (
             <div className="space-y-3">
-              {results.map((r, i) => (
+              {quizPagination.pageItems.map((r, i) => (
                 <motion.div
                   key={r._id}
                   initial={{ opacity: 0, y: 8 }}
@@ -475,6 +502,14 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
               ))}
             </div>
           )}
+          <Pagination
+            page={quizPagination.page}
+            totalPages={quizPagination.totalPages}
+            totalItems={results.length}
+            perPage={10}
+            onPageChange={quizPagination.goTo}
+            className="mt-5"
+          />
         </motion.div>
 
         <motion.div
@@ -493,7 +528,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
             </div>
           ) : (
             <div className="space-y-3">
-              {documents.map((doc, i) => (
+              {documentsPagination.pageItems.map((doc, i) => (
                 <motion.div
                   key={doc.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -527,6 +562,14 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
               ))}
             </div>
           )}
+          <Pagination
+            page={documentsPagination.page}
+            totalPages={documentsPagination.totalPages}
+            totalItems={documents.length}
+            perPage={10}
+            onPageChange={documentsPagination.goTo}
+            className="mt-5"
+          />
         </motion.div>
 
         {results.length > 0 && (

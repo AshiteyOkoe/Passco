@@ -7,10 +7,13 @@ import {
   updateQuestion,
   deleteQuestion,
   approveQuestion,
+  getQuestionCounts,
 } from '../controllers/questionController';
 import { authenticate, requireAdmin } from '../middleware/auth';
 
 const router = Router();
+
+router.get('/counts', getQuestionCounts);
 
 router.use(authenticate);
 

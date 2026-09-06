@@ -1,7 +1,7 @@
 import type { BankQuestion } from './questionBank';
 
-export const jhs2Beginner: BankQuestion[] = [
-  { id: 'jhs2-b-m1', question: 'What is 3.5 × 4?', type: 'multiple-choice', options: ['12', '14', '14.0', '13.5'], correctAnswer: '14', subject: 'Mathematics', explanation: '3.5 × 4 = 14' },
+export const jhs2Questions: BankQuestion[] = [
+{ id: 'jhs2-b-m1', question: 'What is 3.5 × 4?', type: 'multiple-choice', options: ['12', '14', '14.0', '13.5'], correctAnswer: '14', subject: 'Mathematics', explanation: '3.5 × 4 = 14' },
   { id: 'jhs2-b-m2', question: 'What is the square root of 81?', type: 'multiple-choice', options: ['7', '8', '9', '10'], correctAnswer: '9', subject: 'Mathematics', explanation: '√81 = 9' },
   { id: 'jhs2-b-m3', question: 'Express 0.75 as a fraction.', type: 'multiple-choice', options: ['75/100', '3/4', '7/10', 'Both A and B'], correctAnswer: 'Both A and B', subject: 'Mathematics', explanation: '0.75 = 75/100 = 3/4' },
   { id: 'jhs2-b-m4', question: 'What is 5! (5 factorial)?', type: 'multiple-choice', options: ['25', '60', '120', '150'], correctAnswer: '120', subject: 'Mathematics', explanation: '5! = 5×4×3×2×1 = 120' },
@@ -81,10 +81,7 @@ export const jhs2Beginner: BankQuestion[] = [
   { id: 'jhs2-b-t8', question: 'Which of these is a career in the health sector?', type: 'multiple-choice', options: ['Mechanic', 'Nurse', 'Carpenter', 'Farmer'], correctAnswer: 'Nurse', subject: 'Career Technology', explanation: 'Nurses work in hospitals and clinics to care for patients.' },
   { id: 'jhs2-b-t9', question: 'Good customer service means...', type: 'multiple-choice', options: ['Ignoring customers', 'Being rude to customers', 'Being polite and helpful to customers', 'Charging extra fees'], correctAnswer: 'Being polite and helpful to customers', subject: 'Career Technology', explanation: 'Good customer service builds trust and loyalty.' },
   { id: 'jhs2-b-t10', question: 'A CV stands for Curriculum Vitae.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'A CV is a document summarising your education and experience.' },
-];
-
-export const jhs2Intermediate: BankQuestion[] = [
-  { id: 'jhs2-i-m1', question: 'Solve: x + y = 10, x - y = 4', type: 'multiple-choice', options: ['x=7, y=3', 'x=6, y=4', 'x=8, y=2', 'x=5, y=5'], correctAnswer: 'x=7, y=3', subject: 'Mathematics', explanation: 'Adding: 2x=14, x=7, y=3.' },
+{ id: 'jhs2-i-m1', question: 'Solve: x + y = 10, x - y = 4', type: 'multiple-choice', options: ['x=7, y=3', 'x=6, y=4', 'x=8, y=2', 'x=5, y=5'], correctAnswer: 'x=7, y=3', subject: 'Mathematics', explanation: 'Adding: 2x=14, x=7, y=3.' },
   { id: 'jhs2-i-m2', question: 'Gradient through (2,3) and (6,11)?', type: 'multiple-choice', options: ['1', '2', '3', '4'], correctAnswer: '2', subject: 'Mathematics', explanation: '(11-3)/(6-2) = 8/4 = 2' },
   { id: 'jhs2-i-m3', question: 'Equation: gradient 3, passes through (0,-2)?', type: 'multiple-choice', options: ['y = 3x + 2', 'y = 3x - 2', 'y = -2x + 3', 'y = 2x - 3'], correctAnswer: 'y = 3x - 2', subject: 'Mathematics', explanation: 'y = mx + c, m=3, c=-2.' },
   { id: 'jhs2-i-m4', question: 'Factorize: x² - 9', type: 'multiple-choice', options: ['(x-3)²', '(x+3)²', '(x-3)(x+3)', '(x-9)(x+1)'], correctAnswer: '(x-3)(x+3)', subject: 'Mathematics', explanation: 'Difference of two squares.' },
@@ -164,10 +161,7 @@ export const jhs2Intermediate: BankQuestion[] = [
   { id: 'jhs2-i-t8', question: 'What does "supply and demand" affect?', type: 'multiple-choice', options: ['Only food prices', 'Prices of goods and services', 'Only weather', 'Only school grades'], correctAnswer: 'Prices of goods and services', subject: 'Career Technology', explanation: 'Supply and demand determine market prices.' },
   { id: 'jhs2-i-t9', question: 'A "portfolio" in career development refers to...', type: 'multiple-choice', options: ['A bank account', 'A collection of your best work', 'A lunch box', 'A school bag'], correctAnswer: 'A collection of your best work', subject: 'Career Technology', explanation: 'A portfolio showcases skills and accomplishments to potential employers.' },
   { id: 'jhs2-i-t10', question: 'The "4Ps" of marketing are Product, Price, Place, and Promotion.', type: 'true-false', correctAnswer: true, subject: 'Career Technology', explanation: 'These four elements form the marketing mix.' },
-];
-
-export const jhs2Expert: BankQuestion[] = [
-  { id: 'jhs2-e-m1', question: 'Solve: 2^(x+1) = 16', type: 'multiple-choice', options: ['x = 2', 'x = 3', 'x = 4', 'x = 5'], correctAnswer: 'x = 3', subject: 'Mathematics', explanation: '2^(x+1) = 2⁴ → x+1 = 4 → x = 3' },
+{ id: 'jhs2-e-m1', question: 'Solve: 2^(x+1) = 16', type: 'multiple-choice', options: ['x = 2', 'x = 3', 'x = 4', 'x = 5'], correctAnswer: 'x = 3', subject: 'Mathematics', explanation: '2^(x+1) = 2⁴ → x+1 = 4 → x = 3' },
   { id: 'jhs2-e-m2', question: 'Solutions of x² - 5x + 6 = 0?', type: 'multiple-choice', options: ['x=1, x=6', 'x=2, x=3', 'x=-2, x=-3', 'x=1, x=5'], correctAnswer: 'x=2, x=3', subject: 'Mathematics', explanation: '(x-2)(x-3) = 0' },
   { id: 'jhs2-e-m3', question: 'Bearing of B from A is 060°. Bearing of A from B?', type: 'multiple-choice', options: ['060°', '120°', '240°', '300°'], correctAnswer: '240°', subject: 'Mathematics', explanation: '060° + 180° = 240°.' },
   { id: 'jhs2-e-m4', question: 'Car depreciates 20%/year. Value after 2 years from ¢80,000?', type: 'multiple-choice', options: ['¢51,200', '¢48,000', '¢56,000', '¢64,000'], correctAnswer: '¢51,200', subject: 'Mathematics', explanation: '80000 × 0.8 × 0.8 = 51200.' },

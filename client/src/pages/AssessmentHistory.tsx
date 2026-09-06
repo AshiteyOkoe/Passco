@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import Pagination from '../components/Pagination';
+import { usePagination } from '../hooks/usePagination';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Clock, Trophy, BarChart3, CheckCircle2, XCircle,
-  Filter, BookOpen, Target, AlertCircle, ClipboardList, ChevronDown, ChevronUp, X,
+  Filter, BookOpen, Target, AlertCircle, ClipboardList, ChevronDown, ChevronUp, X, Trash2,
 } from 'lucide-react';
 import { cn } from '../utils';
 import { bounceIn, fadeUp, stagger } from '../utils/animations';
@@ -12,7 +14,6 @@ import { CLASS_META, SUBJECT_META, type ClassLevel, type SubjectId } from '../da
 interface HistoryEntry {
   classLevel: string;
   subject?: string;
-  difficulty: string;
   assessmentType: string;
   totalQuestions: number;
   answeredQuestions: number;
@@ -48,20 +49,14 @@ function getGradeBg(grade: string): string {
   return 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400';
 }
 
-function getDifficultyColor(difficulty: string): string {
-  if (difficulty === 'beginner') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400';
-  if (difficulty === 'intermediate') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400';
-  return 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400';
-}
-
 export default function AssessmentHistory() {
   const navigate = useNavigate();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [filterClass, setFilterClass] = useState<string>('all');
   const [filterSubject, setFilterSubject] = useState<string>('all');
-  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -83,11 +78,16 @@ export default function AssessmentHistory() {
     return history.filter((e) => {
       if (filterClass !== 'all' && e.classLevel !== filterClass) return false;
       if (filterSubject !== 'all' && e.subject !== filterSubject) return false;
-      if (filterDifficulty !== 'all' && e.difficulty !== filterDifficulty) return false;
       if (filterType !== 'all' && e.assessmentType !== filterType) return false;
       return true;
     });
-  }, [history, filterClass, filterSubject, filterDifficulty, filterType]);
+  }, [history, filterClass, filterSubject, filterType]);
+
+  const { page, totalPages, pageItems, goTo, reset } = usePagination(filtered, 10);
+
+  useEffect(() => {
+    reset();
+  }, [filterClass, filterSubject, filterType, reset]);
 
   const stats = useMemo(() => {
     if (history.length === 0) return null;
@@ -106,26 +106,30 @@ export default function AssessmentHistory() {
     let count = 0;
     if (filterClass !== 'all') count++;
     if (filterSubject !== 'all') count++;
-    if (filterDifficulty !== 'all') count++;
     if (filterType !== 'all') count++;
     return count;
-  }, [filterClass, filterSubject, filterDifficulty, filterType]);
+  }, [filterClass, filterSubject, filterType]);
 
   const clearFilters = () => {
     setFilterClass('all');
     setFilterSubject('all');
-    setFilterDifficulty('all');
     setFilterType('all');
+  };
+
+  const handleDelete = (timestamp: number) => {
+    const updated = history.filter((e) => e.timestamp !== timestamp);
+    setHistory(updated);
+    localStorage.setItem('assessment-history', JSON.stringify(updated));
+    setDeleteTarget(null);
   };
 
   const activeFilterLabels = useMemo(() => {
     const labels: { key: string; label: string; clear: () => void }[] = [];
     if (filterClass !== 'all') labels.push({ key: 'class', label: CLASS_META[filterClass as ClassLevel]?.label ?? filterClass, clear: () => setFilterClass('all') });
     if (filterSubject !== 'all') labels.push({ key: 'subject', label: SUBJECT_META[filterSubject as SubjectId]?.label ?? filterSubject, clear: () => setFilterSubject('all') });
-    if (filterDifficulty !== 'all') labels.push({ key: 'difficulty', label: filterDifficulty.charAt(0).toUpperCase() + filterDifficulty.slice(1), clear: () => setFilterDifficulty('all') });
-    if (filterType !== 'all') labels.push({ key: 'type', label: filterType === 'mock' ? 'Mock Test' : filterType === 'examination' ? 'Examination' : 'Quiz', clear: () => setFilterType('all') });
+    if (filterType !== 'all') labels.push({ key: 'type', label: filterType === 'mock' ? 'Mock Test' : 'Examination', clear: () => setFilterType('all') });
     return labels;
-  }, [filterClass, filterSubject, filterDifficulty, filterType]);
+  }, [filterClass, filterSubject, filterType]);
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 dark:bg-slate-950">
@@ -215,7 +219,7 @@ export default function AssessmentHistory() {
                         className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
                       >
                         {f.label}
-                        <button onClick={f.clear} className="rounded-full p-0.5 transition hover:bg-indigo-100 dark:hover:bg-indigo-500/20">
+                        <button onClick={f.clear} aria-label={`Clear ${f.label} filter`} className="rounded-full p-1 transition hover:bg-indigo-100 dark:hover:bg-indigo-500/20">
                           <X className="h-3 w-3" />
                         </button>
                       </span>
@@ -275,22 +279,6 @@ export default function AssessmentHistory() {
                   </div>
                   <div className="relative">
                     <select
-                      value={filterDifficulty}
-                      onChange={(e) => setFilterDifficulty(e.target.value)}
-                      className={cn(
-                        'appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-8 text-sm text-slate-700 transition',
-                        'dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                      )}
-                    >
-                      <option value="all">All Difficulties</option>
-                      <option value="beginner">Beginner</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="expert">Expert</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  </div>
-                  <div className="relative">
-                    <select
                       value={filterType}
                       onChange={(e) => setFilterType(e.target.value)}
                       className={cn(
@@ -299,7 +287,6 @@ export default function AssessmentHistory() {
                       )}
                     >
                       <option value="all">All Types</option>
-                      <option value="quiz">Quiz</option>
                       <option value="mock">Mock Test</option>
                       <option value="examination">Examination</option>
                     </select>
@@ -348,7 +335,7 @@ export default function AssessmentHistory() {
             </motion.div>
           ) : (
             <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-3">
-              {filtered.map((entry, i) => {
+              {pageItems.map((entry, i) => {
                 const classLabel = CLASS_META[entry.classLevel as ClassLevel]?.label ?? entry.classLevel;
                 const subjectLabel = entry.subject ? SUBJECT_META[entry.subject as SubjectId]?.label ?? entry.subject : 'All Subjects';
                 const dateVal = entry.completedAt || (entry.timestamp ? new Date(entry.timestamp).toISOString() : new Date().toISOString());
@@ -395,13 +382,10 @@ export default function AssessmentHistory() {
                           )}
                           <span className="text-slate-300 dark:text-slate-600">·</span>
                           <span className="text-sm capitalize text-slate-600 dark:text-slate-400">
-                            {entry.assessmentType === 'mock' ? 'Mock Test' : entry.assessmentType === 'examination' ? 'Examination' : 'Quiz'}
+                            {entry.assessmentType === 'mock' ? 'Mock Test' : entry.assessmentType === 'examination' ? 'Examination' : 'Assessment'}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium', getDifficultyColor(entry.difficulty))}>
-                            {entry.difficulty.charAt(0).toUpperCase() + entry.difficulty.slice(1)}
-                          </span>
                           <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                             <Target className="h-3 w-3" />
                             {entry.answeredQuestions}/{entry.totalQuestions} questions
@@ -452,6 +436,13 @@ export default function AssessmentHistory() {
                           )}
                           {entry.abandoned ? 'Abandoned' : entry.passed ? 'Passed' : 'Failed'}
                         </span>
+                        <button
+                          onClick={() => setDeleteTarget(entry.timestamp)}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                          aria-label={`Delete result for ${classLabel}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                     <div className="mt-2 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
@@ -472,10 +463,60 @@ export default function AssessmentHistory() {
                   </motion.div>
                 );
               })}
+
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                perPage={10}
+                onPageChange={goTo}
+              />
             </motion.div>
           )}
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {deleteTarget !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setDeleteTarget(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-500/10">
+                <Trash2 className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+              </div>
+              <h3 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">Delete Result?</h3>
+              <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
+                This assessment result will be permanently removed. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteTarget !== null && handleDelete(deleteTarget)}
+                  className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
