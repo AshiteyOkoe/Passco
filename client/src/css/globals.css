@@ -251,6 +251,21 @@ html {
   animation: float-gentle 4s ease-in-out infinite;
 }
 
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.28s var(--ease-smooth) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sheet-up {
+    animation: none;
+  }
+}
+
 /* ============================================
    COMPONENT UTILITIES
    ============================================ */

@@ -6,6 +6,8 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthModal from './AuthModal';
 import LegalModal from './LegalModal';
+import InfoModal, { type InfoModalKind } from './InfoModal';
+import PricingModal from './PricingModal';
 import { DefaultAvatar } from './DefaultAvatars';
 import { resolveUploadUrl, isCustomAvatar } from '../services/api';
 import InstallPrompt from './InstallPrompt';
@@ -18,6 +20,8 @@ export default function PublicLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showAuth, setShowAuth] = useState<'login' | 'register' | null>(null);
   const [legalDoc, setLegalDoc] = useState<'privacy' | 'terms' | null>(null);
+  const [infoModal, setInfoModal] = useState<InfoModalKind>(null);
+  const [pricingOpen, setPricingOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -328,37 +332,58 @@ src="/images/logos/qna.svg"
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Platform</h3>
               <ul className="mt-3 space-y-2">
-                {[
-                  { label: 'Features', to: '/features' },
-                  { label: 'How It Works', to: '/how-it-works' },
-                  { label: 'Subjects', to: '/#subjects' },
-                  { label: 'Pricing', to: '/#plans' },
-                  { label: 'Demo Quiz', to: '/#demo' },
-                ].map((item) => (
+                {[{ label: 'Features', to: '/features' }, { label: 'How It Works', to: '/how-it-works' }].map((item) => (
                   <li key={item.label}>
                     <Link to={item.to} className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
                       {item.label}
                     </Link>
                   </li>
                 ))}
+                <li>
+                  <button
+                    onClick={() => setInfoModal('subjects')}
+                    className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
+                  >
+                    Subjects
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setPricingOpen(true)}
+                    className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
+                  >
+                    Pricing
+                  </button>
+                </li>
               </ul>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Resources</h3>
               <ul className="mt-3 space-y-2">
                 {[
-                  { label: 'FAQ', to: '/#faq' },
-                  { label: 'Leaderboard', to: '/#leaderboard' },
-                  { label: 'Testimonials', to: '/#testimonials' },
-                  { label: 'About', to: '/about' },
-                  { label: 'Contact', to: '/contact' },
+                  { label: 'FAQ', kind: 'faq' as const },
+                  { label: 'Leaderboard', kind: 'leaderboard' as const },
+                  { label: 'Testimonials', kind: 'testimonials' as const },
                 ].map((item) => (
                   <li key={item.label}>
-                    <Link to={item.to} className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
+                    <button
+                      onClick={() => setInfoModal(item.kind)}
+                      className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
+                    >
                       {item.label}
-                    </Link>
+                    </button>
                   </li>
                 ))}
+                <li>
+                  <Link to="/about" className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/contact" className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
+                    Contact
+                  </Link>
+                </li>
               </ul>
             </div>
             <div className="sm:col-span-2 lg:col-span-2">
@@ -414,6 +439,24 @@ src="/images/logos/qna.svg"
       </footer>
 
       <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} onSwitch={setLegalDoc} />
+
+      <InfoModal
+        kind={infoModal}
+        onClose={() => setInfoModal(null)}
+        onRequireAuth={(tab) => {
+          setInfoModal(null);
+          setShowAuth(tab);
+        }}
+      />
+
+      <PricingModal
+        open={pricingOpen}
+        onClose={() => setPricingOpen(false)}
+        onRequireAuth={(tab) => {
+          setPricingOpen(false);
+          setShowAuth(tab);
+        }}
+      />
 
       <InstallPrompt />
 

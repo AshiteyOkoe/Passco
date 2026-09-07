@@ -1,18 +1,18 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { stagger, fadeUp } from '../utils/animations';
 import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
-  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Gem, ChevronRight, Landmark, Target, Layers, Lightbulb, HeartHandshake, Quote
+  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Gem, ChevronRight, ChevronLeft, Landmark, Target, Layers, Lightbulb, HeartHandshake, Quote
 } from 'lucide-react';
 import { resolveUploadUrl, getLeaderboard, isCustomAvatar, getQuestionCounts, getTestimonials, type LeaderboardEntry } from '../services/api';
 import type { Testimonial } from '../types';
 import { DefaultAvatar } from '../components/DefaultAvatars';
-import FAQSection from '../components/FAQSection';
 import { SUBJECT_META, getQuestions, shuffleArray, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
 import { MOTIVATIONS } from '../data/motivations';
+import { getRewardLabel } from '../utils/rewards';
 
 const fadeUpFast = {
   hidden: { opacity: 0, y: 12 },
@@ -61,6 +61,204 @@ const landingPlans = [
   },
 ];
 
+function TestimonialCardContent({ t }: { t: Testimonial }) {
+  return (
+    <>
+      <div className="mb-3 flex items-center gap-1">
+        {Array.from({ length: 5 }).map((_, s) => (
+          <Star
+            key={s}
+            className={`h-4 w-4 ${s < (t.rating || 5) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200 dark:fill-slate-700 dark:text-slate-700'}`}
+          />
+        ))}
+      </div>
+      <p className="flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">"{t.quote}"</p>
+      <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+        {isCustomAvatar(t.avatar_url) ? (
+          <img src={resolveUploadUrl(t.avatar_url)} alt={t.name} className="h-10 w-10 rounded-full object-cover ring-2 ring-rose-200 dark:ring-rose-800" />
+        ) : (
+          <DefaultAvatar gender="" size={40} className="rounded-full ring-2 ring-rose-200 dark:ring-rose-800" />
+        )}
+        <div>
+          <p className="text-sm font-bold text-slate-900 dark:text-white">{t.name}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            {[t.role, t.school].filter(Boolean).join(' · ') || 'Passco Student'}
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const testimonialCardClass =
+  'flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900';
+
+interface LeaderboardEntryRowProps {
+  entry: LeaderboardEntry;
+  rank: number;
+  user: ReturnType<typeof useAuth>['user'];
+  navigate: (to: string) => void;
+  delay?: number;
+}
+
+function LeaderboardEntryRow({ entry, rank, user, navigate, delay = 0 }: LeaderboardEntryRowProps) {
+  const reward = getRewardLabel(entry.avg);
+  const RewardIcon = reward.icon;
+  const isCurrentUser = user != null && entry.name === user.name;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay, duration: 0.3 }}
+      whileHover={{ scale: 1.01, y: -2 }}
+      className={`group rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-slate-950 sm:p-5 ${
+        rank <= 3
+          ? 'border-amber-200 dark:border-amber-800/50'
+          : 'border-slate-200 dark:border-slate-800'
+      } ${isCurrentUser ? 'ring-2 ring-blue-500/30 dark:ring-blue-400/30' : ''}`}
+    >
+      {/* Top Row: Rank + Profile + Name + Score */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Rank Badge */}
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold sm:h-10 sm:w-10 sm:text-sm ${
+          rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/20' :
+          rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-md shadow-slate-500/20' :
+          rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/20' :
+          'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+        }`}>
+          {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
+        </div>
+
+        {/* Profile Image */}
+        <div className="relative shrink-0">
+          {isCustomAvatar(entry.avatar) ? (
+            <img
+              src={resolveUploadUrl(entry.avatar)}
+              alt={entry.name}
+              className="h-11 w-11 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 sm:h-12 sm:w-12"
+            />
+          ) : (
+            <DefaultAvatar
+              gender={entry.gender as 'male' | 'female' || undefined}
+              size={48}
+              className="h-11 w-11 rounded-full ring-2 ring-white dark:ring-slate-800 sm:h-12 sm:w-12"
+            />
+          )}
+          <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-950 ${
+            entry.gender === 'female' ? 'bg-pink-400' : 'bg-blue-400'
+          }`} />
+        </div>
+
+        {/* Name + Profile Info */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className={`text-sm font-bold truncate sm:text-base ${
+              isCurrentUser ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'
+            }`}>
+              {entry.name}
+            </p>
+            {isCurrentUser && (
+              <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                You
+              </span>
+            )}
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            {entry.classLevel && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                <GraduationCap className="h-2.5 w-2.5" />
+                {CLASS_META[entry.classLevel as ClassLevel]?.label || entry.classLevel}
+              </span>
+            )}
+            {entry.institution && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
+                <Landmark className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate max-w-[120px] sm:max-w-[200px]">{entry.institution}</span>
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <RewardIcon className={`h-3 w-3 ${reward.color}`} />
+              <span className="text-xs text-slate-500 dark:text-slate-400">{reward.label}</span>
+            </div>
+            <span className="text-slate-300 dark:text-slate-700">·</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{entry.total} quiz{entry.total !== 1 ? 'zes' : ''}</span>
+            <span className="text-slate-300 dark:text-slate-700">·</span>
+            <div className="flex items-center gap-1">
+              <Award className="h-3 w-3 text-amber-400" />
+              <span className="text-xs text-slate-400 dark:text-slate-500">{entry.badges} badge{entry.badges !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Score */}
+        <div className="text-right shrink-0">
+          <p className={`text-xl font-bold sm:text-2xl ${
+            entry.avg >= 75 ? 'text-emerald-600 dark:text-emerald-400' :
+            entry.avg >= 50 ? 'text-amber-600 dark:text-amber-400' :
+            'text-rose-600 dark:text-rose-400'
+          }`}>
+            {entry.avg}%
+          </p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500">avg score</p>
+        </div>
+      </div>
+
+      {/* Performance Bar */}
+      <div className="mt-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:mt-4 sm:p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Recent Performance</p>
+          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+            {entry.scores.filter((s: number) => s >= 70).length}/{entry.scores.length} passed
+          </span>
+        </div>
+        <div className="flex items-end gap-1">
+          {entry.scores.slice(-10).map((s: number, j: number) => (
+            <div key={j} className="flex-1 flex flex-col items-center gap-0.5">
+              <div
+                className="w-full rounded-sm transition-all"
+                style={{
+                  height: `${Math.max((s / 100) * 40, 4)}px`,
+                  backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
+                  opacity: 0.7 + (j / 10) * 0.3,
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Click Actions — visible on hover, always visible on mobile */}
+      <div className="mt-3 flex items-center gap-2 sm:mt-4 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+        <button
+          onClick={() => user ? navigate('/achievements') : navigate('/login')}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
+        >
+          <Award className="h-3.5 w-3.5" />
+          Achievements
+        </button>
+        <button
+          onClick={() => user ? navigate('/analytics/performance') : navigate('/login')}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+        >
+          <BarChart3 className="h-3.5 w-3.5" />
+          Performance
+        </button>
+        <button
+          onClick={() => user ? navigate('/results-dashboard') : navigate('/login')}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+        >
+          <TrendingUp className="h-3.5 w-3.5" />
+          Results
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -86,6 +284,9 @@ export default function Landing() {
   };
 
   const [encouragement] = useState(() => MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)]);
+
+  const [testimonialIndex, setTestimonialIndex] = useState(0);
+  const [leaderboardIndex, setLeaderboardIndex] = useState(0);
 
   const heroData = useMemo(() => {
     try {
@@ -132,6 +333,36 @@ export default function Landing() {
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
+
+  const carouselItems = testimonials.slice(0, 3);
+  const activeTestimonial = carouselItems.length > 0 ? testimonialIndex % carouselItems.length : 0;
+
+  const leaderboardTop = leaderboardEntries.slice(0, 10);
+  const activeLeaderboard = leaderboardTop.length > 0 ? leaderboardIndex % leaderboardTop.length : 0;
+
+  useEffect(() => {
+    if (leaderboardTop.length < 2) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => setLeaderboardIndex((i) => (i + 1) % leaderboardTop.length), 4000);
+    return () => clearInterval(id);
+  }, [leaderboardTop.length]);
+
+  const prevLeaderboard = () =>
+    setLeaderboardIndex((i) => (i - 1 + leaderboardTop.length) % leaderboardTop.length);
+  const nextLeaderboard = () =>
+    setLeaderboardIndex((i) => (i + 1) % leaderboardTop.length);
+
+  useEffect(() => {
+    if (carouselItems.length < 2) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => setTestimonialIndex((i) => (i + 1) % carouselItems.length), 4500);
+    return () => clearInterval(id);
+  }, [carouselItems.length]);
+
+  const prevTestimonial = () =>
+    setTestimonialIndex((i) => (i - 1 + carouselItems.length) % carouselItems.length);
+  const nextTestimonial = () =>
+    setTestimonialIndex((i) => (i + 1) % carouselItems.length);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,14 +425,6 @@ export default function Landing() {
       });
     return () => { cancelled = true; };
   }, []);
-
-  const getRewardLabel = (avg: number) => {
-    if (avg >= 90) return { label: 'Champion', icon: Trophy, color: 'text-amber-400' };
-    if (avg >= 80) return { label: 'Star Performer', icon: Star, color: 'text-emerald-400' };
-    if (avg >= 70) return { label: 'Achiever', icon: Medal, color: 'text-blue-400' };
-    if (avg >= 60) return { label: 'Rising Star', icon: TrendingUp, color: 'text-violet-400' };
-    return { label: 'Learner', icon: BookOpen, color: 'text-slate-400' };
-  };
 
   const resolveAvatarGender = (): 'male' | 'female' | '' => {
     if (user?.avatar === 'avatar:male') return 'male';
@@ -616,167 +839,83 @@ export default function Landing() {
           </motion.div>
 
           {leaderboardEntries.length > 0 ? (
-            <div className="space-y-3">
-              {leaderboardEntries.slice(0, 10).map((entry: any, i: number) => {
-                const rank = i + 1;
-                const reward = getRewardLabel(entry.avg);
-                const RewardIcon = reward.icon;
-                const isCurrentUser = user && entry.name === user.name;
+            <>
+              <div className="hidden space-y-3 md:block">
+                {leaderboardTop.map((entry, i) => (
+                  <LeaderboardEntryRow
+                    key={entry.id}
+                    entry={entry}
+                    rank={i + 1}
+                    user={user}
+                    navigate={navigate}
+                    delay={i * 0.05}
+                  />
+                ))}
+              </div>
 
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05, duration: 0.3 }}
-                    whileHover={{ scale: 1.01, y: -2 }}
-                    className={`group rounded-2xl border bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-slate-950 sm:p-5 ${
-                      rank <= 3
-                        ? 'border-amber-200 dark:border-amber-800/50'
-                        : 'border-slate-200 dark:border-slate-800'
-                    } ${isCurrentUser ? 'ring-2 ring-blue-500/30 dark:ring-blue-400/30' : ''}`}
-                  >
-                    {/* Top Row: Rank + Profile + Name + Score */}
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      {/* Rank Badge */}
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold sm:h-10 sm:w-10 sm:text-sm ${
-                        rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/20' :
-                        rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-md shadow-slate-500/20' :
-                        rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/20' :
-                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}>
-                        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
-                      </div>
-
-                      {/* Profile Image */}
-                      <div className="relative shrink-0">
-                        {isCustomAvatar(entry.avatar) ? (
-                          <img
-                            src={resolveUploadUrl(entry.avatar)}
-                            alt={entry.name}
-                            className="h-11 w-11 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 sm:h-12 sm:w-12"
-                          />
-                        ) : (
-                          <DefaultAvatar
-                            gender={entry.gender as 'male' | 'female' || undefined}
-                            size={48}
-                            className="h-11 w-11 rounded-full ring-2 ring-white dark:ring-slate-800 sm:h-12 sm:w-12"
-                          />
-                        )}
-                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-950 ${
-                          entry.gender === 'female' ? 'bg-pink-400' : 'bg-blue-400'
-                        }`} />
-                      </div>
-
-                      {/* Name + Profile Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-bold truncate sm:text-base ${
-                            isCurrentUser ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'
-                          }`}>
-                            {entry.name}
-                          </p>
-                          {isCurrentUser && (
-                            <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                              You
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          {entry.classLevel && (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-                              <GraduationCap className="h-2.5 w-2.5" />
-                              {CLASS_META[entry.classLevel as ClassLevel]?.label || entry.classLevel}
-                            </span>
-                          )}
-                          {entry.institution && (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
-                              <Landmark className="h-2.5 w-2.5 shrink-0" />
-                              <span className="truncate max-w-[120px] sm:max-w-[200px]">{entry.institution}</span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1 flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <RewardIcon className={`h-3 w-3 ${reward.color}`} />
-                            <span className="text-xs text-slate-500 dark:text-slate-400">{reward.label}</span>
-                          </div>
-                          <span className="text-slate-300 dark:text-slate-700">·</span>
-                          <span className="text-xs text-slate-400 dark:text-slate-500">{entry.total} quiz{entry.total !== 1 ? 'zes' : ''}</span>
-                          <span className="text-slate-300 dark:text-slate-700">·</span>
-                          <div className="flex items-center gap-1">
-                            <Award className="h-3 w-3 text-amber-400" />
-                            <span className="text-xs text-slate-400 dark:text-slate-500">{entry.badges} badge{entry.badges !== 1 ? 's' : ''}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Score */}
-                      <div className="text-right shrink-0">
-                        <p className={`text-xl font-bold sm:text-2xl ${
-                          entry.avg >= 75 ? 'text-emerald-600 dark:text-emerald-400' :
-                          entry.avg >= 50 ? 'text-amber-600 dark:text-amber-400' :
-                          'text-rose-600 dark:text-rose-400'
-                        }`}>
-                          {entry.avg}%
-                        </p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500">avg score</p>
-                      </div>
-                    </div>
-
-                    {/* Performance Bar */}
-                    <div className="mt-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900 sm:mt-4 sm:p-4">
-                      <div className="mb-2 flex items-center justify-between">
-                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">Recent Performance</p>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                          {entry.scores.filter((s: number) => s >= 70).length}/{entry.scores.length} passed
-                        </span>
-                      </div>
-                      <div className="flex items-end gap-1">
-                        {entry.scores.slice(-10).map((s: number, j: number) => (
-                          <div key={j} className="flex-1 flex flex-col items-center gap-0.5">
-                            <div
-                              className="w-full rounded-sm transition-all"
-                              style={{
-                                height: `${Math.max((s / 100) * 40, 4)}px`,
-                                backgroundColor: s >= 75 ? '#34d399' : s >= 50 ? '#fbbf24' : '#f87171',
-                                opacity: 0.7 + (j / 10) * 0.3,
-                              }}
+              <div className="md:hidden">
+                {leaderboardTop.length >= 2 ? (
+                  <>
+                    <div>
+                      <AnimatePresence initial={false} mode="wait">
+                        <motion.div
+                          key={activeLeaderboard}
+                          initial={{ opacity: 0, x: 40 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -40 }}
+                          transition={{ duration: 0.3, ease: 'easeOut' }}
+                        >
+                          {leaderboardTop[activeLeaderboard] && (
+                            <LeaderboardEntryRow
+                              entry={leaderboardTop[activeLeaderboard]}
+                              rank={activeLeaderboard + 1}
+                              user={user}
+                              navigate={navigate}
                             />
-                          </div>
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={prevLeaderboard}
+                        aria-label="Previous leaderboard entry"
+                        className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                      </button>
+                      <div className="flex flex-wrap items-center justify-center gap-1.5">
+                        {leaderboardTop.map((e, i) => (
+                          <button
+                            key={e.id}
+                            type="button"
+                            onClick={() => setLeaderboardIndex(i)}
+                            aria-label={`Go to leaderboard entry ${i + 1}`}
+                            aria-current={i === activeLeaderboard}
+                            className={`h-2.5 rounded-full transition-all ${
+                              i === activeLeaderboard ? 'w-6 bg-indigo-600' : 'w-2.5 bg-slate-300 dark:bg-slate-600'
+                            }`}
+                          />
                         ))}
                       </div>
-                    </div>
-
-                    {/* Click Actions — visible on hover, always visible on mobile */}
-                    <div className="mt-3 flex items-center gap-2 sm:mt-4 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
                       <button
-                        onClick={() => user ? navigate('/achievements') : navigate('/login')}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
+                        type="button"
+                        onClick={nextLeaderboard}
+                        aria-label="Next leaderboard entry"
+                        className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
-                        <Award className="h-3.5 w-3.5" />
-                        Achievements
-                      </button>
-                      <button
-                        onClick={() => user ? navigate('/analytics/performance') : navigate('/login')}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
-                      >
-                        <BarChart3 className="h-3.5 w-3.5" />
-                        Performance
-                      </button>
-                      <button
-                        onClick={() => user ? navigate('/results-dashboard') : navigate('/login')}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                      >
-                        <TrendingUp className="h-3.5 w-3.5" />
-                        Results
+                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
                       </button>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                  </>
+                ) : (
+                  leaderboardTop.length === 1 && (
+                    <LeaderboardEntryRow entry={leaderboardTop[0]} rank={1} user={user} navigate={navigate} />
+                  )
+                )}
+              </div>
+            </>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1126,41 +1265,73 @@ export default function Landing() {
           </motion.div>
 
           {testimonials.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-3">
-              {testimonials.slice(0, 3).map((t, i) => (
-                <motion.div
-                  key={t.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                  className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-                >
-                  <div className="mb-3 flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, s) => (
-                      <Star
-                        key={s}
-                        className={`h-4 w-4 ${s < (t.rating || 5) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200 dark:fill-slate-700 dark:text-slate-700'}`}
+            <>
+              <div className="hidden grid-cols-3 gap-6 md:grid">
+                {testimonials.slice(0, 3).map((t, i) => (
+                  <motion.div
+                    key={t.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.05 }}
+                    className={testimonialCardClass}
+                  >
+                    <TestimonialCardContent t={t} />
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="md:hidden">
+                <div className="relative min-h-[15rem] overflow-hidden">
+                  <AnimatePresence initial={false} mode="wait">
+                    <motion.div
+                      key={carouselItems[activeTestimonial]?.id ?? 'empty'}
+                      initial={{ opacity: 0, x: 40 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -40 }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
+                      className={testimonialCardClass}
+                    >
+                      {carouselItems[activeTestimonial] && (
+                        <TestimonialCardContent t={carouselItems[activeTestimonial]} />
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={prevTestimonial}
+                    aria-label="Previous testimonial"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {carouselItems.map((t, i) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTestimonialIndex(i)}
+                        aria-label={`Go to testimonial ${i + 1}`}
+                        aria-current={i === activeTestimonial}
+                        className={`h-2.5 rounded-full transition-all ${
+                          i === activeTestimonial ? 'w-6 bg-indigo-600' : 'w-2.5 bg-slate-300 dark:bg-slate-600'
+                        }`}
                       />
                     ))}
                   </div>
-                  <p className="flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">"{t.quote}"</p>
-                  <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-                    {isCustomAvatar(t.avatar_url) ? (
-                      <img src={resolveUploadUrl(t.avatar_url)} alt={t.name} className="h-10 w-10 rounded-full object-cover ring-2 ring-rose-200 dark:ring-rose-800" />
-                    ) : (
-                      <DefaultAvatar gender="" size={40} className="rounded-full ring-2 ring-rose-200 dark:ring-rose-800" />
-                    )}
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{t.name}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
-                        {[t.role, t.school].filter(Boolean).join(' · ') || 'Passco Student'}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                  <button
+                    type="button"
+                    onClick={nextTestimonial}
+                    aria-label="Next testimonial"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            </>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1268,30 +1439,6 @@ export default function Landing() {
           </div>
         </section>
       )}
-
-      {/* FAQ */}
-      <section id="faq" className="border-t border-slate-200 bg-slate-50/50 py-20 dark:border-slate-800 dark:bg-slate-950/50">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            className="mx-auto mb-14 max-w-2xl text-center"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-          >
-            <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-              <Sparkles className="h-3.5 w-3.5" />
-              FAQ
-            </span>
-            <h2 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl dark:text-white">
-              Frequently Asked Questions
-            </h2>
-            <p className="mt-3 text-slate-500 dark:text-slate-400">
-              Quick answers about Passco, subscriptions and assessments.
-            </p>
-          </motion.div>
-          <FAQSection />
-        </div>
-      </section>
 
       {/* Final CTA */}
       <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 to-indigo-800 py-20 dark:from-blue-800 dark:to-indigo-950">

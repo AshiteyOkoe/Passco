@@ -70,7 +70,7 @@ function InfoCards() {
   const cards = [
     { Icon: Mail, title: 'Email Support', desc: 'support@passco.app', href: 'mailto:support@passco.app', note: 'Best for detailed questions' },
     { Icon: MessageCircle, title: 'WhatsApp', desc: '+233 20 743 5678', href: 'https://wa.me/233207435678', note: 'Fastest for quick help', external: true },
-    { Icon: ListChecks, title: 'Help Center', desc: 'Browse the FAQs', href: '/#faq', note: 'Answers to common questions', internal: true },
+    { Icon: ListChecks, title: 'Help Center', desc: 'Browse the FAQs', href: '/faq', note: 'Answers to common questions', internal: true },
     { Icon: Clock, title: 'Support Hours', desc: 'Mon–Sat, 8am–8pm GMT', note: 'Messages answered in ~24h' },
   ];
   return (
