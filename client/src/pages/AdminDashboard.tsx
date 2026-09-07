@@ -102,7 +102,7 @@ export default function AdminDashboard() {
   const { kpis, assessment, subjects, questionBank, pipeline, subscriptionOverview, pendingActions, recentActivity } = data;
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="overflow-x-hidden p-4 sm:p-6">
       <WelcomeStrip name={user?.name} processing={pipeline.processing + pipeline.queued} failed={pipeline.failed} />
 
       {user?.dateOfBirth && (() => {
@@ -151,28 +151,28 @@ export default function AdminDashboard() {
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
-        <motion.div variants={slideUp} initial="hidden" animate="visible">
+        <motion.div variants={slideUp} initial="hidden" animate="visible" className="min-w-0">
           <ExamPerformanceCard assessment={assessment} />
         </motion.div>
-        <motion.div variants={slideUp} initial="hidden" animate="visible">
+        <motion.div variants={slideUp} initial="hidden" animate="visible" className="min-w-0">
           <SubjectPerformanceTable subjects={subjects} />
         </motion.div>
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
-        <motion.div variants={slideUp} initial="hidden" animate="visible">
+        <motion.div variants={slideUp} initial="hidden" animate="visible" className="min-w-0">
           <QuestionBankCard total={kpis.questions.value} breakdown={questionBank} />
         </motion.div>
-        <motion.div variants={slideUp} initial="hidden" animate="visible">
+        <motion.div variants={slideUp} initial="hidden" animate="visible" className="min-w-0">
           <ContentPipelineCard pipeline={pipeline} />
         </motion.div>
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
-        <motion.div variants={slideUp} initial="hidden" animate="visible">
+        <motion.div variants={slideUp} initial="hidden" animate="visible" className="min-w-0">
           <SubscriptionsOverviewCard overview={subscriptionOverview} />
         </motion.div>
-        <motion.div variants={slideUp} initial="hidden" animate="visible">
+        <motion.div variants={slideUp} initial="hidden" animate="visible" className="min-w-0">
           <RecentActivityFeed items={recentActivity} />
         </motion.div>
       </div>

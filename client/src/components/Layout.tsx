@@ -6,7 +6,7 @@ import {
   BookOpen, Home, BarChart3, FileText, Library, PlusCircle,
   LogOut, GraduationCap, Sun, Moon, ClipboardCheck, History,
   Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, Award, Gem,
-  Sparkles, CreditCard, LayoutDashboard, Quote, Bell, Settings, Megaphone, MessageSquare, Flag
+  Sparkles, CreditCard, LayoutDashboard, Quote, Bell, Settings, Megaphone, MessageSquare, Flag, Menu, X
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,8 +26,13 @@ export default function Layout() {
   const profileRef = useRef<HTMLDivElement>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [cmd, setCmd] = useState<AdminCommandCenter | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -176,6 +181,15 @@ export default function Layout() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={() => setMobileNavOpen(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 sm:hidden dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                aria-label="Open admin menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
             {isAdmin && (
               <div className="relative" ref={notifRef}>
                 <button
@@ -463,7 +477,68 @@ export default function Layout() {
           </nav>
         </aside>
 
-        <main id="main-content" className="min-h-[calc(100vh-4rem)] flex-1 pb-20 sm:pb-0">
+        <AnimatePresence>
+          {isAdmin && mobileNavOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setMobileNavOpen(false)}
+                className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm sm:hidden"
+                aria-hidden="true"
+              />
+              <motion.aside
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="fixed inset-y-0 left-0 z-[70] flex w-72 max-w-[85vw] flex-col overflow-hidden bg-white shadow-2xl sm:hidden dark:bg-slate-950"
+              >
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Admin Menu</p>
+                  <button
+                    onClick={() => setMobileNavOpen(false)}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                    aria-label="Close admin menu"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <nav className="flex-1 overflow-y-auto p-3 pb-8">
+                  {adminGroups.map((group) => (
+                    <div key={group.title} className="mb-2">
+                      <p className="mb-1 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        {group.title}
+                      </p>
+                      {group.links.map((link) => {
+                        const Icon = link.icon;
+                        const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to));
+                        return (
+                          <Link
+                            key={link.to}
+                            to={link.to}
+                            onClick={() => setMobileNavOpen(false)}
+                            className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-all mb-0.5 ${
+                              isActive
+                                ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-500/10 dark:text-blue-400'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                            }`}
+                          >
+                            <Icon className="h-5 w-5" />
+                            {link.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </nav>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        <main id="main-content" className="min-h-[calc(100vh-4rem)] min-w-0 flex-1 pb-20 sm:pb-0">
           <Outlet />
         </main>
       </div>

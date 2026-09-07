@@ -6,21 +6,9 @@ import {
 import { googleAuth, googleCallback } from '../controllers/googleAuthController';
 import { authenticate } from '../middleware/auth';
 import multer from 'multer';
-import path from 'path';
-import crypto from 'crypto';
-import fs from 'fs';
-
-const avatarDir = path.join(process.cwd(), 'uploads', 'avatars');
-if (!fs.existsSync(avatarDir)) fs.mkdirSync(avatarDir, { recursive: true });
 
 const avatarUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, avatarDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      cb(null, `avatar-${crypto.randomUUID()}${ext}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];

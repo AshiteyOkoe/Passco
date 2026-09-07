@@ -246,7 +246,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 pb-24 sm:px-6 sm:pb-6 dark:bg-slate-950">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-6 pb-24 sm:px-6 sm:pb-6 dark:bg-slate-950">
       <div className="mx-auto max-w-5xl space-y-6 sm:space-y-8">
 
         {/* Welcome Section */}
@@ -347,7 +347,7 @@ export default function StudentDashboard() {
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={scoreOverTime} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}

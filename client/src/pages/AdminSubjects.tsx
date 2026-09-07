@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BookOpen, Filter, TrendingUp, TrendingDown,
-  BarChart3, Layers, GraduationCap, FileUp,
+  BarChart3, Layers, GraduationCap, ChevronRight,
 } from 'lucide-react';
 import { cn } from '../utils';
 import {
@@ -160,15 +160,18 @@ export default function AdminSubjects() {
               variants={slideUp}
               whileHover={{ y: -4, boxShadow: '0 12px 30px rgba(0,0,0,0.08)' }}
               className={cn(
-                'rounded-2xl border bg-white p-5 dark:bg-slate-900',
+                'group relative rounded-2xl border bg-white p-5 dark:bg-slate-900',
                 colors.ring,
                 'border-slate-200 dark:border-slate-800'
               )}
             >
               <Link
                 to={`/admin/questions?subject=${sub.key}${filterClass !== 'all' ? `&class=${filterClass}` : ''}`}
-                className="mb-4 flex items-center gap-3 group"
-              >
+                aria-label={`View ${sub.label} questions`}
+                className="absolute inset-0 z-10 rounded-2xl outline-none ring-indigo-500/30 transition focus-visible:ring-2"
+              />
+
+              <div className="pointer-events-none mb-4 flex items-center gap-3">
                 <motion.div
                   className={cn(
                     'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl',
@@ -190,9 +193,10 @@ export default function AdminSubjects() {
                     </p>
                   ) : null}
                 </div>
-              </Link>
+                <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-400 dark:text-slate-600" aria-hidden="true" />
+              </div>
 
-              <div className="mb-4">
+              <div className="pointer-events-none mb-4">
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   Per Class
                 </p>
@@ -221,20 +225,15 @@ export default function AdminSubjects() {
                 </div>
               </div>
 
-              <Link to={`/admin/bulk-upload?subject=${sub.key}`}>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={cn(
-                    'mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition',
-                    colors.bg, colors.text,
-                    'hover:opacity-80'
-                  )}
-                >
-                  <FileUp className="h-3.5 w-3.5" />
-                  Bulk Upload {sub.label}
-                </motion.button>
-              </Link>
+              <div
+                className={cn(
+                  'pointer-events-none mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition group-hover:opacity-80',
+                  colors.bg, colors.text
+                )}
+              >
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                View Questions
+              </div>
             </motion.div>
           );
         })}

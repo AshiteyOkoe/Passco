@@ -13,10 +13,10 @@ export default function QuestionBankCard({ total, breakdown }: QuestionBankCardP
   const max = Math.max(...breakdown.map((b) => b.count), 1);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-        <Library className="h-4 w-4 text-violet-500" />
-        Question Bank
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="mb-4 flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+        <Library className="h-4 w-4 shrink-0 text-violet-500" />
+        <span className="min-w-0">Question Bank</span>
       </h2>
 
       <p className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
@@ -27,9 +27,9 @@ export default function QuestionBankCard({ total, breakdown }: QuestionBankCardP
       <div className="flex-1 space-y-2.5">
         {breakdown.map((b, i) => (
           <div key={b.subject}>
-            <div className="mb-1 flex justify-between text-xs">
-              <span className="text-slate-600 dark:text-slate-400">{b.subject}</span>
-              <span className="font-medium text-slate-800 dark:text-white">{b.count.toLocaleString()}</span>
+            <div className="mb-1 flex justify-between gap-2 text-xs">
+              <span className="min-w-0 flex-1 truncate text-slate-600 dark:text-slate-400">{b.subject}</span>
+              <span className="shrink-0 font-medium text-slate-800 dark:text-white">{b.count.toLocaleString()}</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               <div

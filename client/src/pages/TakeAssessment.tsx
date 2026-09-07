@@ -20,7 +20,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { getQuestions, shuffleArray, ASSESSMENT_META, ClassLevel, AssessmentType, BankQuestion } from '../data/questionBank';
-import { saveAssessmentResult, getApprovedBankQuestions, logAttemptEvent, reportQuestion } from '../services/api';
+import { saveAssessmentResult, saveAssessmentResultKeepalive, getApprovedBankQuestions, logAttemptEvent, reportQuestion } from '../services/api';
 import SubscriptionGate from '../components/SubscriptionGate';
 import { cn } from '../utils';
 import { cardFlip, fadeUp, bounceIn } from '../utils/animations';
@@ -58,6 +58,74 @@ interface ScoreResult {
   correctAnswer: string | boolean;
   marksObtained: number;
   marksPossible: number;
+}
+
+interface AssessmentComputed {
+  scoreResults: ScoreResult[];
+  totalMarks: number;
+  obtainedMarks: number;
+  percentage: number;
+  grade: string;
+  passed: boolean;
+  answeredCount: number;
+  correctCount: number;
+  wrongCount: number;
+}
+
+function scoreAssessment(
+  questions: BankQuestion[],
+  answers: Map<string, AssessmentAnswer>
+): AssessmentComputed {
+  const scoreResults: ScoreResult[] = questions.map((q) => {
+    const answer = answers.get(q.id);
+    const userAnswer = answer?.selectedOption ?? null;
+    let resolvedAnswer: string;
+    if (q.type === 'true-false') {
+      resolvedAnswer = userAnswer === 'True' ? 'true' : 'false';
+    } else {
+      const optionIndex = userAnswer ? userAnswer.charCodeAt(0) - 65 : -1;
+      resolvedAnswer = q.options?.[optionIndex] ?? '';
+    }
+    const correctAnswer = String(q.correctAnswer);
+    const isCorrect = userAnswer !== null && resolvedAnswer === correctAnswer;
+    const marksPossible = 1;
+    return {
+      questionId: q.id,
+      correct: isCorrect,
+      userAnswer,
+      correctAnswer,
+      marksObtained: isCorrect ? marksPossible : 0,
+      marksPossible,
+    };
+  });
+
+  const totalMarks = scoreResults.reduce((s, r) => s + r.marksPossible, 0);
+  const obtainedMarks = scoreResults.reduce((s, r) => s + r.marksObtained, 0);
+  const percentage = totalMarks > 0 ? Math.round((obtainedMarks / totalMarks) * 100) : 0;
+
+  let grade = 'F';
+  if (percentage >= 90) grade = 'A+';
+  else if (percentage >= 80) grade = 'A';
+  else if (percentage >= 70) grade = 'B';
+  else if (percentage >= 60) grade = 'C';
+  else if (percentage >= 50) grade = 'D';
+
+  const passed = percentage >= 50;
+  const answeredCount = Array.from(answers.values()).filter((a) => a.selectedOption !== null).length;
+  const correctCount = scoreResults.filter((r) => r.correct).length;
+  const wrongCount = questions.length - correctCount;
+
+  return {
+    scoreResults,
+    totalMarks,
+    obtainedMarks,
+    percentage,
+    grade,
+    passed,
+    answeredCount,
+    correctCount,
+    wrongCount,
+  };
 }
 
 export default function TakeAssessmentWrapper() {
@@ -181,6 +249,26 @@ function TakeAssessment() {
   const timerRef = useRef<HTMLDivElement>(null);
   const navigatorRef = useRef<HTMLDivElement>(null);
   const initialLoadDone = useRef(false);
+  const answersRef = useRef<Map<string, AssessmentAnswer>>(new Map());
+  const timeLeftRef = useRef(meta?.timeLimit ?? 600);
+  const questionsRef = useRef<BankQuestion[]>(questions);
+  const metaRef = useRef(meta);
+  const stateRef = useRef(state);
+  const storageKeyRef = useRef(storageKey);
+  const userRef = useRef(user);
+  const isSubmittedRef = useRef(isSubmitted);
+  const isAbandoningRef = useRef(isAbandoning);
+  const leaveRecordedRef = useRef(false);
+
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { metaRef.current = meta; }, [meta]);
+  useEffect(() => { stateRef.current = state; }, [state]);
+  useEffect(() => { storageKeyRef.current = storageKey; }, [storageKey]);
+  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { isSubmittedRef.current = isSubmitted; }, [isSubmitted]);
+  useEffect(() => { isAbandoningRef.current = isAbandoning; }, [isAbandoning]);
 
   useEffect(() => {
     if (!state || !meta) {
@@ -201,17 +289,6 @@ function TakeAssessment() {
       logAttemptEvent({ assessmentType: state.assessmentType, eventType: 'start' }).catch(() => {});
     }
   }, []);
-
-  // Warn on tab close / refresh while assessment is active
-  useEffect(() => {
-    if (isSubmitted || isAbandoning) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isSubmitted, isAbandoning]);
 
   // Tab-switch detection
   useEffect(() => {
@@ -275,48 +352,7 @@ function TakeAssessment() {
     setIsSubmitted(true);
     logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'submit' }).catch(() => {});
 
-    const scoreResults: ScoreResult[] = questions.map((q) => {
-      const answer = answers.get(q.id);
-      const userAnswer = answer?.selectedOption ?? null;
-      let resolvedAnswer: string;
-      if (q.type === 'true-false') {
-        resolvedAnswer = userAnswer === 'True' ? 'true' : 'false';
-      } else {
-        const optionIndex = userAnswer ? userAnswer.charCodeAt(0) - 65 : -1;
-        resolvedAnswer = q.options?.[optionIndex] ?? '';
-      }
-      const correctAnswer = String(q.correctAnswer);
-      const isCorrect = userAnswer !== null && resolvedAnswer === correctAnswer;
-      const marksPossible = 1;
-      return {
-        questionId: q.id,
-        correct: isCorrect,
-        userAnswer,
-        correctAnswer,
-        marksObtained: isCorrect ? marksPossible : 0,
-        marksPossible,
-      };
-    });
-
-    const totalMarks = scoreResults.reduce((s, r) => s + r.marksPossible, 0);
-    const obtainedMarks = scoreResults.reduce((s, r) => s + r.marksObtained, 0);
-    const percentage = totalMarks > 0 ? Math.round((obtainedMarks / totalMarks) * 100) : 0;
-
-    let grade = 'F';
-    if (percentage >= 90) grade = 'A+';
-    else if (percentage >= 80) grade = 'A';
-    else if (percentage >= 70) grade = 'B';
-    else if (percentage >= 60) grade = 'C';
-    else if (percentage >= 50) grade = 'D';
-
-    const passed = percentage >= 50;
-
-    const answeredCount = Array.from(answers.values()).filter(
-      (a) => a.selectedOption !== null
-    ).length;
-
-    const correctCount = scoreResults.filter((r) => r.correct).length;
-    const wrongCount = questions.length - correctCount;
+    const { scoreResults, totalMarks, obtainedMarks, percentage, grade, passed, answeredCount, correctCount, wrongCount } = scoreAssessment(questions, answers);
     const timeUsed = (meta?.timeLimit ?? 600) - timeLeft;
 
     const enrichedAnswers = scoreResults.map((sr, i) => {
@@ -405,54 +441,72 @@ function TakeAssessment() {
     }, 800);
   }, [answers, questions, meta, timeLeft, state, storageKey, navigate, isSubmitted]);
 
-  const handleAbandon = useCallback(() => {
-    if (isSubmitted || isAbandoning) return;
-    setIsAbandoning(true);
-    setIsSubmitted(true);
-    setShowLeaveModal(false);
-    logAttemptEvent({ assessmentType: state?.assessmentType, eventType: 'submit', details: { abandoned: true } }).catch(() => {});
+  const persistAbandonedAssessment = useCallback((navigateAfter: boolean) => {
+    if (leaveRecordedRef.current) return;
+    leaveRecordedRef.current = true;
 
-    const totalQuestions = questions.length;
+    const qs = questionsRef.current;
+    const timeLimit = metaRef.current?.timeLimit ?? 600;
+    const timeUsed = Math.max(0, timeLimit - timeLeftRef.current);
+    const totalQuestions = qs.length;
 
+    const { scoreResults, totalMarks, obtainedMarks, percentage, grade, passed, answeredCount, correctCount, wrongCount } = scoreAssessment(qs, answersRef.current);
+
+    const enrichedAnswers = scoreResults.map((sr, i) => {
+      const q = qs[i];
+      return {
+        questionId: sr.questionId,
+        question: q.question,
+        type: q.type,
+        options: q.options,
+        userAnswer: sr.userAnswer,
+        correctAnswer: sr.correctAnswer,
+        isCorrect: sr.correct,
+        subject: q.subject,
+        explanation: q.explanation,
+      };
+    });
+
+    const st = stateRef.current;
     const resultPayload = {
-      answers: [],
-      totalMarks: totalQuestions,
-      obtainedMarks: 0,
-      percentage: 0,
-      grade: 'F',
-      passed: false,
+      answers: enrichedAnswers,
+      totalMarks,
+      obtainedMarks,
+      percentage,
+      grade,
+      passed,
       totalQuestions,
-      correctAnswers: 0,
-      wrongAnswers: totalQuestions,
-      answeredQuestions: 0,
-      unansweredQuestions: totalQuestions,
-      flaggedQuestions: 0,
-      timeUsed: (meta?.timeLimit ?? 600) - timeLeft,
-      timeLimit: meta?.timeLimit ?? 600,
-      classLevel: state?.classLevel,
-      subject: state?.subject,
-      assessmentType: state?.assessmentType,
-      questions,
-      studentName: user?.name || 'Student',
+      correctAnswers: correctCount,
+      wrongAnswers: wrongCount,
+      answeredQuestions: answeredCount,
+      unansweredQuestions: totalQuestions - answeredCount,
+      flaggedQuestions: Array.from(answersRef.current.values()).filter((a) => a.flagged).length,
+      timeUsed,
+      timeLimit,
+      classLevel: st?.classLevel,
+      subject: st?.subject,
+      assessmentType: st?.assessmentType,
+      questions: qs,
+      studentName: userRef.current?.name || 'Student',
       completedAt: new Date().toISOString(),
       abandoned: true,
     };
 
     const historyEntry = {
-      classLevel: state?.classLevel,
-      subject: state?.subject,
-      assessmentType: state?.assessmentType,
+      classLevel: st?.classLevel,
+      subject: st?.subject,
+      assessmentType: st?.assessmentType,
       totalQuestions,
-      correctAnswers: 0,
-      wrongAnswers: totalQuestions,
-      answeredQuestions: 0,
-      percentage: 0,
-      grade: 'F',
-      passed: false,
-      timeUsed: (meta?.timeLimit ?? 600) - timeLeft,
+      correctAnswers: correctCount,
+      wrongAnswers: wrongCount,
+      answeredQuestions: answeredCount,
+      percentage,
+      grade,
+      passed,
+      timeUsed,
       timestamp: Date.now(),
       completedAt: new Date().toISOString(),
-      studentName: user?.name || 'Student',
+      studentName: userRef.current?.name || 'Student',
       abandoned: true,
     };
 
@@ -460,29 +514,63 @@ function TakeAssessment() {
     existingHistory.unshift(historyEntry);
     localStorage.setItem('assessment-history', JSON.stringify(existingHistory.slice(0, 50)));
 
-    saveAssessmentResult({
-      classLevel: state?.classLevel,
-      subject: state?.subject,
-      assessmentType: state?.assessmentType,
+    const apiPayload = {
+      classLevel: st?.classLevel,
+      subject: st?.subject,
+      assessmentType: st?.assessmentType,
       totalQuestions,
-      answeredQuestions: 0,
-      correctAnswers: 0,
-      timeLimit: meta?.timeLimit ?? 600,
-      percentage: 0,
-      grade: 'F',
-      passed: false,
-      timeSpent: (meta?.timeLimit ?? 600) - timeLeft,
-      answers: [],
-    }).catch(() => {});
+      answeredQuestions: answeredCount,
+      correctAnswers: correctCount,
+      timeLimit,
+      percentage,
+      grade,
+      passed,
+      timeSpent: timeUsed,
+      answers: enrichedAnswers,
+      abandoned: true,
+    };
 
-    if (storageKey) {
-      localStorage.removeItem(storageKey);
+    if (storageKeyRef.current) {
+      localStorage.removeItem(storageKeyRef.current);
     }
 
-    setTimeout(() => {
-      navigate('/assessment/result', { state: resultPayload });
-    }, 800);
-  }, [questions, meta, timeLeft, state, storageKey, navigate, isSubmitted, isAbandoning, user]);
+    if (navigateAfter) {
+      setIsAbandoning(true);
+      setIsSubmitted(true);
+      setShowLeaveModal(false);
+      logAttemptEvent({ assessmentType: st?.assessmentType, eventType: 'submit', details: { abandoned: true } }).catch(() => {});
+      saveAssessmentResult(apiPayload).catch(() => {});
+      setTimeout(() => {
+        navigate('/assessment/result', { state: resultPayload });
+      }, 800);
+    } else {
+      saveAssessmentResultKeepalive(apiPayload).catch(() => {});
+    }
+  }, [navigate]);
+
+  const handleAbandon = useCallback(() => {
+    if (isSubmitted || isAbandoning) return;
+    persistAbandonedAssessment(true);
+  }, [isSubmitted, isAbandoning, persistAbandonedAssessment]);
+
+  const recordAssessmentLeave = useCallback(() => {
+    if (isSubmittedRef.current || isAbandoningRef.current || leaveRecordedRef.current) return;
+    if (!questionsRef.current.length) return;
+    persistAbandonedAssessment(false);
+  }, [persistAbandonedAssessment]);
+
+  // Record the score immediately if the student leaves mid-assessment without
+  // submitting (tab close, refresh, or navigating away within the SPA).
+  useEffect(() => {
+    const onPageHide = () => {
+      recordAssessmentLeave();
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      recordAssessmentLeave();
+    };
+  }, [recordAssessmentLeave]);
 
   const openReportModal = () => {
     setReportReason('');

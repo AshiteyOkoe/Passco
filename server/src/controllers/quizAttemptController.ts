@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
+import { finalizeStaleAttempts } from './quizController';
 
 export async function saveAttempt(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -53,6 +54,8 @@ export async function getAttempt(req: AuthRequest, res: Response): Promise<void>
     const { quizId } = req.params;
     const userId = req.user!.id;
 
+    await finalizeStaleAttempts(userId);
+
     const { data: attempt, error } = await supabase
       .from('quiz_attempts')
       .select('*')
@@ -88,6 +91,8 @@ export async function getAttempt(req: AuthRequest, res: Response): Promise<void>
 export async function getInProgressAttempts(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
+
+    await finalizeStaleAttempts(userId);
 
     const { data: attempts, error } = await supabase
       .from('quiz_attempts')

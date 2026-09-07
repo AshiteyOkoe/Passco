@@ -24,10 +24,10 @@ function timeAgo(iso?: string): string {
 
 export default function RecentActivityFeed({ items }: RecentActivityFeedProps) {
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-        <Activity className="h-4 w-4 text-indigo-500" />
-        Recent Activity
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="mb-4 flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+        <Activity className="h-4 w-4 shrink-0 text-indigo-500" />
+        <span className="min-w-0">Recent Activity</span>
       </h2>
 
       {items.length === 0 ? (

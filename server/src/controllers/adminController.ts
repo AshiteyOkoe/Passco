@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 import { logAuditEvent } from '../services/auditService';
+import { resolveAvatarUrl } from '../utils/avatar';
 
 export async function getDashboardStats(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -98,7 +99,7 @@ export async function getStudents(req: AuthRequest, res: Response): Promise<void
           email: student.email,
           institution: student.institution,
           gradeLevel: student.grade_level,
-          avatar: student.avatar || '',
+          avatar: resolveAvatarUrl(student.avatar) || '',
           gender: student.gender || '',
           quizzesTaken: resultCount.count || 0,
           avgScore,

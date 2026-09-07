@@ -2,6 +2,153 @@ import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 
+const STALE_MS = 3 * 60 * 1000;
+
+interface AttemptAnswerInput {
+  questionId: string;
+  answer?: string | boolean | null;
+  flagged?: boolean;
+}
+
+interface AnswerDetail {
+  result_id?: string;
+  question_id: string;
+  user_answer: unknown;
+  correct_answer: unknown;
+  is_correct: boolean;
+  time_spent: number;
+}
+
+function gradeAnswers(
+  questions: Array<{ id: string; correct_answer: unknown; type?: string }>,
+  answers: AttemptAnswerInput[]
+): { correctCount: number; incorrectCount: number; skippedCount: number; answerDetails: AnswerDetail[] } {
+  let correctCount = 0;
+  let incorrectCount = 0;
+  let skippedCount = 0;
+  const answerDetails: AnswerDetail[] = [];
+
+  for (const question of questions || []) {
+    const userAnswer = answers.find((a) => a.questionId === question.id)?.answer ?? null;
+
+    let isCorrect = false;
+    if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
+      skippedCount++;
+    } else {
+      isCorrect = String(userAnswer).toLowerCase().trim() === String(question.correct_answer).toLowerCase().trim();
+      if (isCorrect) correctCount++;
+      else incorrectCount++;
+    }
+
+    answerDetails.push({
+      question_id: question.id,
+      user_answer: userAnswer,
+      correct_answer: question.correct_answer,
+      is_correct: isCorrect,
+      time_spent: 0,
+    });
+  }
+
+  return { correctCount, incorrectCount, skippedCount, answerDetails };
+}
+
+async function computeAndInsertResult(
+  userId: string,
+  quizId: string,
+  answers: AttemptAnswerInput[],
+  timeTaken: number
+) {
+  const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', quizId);
+  const questionIds = (qqRows || []).map((r) => r.question_id);
+
+  const { data: questions } = await supabase.from('questions').select('id, correct_answer, type').in('id', questionIds);
+
+  const graded = gradeAnswers(questions || [], answers);
+  const totalQ = (questions || []).length;
+  const score = totalQ > 0 ? Math.round((graded.correctCount / totalQ) * 100) : 0;
+
+  const { data: result, error: resultError } = await supabase
+    .from('results')
+    .insert({
+      user_id: userId,
+      quiz_id: quizId,
+      score,
+      total_questions: totalQ,
+      correct_count: graded.correctCount,
+      incorrect_count: graded.incorrectCount,
+      skipped_count: graded.skippedCount,
+      time_taken: timeTaken || 0,
+      completed_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (resultError) throw resultError;
+
+  const answerRows = graded.answerDetails.map((a) => ({ ...a, result_id: result.id }));
+  await supabase.from('result_answers').insert(answerRows);
+
+  return {
+    id: result.id,
+    score,
+    correctCount: graded.correctCount,
+    incorrectCount: graded.incorrectCount,
+    skippedCount: graded.skippedCount,
+    totalQuestions: totalQ,
+    timeTaken: timeTaken || 0,
+  };
+}
+
+async function deleteInProgressAttempt(userId: string, quizId: string): Promise<void> {
+  await supabase.from('quiz_attempts').delete().eq('user_id', userId).eq('quiz_id', quizId);
+}
+
+export async function finalizeAttempt(attempt: {
+  id: string;
+  user_id: string;
+  quiz_id: string;
+  answers: AttemptAnswerInput[] | null;
+  time_remaining: number | null;
+}): Promise<boolean> {
+  const { data: quiz } = await supabase.from('quizzes').select('time_limit').eq('id', attempt.quiz_id).single();
+  const timeTaken = quiz?.time_limit ? Math.max(0, quiz.time_limit - (attempt.time_remaining ?? 0)) : 0;
+
+  const { data: existing } = await supabase
+    .from('results')
+    .select('id')
+    .eq('user_id', attempt.user_id)
+    .eq('quiz_id', attempt.quiz_id)
+    .maybeSingle();
+
+  if (existing) {
+    await deleteInProgressAttempt(attempt.user_id, attempt.quiz_id);
+    return false;
+  }
+
+  await computeAndInsertResult(attempt.user_id, attempt.quiz_id, attempt.answers || [], timeTaken);
+  await deleteInProgressAttempt(attempt.user_id, attempt.quiz_id);
+  return true;
+}
+
+export async function finalizeStaleAttempts(userId: string): Promise<void> {
+  const cutoff = new Date(Date.now() - STALE_MS).toISOString();
+
+  const { data: attempts } = await supabase
+    .from('quiz_attempts')
+    .select('id, user_id, quiz_id, answers, time_remaining, updated_at')
+    .eq('user_id', userId)
+    .eq('status', 'in_progress')
+    .lt('updated_at', cutoff);
+
+  for (const attempt of attempts || []) {
+    try {
+      await finalizeAttempt(attempt);
+    } catch (error) {
+      console.error('Finalize stale attempt error:', error);
+    }
+  }
+}
+
 export async function createQuiz(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { title, description, documentId, questions, difficulty, timeLimit, assignedTo } = req.body;
@@ -142,8 +289,8 @@ export async function getQuizById(req: AuthRequest, res: Response): Promise<void
 
 export async function submitQuiz(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { id } = req.params;
-    const { answers, timeTaken } = req.body;
+    const id = String(req.params.id);
+    const { answers, timeTaken, abandoned } = req.body;
 
     const { data: quiz } = await supabase.from('quizzes').select('*').eq('id', id).single();
     if (!quiz) {
@@ -151,84 +298,36 @@ export async function submitQuiz(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', id);
-    const questionIds = (qqRows || []).map((r) => r.question_id);
+    if (abandoned) {
+      const { data: existing } = await supabase
+        .from('results')
+        .select('*')
+        .eq('user_id', req.user!.id)
+        .eq('quiz_id', id)
+        .maybeSingle();
 
-    const { data: questions } = await supabase.from('questions').select('id, correct_answer, type').in('id', questionIds);
-
-    let correctCount = 0;
-    let incorrectCount = 0;
-    let skippedCount = 0;
-    const answerDetails: Array<{
-      result_id?: string;
-      question_id: string;
-      user_answer: unknown;
-      correct_answer: unknown;
-      is_correct: boolean;
-      time_spent: number;
-    }> = [];
-
-    for (const question of questions || []) {
-      const userAnswer = answers.find((a: { questionId: string }) => a.questionId === question.id)?.answer ?? null;
-
-      let isCorrect = false;
-      if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
-        skippedCount++;
-      } else {
-        if (question.type === 'true-false') {
-          isCorrect = userAnswer === question.correct_answer;
-        } else {
-          isCorrect = String(userAnswer).toLowerCase().trim() === String(question.correct_answer).toLowerCase().trim();
-        }
-        if (isCorrect) correctCount++;
-        else incorrectCount++;
+      if (existing) {
+        await deleteInProgressAttempt(req.user!.id, id);
+        res.status(201).json({
+          message: 'Quiz submitted successfully',
+          result: {
+            id: existing.id,
+            score: existing.score,
+            correctCount: existing.correct_count,
+            incorrectCount: existing.incorrect_count,
+            skippedCount: existing.skipped_count,
+            totalQuestions: existing.total_questions,
+            timeTaken: existing.time_taken ?? timeTaken ?? 0,
+          },
+        });
+        return;
       }
-
-      answerDetails.push({
-        question_id: question.id,
-        user_answer: userAnswer,
-        correct_answer: question.correct_answer,
-        is_correct: isCorrect,
-        time_spent: 0,
-      });
     }
 
-    const totalQ = (questions || []).length;
-    const score = Math.round((correctCount / totalQ) * 100);
+    const result = await computeAndInsertResult(req.user!.id, id, answers || [], timeTaken || 0);
+    await deleteInProgressAttempt(req.user!.id, id);
 
-    const { data: result, error: resultError } = await supabase
-      .from('results')
-      .insert({
-        user_id: req.user!.id,
-        quiz_id: id,
-        score,
-        total_questions: totalQ,
-        correct_count: correctCount,
-        incorrect_count: incorrectCount,
-        skipped_count: skippedCount,
-        time_taken: timeTaken || 0,
-        completed_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single();
-
-    if (resultError) throw resultError;
-
-    const answerRows = answerDetails.map((a) => ({ ...a, result_id: result.id }));
-    await supabase.from('result_answers').insert(answerRows);
-
-    res.status(201).json({
-      message: 'Quiz submitted successfully',
-      result: {
-        id: result.id,
-        score,
-        correctCount,
-        incorrectCount,
-        skippedCount,
-        totalQuestions: totalQ,
-        timeTaken: timeTaken || 0,
-      },
-    });
+    res.status(201).json({ message: 'Quiz submitted successfully', result });
   } catch (error) {
     console.error('Submit quiz error:', error);
     res.status(500).json({ message: 'Failed to submit quiz' });

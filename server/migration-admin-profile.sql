@@ -27,3 +27,5 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS preferences JSONB DEFAULT '{}'::jsonb
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
   ON users (username)
   WHERE username IS NOT NULL AND username <> '';
+
+  

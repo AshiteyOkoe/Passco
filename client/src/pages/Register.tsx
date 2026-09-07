@@ -35,6 +35,10 @@ export default function Register() {
       setError('Passwords do not match');
       return;
     }
+    if (!classLevel) {
+      setError('Please choose your class level: JHS 1, JHS 2 or JHS 3.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await sendOTP(email);
@@ -214,10 +218,12 @@ export default function Register() {
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Class Level</label>
               <div className="relative">
                 <GraduationCap className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <select value={classLevel} onChange={(e) => setClassLevel(e.target.value)}
+                <select value={classLevel} onChange={(e) => setClassLevel(e.target.value)} required
                   className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
                   <option value="">Select class level</option>
-                  <option value="JHS">JHS</option>
+                  <option value="jhs1">JHS 1</option>
+                  <option value="jhs2">JHS 2</option>
+                  <option value="jhs3">JHS 3</option>
                 </select>
               </div>
             </motion.div>

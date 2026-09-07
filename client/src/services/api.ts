@@ -480,7 +480,12 @@ export async function generateQuestionsAI(data: {
 export async function saveAIGeneratedQuestions(data: {
   questions: AIGeneratedQuestion[];
   documentId?: string;
-}): Promise<{ message: string; count: number; documentId: string }> {
+}): Promise<{
+  message: string;
+  count: number;
+  documentId: string;
+  usage: { used: number; limit: number; remaining: number; month: string };
+}> {
   const res = await api.post('/ai-generation/save', data);
   return res.data;
 }
@@ -582,6 +587,37 @@ export async function logAttemptEvent(data: {
 export async function saveAssessmentResult(result: Record<string, unknown>) {
   const res = await api.post('/assessment/results', result);
   return res.data;
+}
+
+// Fire-and-forget keepalive helpers used when a student leaves mid-quiz.
+// `keepalive: true` lets the request survive page unload (unlike axios).
+async function keepalivePost(path: string, body: Record<string, unknown>): Promise<void> {
+  const token = localStorage.getItem('passco-token');
+  try {
+    await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      keepalive: true,
+      credentials: 'same-origin',
+    });
+  } catch {
+    // The server's staleness sweep is the fallback if this is dropped.
+  }
+}
+
+export function submitQuizAbandoned(
+  quizId: string,
+  data: { answers: QuizAnswer[]; timeTaken: number }
+): Promise<void> {
+  return keepalivePost(`/quizzes/${quizId}/submit`, { ...data, abandoned: true });
+}
+
+export function saveAssessmentResultKeepalive(result: Record<string, unknown>): Promise<void> {
+  return keepalivePost('/assessment/results', result);
 }
 
 export async function getMyAssessmentResults() {

@@ -22,13 +22,13 @@ export default function SubscriptionsOverviewCard({ overview }: SubscriptionsOve
   ];
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-          <CreditCard className="h-4 w-4 text-amber-500" />
-          Subscription Overview
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <h2 className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+          <CreditCard className="h-4 w-4 shrink-0 text-amber-500" />
+          <span className="min-w-0">Subscription Overview</span>
         </h2>
-        <Link to="/admin/subscriptions" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+        <Link to="/admin/subscriptions" className="ml-auto shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
           Manage
         </Link>
       </div>
@@ -41,20 +41,20 @@ export default function SubscriptionsOverviewCard({ overview }: SubscriptionsOve
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-4 gap-2">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/50">
+          <div key={t.label} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/50">
             <p className={`text-lg font-bold ${t.color}`}>{t.value.toLocaleString()}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">{t.label}</p>
+            <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">{t.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <ResponsiveContainer width="100%" height={120}>
           <BarChart data={overview.revenueSeries} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:opacity-20" />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} minTickGap={12} interval="preserveStartEnd" />
             <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
             <Tooltip formatter={(v) => [`GH₵ ${Number(v).toLocaleString()}`, 'Revenue']} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12, background: '#fff' }} />
             <Bar dataKey="total" fill="#f59e0b" radius={[4, 4, 0, 0]} />

@@ -8,13 +8,13 @@ interface SubjectPerformanceTableProps {
 
 export default function SubjectPerformanceTable({ subjects }: SubjectPerformanceTableProps) {
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-          <GraduationCap className="h-4 w-4 text-blue-500" />
-          Subject Performance
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <h2 className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+          <GraduationCap className="h-4 w-4 shrink-0 text-blue-500" />
+          <span className="min-w-0">Subject Performance</span>
         </h2>
-        <Link to="/admin/analytics" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+        <Link to="/admin/analytics" className="ml-auto shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
           View details
         </Link>
       </div>
@@ -38,7 +38,7 @@ export default function SubjectPerformanceTable({ subjects }: SubjectPerformance
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
               {subjects.slice(0, 8).map((s) => (
                 <tr key={s.subject} className="group">
-                  <td className="py-3 pr-4 font-medium text-slate-800 dark:text-white">{s.subject}</td>
+                  <td className="max-w-[180px] truncate py-3 pr-4 font-medium text-slate-800 dark:text-white">{s.subject}</td>
                   <td className="py-3 pr-4 text-slate-600 dark:text-slate-400">{s.students.toLocaleString()}</td>
                   <td className="py-3 pr-4">
                     <span className={cn('font-semibold', s.avgScore >= 75 ? 'text-emerald-500' : s.avgScore >= 50 ? 'text-amber-500' : 'text-rose-500')}>

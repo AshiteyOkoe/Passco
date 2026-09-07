@@ -48,6 +48,7 @@ export default function AIGenerator() {
   const [generatedQuestions, setGeneratedQuestions] = useState<AIGeneratedQuestion[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
   const [usage, setUsage] = useState({ used: 0, limit: 20, month: '' });
   const [plan, setPlan] = useState('free');
   const [error, setError] = useState('');
@@ -144,7 +145,7 @@ export default function AIGenerator() {
     try {
       const result = await generateQuestionsAI({
         text: extractedText,
-        subject: SUBJECT_META[subject].label,
+        subject,
         difficulty,
         count: Math.min(count, remaining === Infinity ? MAX_COUNT : remaining),
         classLevel,
@@ -174,8 +175,13 @@ export default function AIGenerator() {
 
   const handleSave = async () => {
     setSaving(true);
+    setError('');
     try {
-      await saveAIGeneratedQuestions({ questions: generatedQuestions });
+      const result = await saveAIGeneratedQuestions({ questions: generatedQuestions });
+      setUsage({ used: result.usage.used, limit: result.usage.limit, month: result.usage.month });
+      setSavedMessage(result.count > 0
+        ? `${result.count} question${result.count === 1 ? '' : 's'} saved to your question bank!`
+        : 'No new questions saved - they were already in the question bank.');
       setSaved(true);
     } catch {
       setError('Failed to save questions');
@@ -189,6 +195,7 @@ export default function AIGenerator() {
     setExtractedText('');
     setGeneratedQuestions([]);
     setSaved(false);
+    setSavedMessage('');
     setError('');
     setExpandedQ(null);
     setStep('upload');
@@ -403,7 +410,7 @@ export default function AIGenerator() {
 
             {saved && (
               <div className="mb-4 flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                <Check className="h-4 w-4" /> Questions saved to your question bank!
+                <Check className="h-4 w-4" /> {savedMessage}
               </div>
             )}
 
@@ -422,7 +429,7 @@ export default function AIGenerator() {
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-slate-800 dark:text-white">{i + 1}. {q.question}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">{q.subject}</span>
+                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">{SUBJECT_META[q.subject as SubjectId]?.label ?? q.subject}</span>
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                             q.difficulty === 'beginner' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
                               : q.difficulty === 'expert' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'

@@ -27,11 +27,11 @@ export default function ActivityChart() {
   }, [range]);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-          <Activity className="h-4 w-4 text-indigo-500" />
-          Student Activity
+        <h2 className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+          <Activity className="h-4 w-4 shrink-0 text-indigo-500" />
+          <span className="min-w-0">Student Activity</span>
         </h2>
         <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800">
           {RANGES.map((r) => (
@@ -56,7 +56,7 @@ export default function ActivityChart() {
           <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
         </div>
       ) : (
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
@@ -78,6 +78,7 @@ export default function ActivityChart() {
                   return `${Number(m)}/${Number(day)}`;
                 }}
                 minTickGap={24}
+                interval="preserveStartEnd"
               />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} allowDecimals={false} />
               <Tooltip

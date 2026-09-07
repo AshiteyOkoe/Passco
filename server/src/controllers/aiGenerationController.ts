@@ -52,6 +52,33 @@ const SUBJECT_LABELS: Record<string, string> = {
   'career-tech': 'Career Technology',
 };
 
+const SUBJECT_LABEL_TO_KEY: Record<string, string> = {
+  mathematics: 'mathematics', maths: 'mathematics', math: 'mathematics',
+  science: 'science',
+  'english language': 'english', english: 'english',
+  'social studies': 'social-studies',
+  ict: 'ict', 'information technology': 'ict',
+  'religious and moral education': 'rme', 'religious & moral education': 'rme', rme: 'rme',
+  'creative arts and design': 'creative-arts', 'creative arts': 'creative-arts',
+  'career technology': 'career-tech',
+};
+
+function normalizeSubject(value?: string): string {
+  if (!value) return '';
+  const lower = value.trim().toLowerCase();
+  if (SUBJECT_LABELS[lower]) return lower;
+  return SUBJECT_LABEL_TO_KEY[lower] || value.trim();
+}
+
+function normalizeClassLevel(value?: string): string {
+  if (!value) return '';
+  const lvl = value.trim().toLowerCase().replace(/\./g, '');
+  if (lvl.includes('3') || lvl.includes('third') || lvl.includes('three')) return 'jhs3';
+  if (lvl.includes('2') || lvl.includes('second') || lvl.includes('two')) return 'jhs2';
+  if (lvl.includes('1') || lvl.includes('first') || lvl.includes('one')) return 'jhs1';
+  return value.trim();
+}
+
 interface GeneratedQuestion {
   type: 'multiple-choice' | 'true-false';
   question: string;
@@ -317,32 +344,22 @@ async function getUserAiLimit(user: AuthRequest['user']): Promise<number> {
   return PLAN_LIMITS[effective.plan].aiQuestions;
 }
 
-async function getUsage(userId: string, month: string): Promise<number> {
-  const { data } = await supabase
-    .from('ai_usage')
-    .select('questions_generated')
-    .eq('user_id', userId)
-    .eq('month', month)
-    .maybeSingle();
-  return data?.questions_generated || 0;
+export async function getBankAiQuestionCount(userId: string, month: string): Promise<number> {
+  const [year, mon] = month.split('-').map(Number);
+  const start = new Date(Date.UTC(year, (mon || 1) - 1, 1));
+  const end = new Date(Date.UTC(year, mon || 1, 1));
+  const { count } = await supabase
+    .from('questions')
+    .select('id, documents!inner(mime_type)', { count: 'exact', head: true })
+    .eq('created_by', userId)
+    .eq('documents.mime_type', 'application/ai-generated')
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString());
+  return count || 0;
 }
 
-async function incrementUsage(userId: string, month: string, count: number): Promise<void> {
-  const { data: existing } = await supabase
-    .from('ai_usage')
-    .select('id, questions_generated')
-    .eq('user_id', userId)
-    .eq('month', month)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase
-      .from('ai_usage')
-      .update({ questions_generated: existing.questions_generated + count, updated_at: new Date().toISOString() })
-      .eq('id', existing.id);
-  } else {
-    await supabase.from('ai_usage').insert({ user_id: userId, month, questions_generated: count });
-  }
+async function getUsage(userId: string, month: string): Promise<number> {
+  return getBankAiQuestionCount(userId, month);
 }
 
 export async function getAIGenerationStatus(req: AuthRequest, res: Response): Promise<void> {
@@ -370,6 +387,9 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
       assessmentType = 'quiz',
       topic,
     } = req.body;
+
+    const subjectKey = normalizeSubject(subject);
+    const classLevelKey = normalizeClassLevel(classLevel);
 
     if (!text || !subject) {
       res.status(400).json({ message: 'Text and subject are required' }); return;
@@ -413,8 +433,8 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
         const batchSize = Math.min(BATCH_SIZE, targetCount - pool.length);
 
         const userPrompt = buildUserPrompt({
-          subject,
-          classLevel,
+          subject: subjectKey,
+          classLevel: classLevelKey,
           assessmentType,
           topic,
           difficulty,
@@ -439,7 +459,7 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
 
         for (const raw of rawQuestions) {
           if (pool.length >= targetCount) break;
-          const cleaned = normalizeQuestion((raw as Record<string, unknown>) || {}, difficulty, subject);
+          const cleaned = normalizeQuestion((raw as Record<string, unknown>) || {}, difficulty, subjectKey);
           if (!isValidQuestion(cleaned, exclusionSet)) continue;
           exclusionSet.add(cleaned.fingerprint);
           exclusionTexts.push(cleaned.question);
@@ -453,10 +473,7 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
       return;
     }
 
-    const generatedCount = pool.length;
-    await incrementUsage(req.user!.id, month, generatedCount);
-
-    const remaining = limit === -1 ? -1 : Math.max(0, limit - used - generatedCount);
+    const remaining = limit === -1 ? -1 : Math.max(0, limit - used);
 
     res.json({
       questions: pool.map((q) => ({
@@ -466,13 +483,13 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
         explanation: q.explanation,
         difficulty: q.difficulty,
         topic: q.topic,
-        classLevel,
+        classLevel: classLevelKey,
         assessmentType,
         fingerprint: q.fingerprint,
         subject: q.subject,
         type: q.type,
       })),
-      usage: { used: used + generatedCount, limit, remaining, month },
+      usage: { used, limit, remaining, month },
     });
   } catch (error) {
     console.error('AI generation error:', error);
@@ -487,6 +504,40 @@ export async function saveAIGeneratedQuestions(req: AuthRequest, res: Response):
       res.status(400).json({ message: 'No questions provided' }); return;
     }
 
+    const plan = await getUserPlan(req.user);
+    const month = getCurrentMonth();
+    const used = await getUsage(req.user!.id, month);
+    const limit = await getUserAiLimit(req.user);
+
+    const existingFingerprints = (await getPreviousQuestions()).fingerprints;
+    const deduped: typeof questions = [];
+    for (const q of questions) {
+      const fp = q.fingerprint && typeof q.fingerprint === 'string'
+        ? q.fingerprint
+        : fingerprint(String(q.question ?? '').trim());
+      if (!fp || existingFingerprints.has(fp)) continue;
+      existingFingerprints.add(fp);
+      deduped.push(q);
+    }
+
+    const usage = {
+      used: used + deduped.length,
+      limit,
+      remaining: limit === -1 ? -1 : Math.max(0, limit - used - deduped.length),
+      month,
+    };
+
+    if (deduped.length === 0) {
+      res.status(201).json({
+        message: 'No new questions to save (they were already in the question bank).',
+        count: 0,
+        documentId: documentId || undefined,
+        plan,
+        usage,
+      });
+      return;
+    }
+
     let docId = documentId;
     if (!docId) {
       const { data: doc, error: docErr } = await supabase
@@ -497,8 +548,8 @@ export async function saveAIGeneratedQuestions(req: AuthRequest, res: Response):
           storage_path: `ai-gen-${Date.now()}`,
           mime_type: 'application/ai-generated',
           file_size: 0,
-          extracted_text: `AI generated ${questions.length} questions`,
-          topics: [...new Set(questions.map((q: { subject?: string }) => q.subject || 'General'))] as string[],
+          extracted_text: `AI generated ${deduped.length} questions`,
+          topics: [...new Set(deduped.map((q: { subject?: string }) => q.subject || 'General'))] as string[],
           status: 'ready',
         })
         .select('id')
@@ -507,7 +558,7 @@ export async function saveAIGeneratedQuestions(req: AuthRequest, res: Response):
       docId = doc.id;
     }
 
-    const insertRows = questions.map((q: {
+    const insertRows = deduped.map((q: {
       question: string;
       options?: string[];
       correctAnswer: string | boolean;
@@ -523,19 +574,27 @@ export async function saveAIGeneratedQuestions(req: AuthRequest, res: Response):
       question: q.question,
       type: q.type || 'multiple-choice',
       options: q.options || [],
-      correct_answer: typeof q.correctAnswer === 'boolean' ? String(q.correctAnswer) : q.correctAnswer,
+      correct_answer: q.type === 'true-false'
+        ? (typeof q.correctAnswer === 'boolean' ? q.correctAnswer : String(q.correctAnswer ?? '').toLowerCase().trim() === 'true')
+        : (typeof q.correctAnswer === 'boolean' ? String(q.correctAnswer) : q.correctAnswer),
       explanation: q.explanation || '',
       difficulty: q.difficulty || 'intermediate',
       topic: q.topic || q.subject || 'General',
-      subject: q.subject || '',
-      class_level: q.classLevel || '',
+      subject: normalizeSubject(q.subject),
+      class_level: normalizeClassLevel(q.classLevel),
       approved: req.user?.role === 'admin',
     }));
 
     const { error } = await supabase.from('questions').insert(insertRows);
     if (error) throw error;
 
-    res.status(201).json({ message: `${questions.length} questions saved`, count: questions.length, documentId: docId });
+    res.status(201).json({
+      message: `${deduped.length} questions saved`,
+      count: deduped.length,
+      documentId: docId,
+      plan,
+      usage,
+    });
   } catch (error) {
     console.error('Save AI questions error:', error);
     res.status(500).json({ message: 'Failed to save questions' });
@@ -544,19 +603,35 @@ export async function saveAIGeneratedQuestions(req: AuthRequest, res: Response):
 
 export async function getAIUsageStats(_req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { data: usage } = await supabase.from('ai_usage').select('*').order('month', { ascending: false }).limit(100);
+    const { data: rows } = await supabase
+      .from('questions')
+      .select('id, created_by, created_at, documents!inner(mime_type)')
+      .eq('documents.mime_type', 'application/ai-generated')
+      .order('created_at', { ascending: false })
+      .limit(10000);
 
-    const byUser: Record<string, { total: number; months: number }> = {};
-    for (const u of usage || []) {
-      if (!byUser[u.user_id]) byUser[u.user_id] = { total: 0, months: 0 };
-      byUser[u.user_id].total += u.questions_generated;
-      byUser[u.user_id].months++;
+    const byUser: Record<string, { total: number; months: Record<string, number> }> = {};
+    for (const r of rows || []) {
+      const userId = r.created_by as string;
+      const created = new Date(r.created_at as string);
+      if (!userId || isNaN(created.getTime())) continue;
+      const month = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
+      byUser[userId] = byUser[userId] || { total: 0, months: {} };
+      byUser[userId].total += 1;
+      byUser[userId].months[month] = (byUser[userId].months[month] || 0) + 1;
     }
 
-    const totalGenerated = (usage || []).reduce((sum, u) => sum + u.questions_generated, 0);
-    const activeUsers = Object.keys(byUser).length;
+    const monthlyBreakdown = Object.entries(byUser)
+      .flatMap(([user_id, u]) =>
+        Object.entries(u.months).map(([month, questions_generated]) => ({ user_id, month, questions_generated }))
+      )
+      .sort((a, b) => (a.month < b.month ? 1 : -1));
 
-    res.json({ totalGenerated, activeUsers, monthlyBreakdown: usage || [] });
+    res.json({
+      totalGenerated: Object.values(byUser).reduce((sum, u) => sum + u.total, 0),
+      activeUsers: Object.keys(byUser).length,
+      monthlyBreakdown,
+    });
   } catch (error) {
     console.error('Get AI usage stats error:', error);
     res.status(500).json({ message: 'Failed to fetch AI usage stats' });

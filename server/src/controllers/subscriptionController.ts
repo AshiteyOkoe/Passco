@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 import { logAuditEvent } from '../services/auditService';
 import { getEffectivePlan, grantTrial, PLAN_LIMITS, TRIAL_DAYS, PlanType } from '../services/subscriptionService';
+import { getBankAiQuestionCount } from './aiGenerationController';
 
 export { PLAN_LIMITS };
 export type { PlanType };
@@ -35,19 +36,14 @@ export async function getMySubscription(req: AuthRequest, res: Response): Promis
     const plan = effective.plan;
 
     const month = getCurrentMonth();
-    const { data: usage } = await supabase
-      .from('ai_usage')
-      .select('questions_generated')
-      .eq('user_id', userId)
-      .eq('month', month)
-      .maybeSingle();
+    const used = await getBankAiQuestionCount(userId, month);
 
     const limits = PLAN_LIMITS[plan];
 
     res.json({
       subscription: effective.subscription || { plan: 'free', status: 'active', expires_at: null },
       aiUsage: {
-        used: usage?.questions_generated || 0,
+        used,
         limit: limits.aiQuestions,
         month,
       },

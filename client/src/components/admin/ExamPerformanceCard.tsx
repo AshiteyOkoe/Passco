@@ -26,20 +26,20 @@ export default function ExamPerformanceCard({ assessment }: ExamPerformanceCardP
   }));
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-        <BookOpen className="h-4 w-4 text-rose-500" />
-        Examination Performance
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="mb-4 flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+        <BookOpen className="h-4 w-4 shrink-0 text-rose-500" />
+        <span className="min-w-0">Examination Performance</span>
       </h2>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
         {METRICS.map((m) => (
-          <div key={m.key} className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+          <div key={m.key} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
             <div className="mb-1.5 flex items-center gap-1.5">
-              <span className={`flex h-6 w-6 items-center justify-center rounded-lg ${m.bg}`}>
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
                 <m.icon className={`h-3.5 w-3.5 ${m.color}`} />
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">{m.label}</span>
+              <span className="min-w-0 truncate text-[11px] text-slate-500 dark:text-slate-400">{m.label}</span>
             </div>
             <p className="text-xl font-bold text-slate-900 dark:text-white">
               {assessment[m.key as 'avgScore']}
@@ -49,7 +49,7 @@ export default function ExamPerformanceCard({ assessment }: ExamPerformanceCardP
         ))}
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <ResponsiveContainer width="100%" height={140}>
           <AreaChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
             <defs>
@@ -59,7 +59,7 @@ export default function ExamPerformanceCard({ assessment }: ExamPerformanceCardP
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:opacity-20" />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`} minTickGap={28} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={(d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`} minTickGap={28} interval="preserveStartEnd" />
             <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
             <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12, background: '#fff' }} />
             <Area type="monotone" dataKey="count" name="Exams completed" stroke="#f43f5e" strokeWidth={2} fill="url(#examCount)" />

@@ -232,8 +232,8 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
     if (req.query.documentId) query = query.eq('document_id', req.query.documentId);
     if (req.query.topic) query = query.eq('topic', req.query.topic);
     if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty);
-    if (req.query.subject) query = query.ilike('subject', req.query.subject as string);
-    if (req.query.classLevel) query = query.eq('class_level', req.query.classLevel);
+    if (req.query.subject) query = query.ilike('subject', normalizeSubject(req.query.subject as string));
+    if (req.query.classLevel) query = query.eq('class_level', normalizeClass(req.query.classLevel as string));
     if (req.user?.role === 'student') query = query.eq('approved', true);
 
     const { data: questions } = await query;
@@ -330,8 +330,8 @@ export async function getApprovedQuestions(req: AuthRequest, res: Response): Pro
   try {
     let query = supabase.from('questions').select('*').eq('approved', true).order('created_at', { ascending: false });
 
-    if (req.query.subject) query = query.ilike('subject', req.query.subject as string);
-    if (req.query.classLevel) query = query.eq('class_level', req.query.classLevel);
+    if (req.query.subject) query = query.ilike('subject', normalizeSubject(req.query.subject as string));
+    if (req.query.classLevel) query = query.eq('class_level', normalizeClass(req.query.classLevel as string));
     if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty);
     if (req.query.type) query = query.eq('type', req.query.type);
 

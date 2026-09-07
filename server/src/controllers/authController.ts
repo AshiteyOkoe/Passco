@@ -5,6 +5,8 @@ import { generateToken } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { grantTrial } from '../services/subscriptionService';
 import { logAuditEvent } from '../services/auditService';
+import { resolveAvatarUrl } from '../utils/avatar';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -41,7 +43,7 @@ function userResponse(user: DbUser) {
     role: user.role,
     institution: user.institution,
     gradeLevel: user.grade_level,
-    avatar: user.avatar || '',
+    avatar: resolveAvatarUrl(user.avatar) || '',
     gender: user.gender || '',
     dateOfBirth: user.date_of_birth || null,
     classLevel: user.class_level || '',
@@ -468,6 +470,7 @@ export async function deleteAccount(req: AuthRequest, res: Response): Promise<vo
 }
 
 const AVATARS_DIR = '/uploads/avatars/';
+const AVATARS_BUCKET = 'avatars';
 
 export async function uploadAvatar(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -487,15 +490,55 @@ export async function uploadAvatar(req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    if (user.avatar && user.avatar.startsWith(AVATARS_DIR)) {
-      const oldPath = path.join(process.cwd(), user.avatar);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    const file = req.file;
+    const ext = path.extname(file.originalname) || '.jpg';
+    const key = `avatar-${crypto.randomUUID()}${ext}`;
+    const contentType = file.mimetype;
+
+    const uploadToStorage = () =>
+      supabase.storage.from(AVATARS_BUCKET).upload(key, file.buffer, { contentType });
+
+    let avatarValue: string;
+    const { error: uploadError } = await uploadToStorage();
+
+    if (uploadError) {
+      await supabase.storage.createBucket(AVATARS_BUCKET, { public: true });
+      const { error: retryError } = await uploadToStorage();
+      if (!retryError) {
+        avatarValue = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(key).data.publicUrl;
+      } else if (process.env.NODE_ENV && process.env.NODE_ENV !== 'production') {
+        const dir = path.join(process.cwd(), 'uploads', 'avatars');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, key), req.file.buffer);
+        avatarValue = `${AVATARS_DIR}${key}`;
+      } else {
+        throw retryError;
+      }
+    } else {
+      avatarValue = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(key).data.publicUrl;
     }
 
-    const avatarPath = `${AVATARS_DIR}${req.file.filename}`;
+    const { avatar: previousAvatar } = user;
+    if (previousAvatar?.includes(`/object/public/${AVATARS_BUCKET}/`)) {
+      const prevKey = decodeURIComponent(
+        (previousAvatar.split(`/object/public/${AVATARS_BUCKET}/`)[1] ?? '').split('?')[0],
+      );
+      if (prevKey) await supabase.storage.from(AVATARS_BUCKET).remove([prevKey]);
+    } else if (
+      previousAvatar?.startsWith(AVATARS_DIR) &&
+      process.env.NODE_ENV !== 'production'
+    ) {
+      try {
+        const oldPath = path.join(process.cwd(), previousAvatar.slice(1));
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      } catch {
+        // Best-effort cleanup of the previous local file.
+      }
+    }
+
     const { error } = await supabase
       .from('users')
-      .update({ avatar: avatarPath, updated_at: new Date().toISOString() })
+      .update({ avatar: avatarValue, updated_at: new Date().toISOString() })
       .eq('id', req.user?.id);
 
     if (error) throw error;
@@ -508,7 +551,7 @@ export async function uploadAvatar(req: AuthRequest, res: Response): Promise<voi
       ipAddress: clientIp(req),
     });
 
-    res.json({ avatar: avatarPath });
+    res.json({ avatar: avatarValue });
   } catch (error) {
     console.error('Upload avatar error:', error);
     res.status(500).json({ message: 'Failed to upload avatar' });

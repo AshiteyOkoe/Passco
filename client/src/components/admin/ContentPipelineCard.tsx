@@ -29,22 +29,22 @@ export default function ContentPipelineCard({ pipeline }: ContentPipelineCardPro
   ];
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
-        <Settings2 className="h-4 w-4 text-blue-500" />
-        Content Processing
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <h2 className="mb-4 flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+        <Settings2 className="h-4 w-4 shrink-0 text-blue-500" />
+        <span className="min-w-0">Content Processing</span>
       </h2>
 
-      <div className="mb-4 grid grid-cols-4 gap-2">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/50">
+          <div key={t.label} className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-800/50">
             <p className={cn('text-lg font-bold', t.color)}>{t.value.toLocaleString()}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">{t.label}</p>
+            <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">{t.label}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex-1 space-y-2.5">
+      <div className="flex-1 min-w-0 space-y-2.5">
         {pipeline.items.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No files currently processing or awaiting attention.</p>
         ) : (

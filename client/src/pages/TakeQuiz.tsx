@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getQuizById, submitQuiz, saveQuizAttempt, getQuizAttempt, deleteQuizAttempt, logAttemptEvent, reportQuestion } from '../services/api';
+import { getQuizById, submitQuiz, submitQuizAbandoned, saveQuizAttempt, getQuizAttempt, deleteQuizAttempt, logAttemptEvent, reportQuestion } from '../services/api';
 import { cn } from '../utils';
 import {
   ChevronLeft, ChevronRight, Flag, Send, Clock,
@@ -33,6 +33,10 @@ export default function TakeQuiz() {
   const hasSubmittedRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasResumedRef = useRef(false);
+  const quizRef = useRef<Quiz | null>(null);
+  const answersRef = useRef<Map<string, QuizAnswer>>(new Map());
+  const timeRemainingRef = useRef(0);
+  const leaveRecordedRef = useRef(false);
 
   useEffect(() => {
     getQuizById(id!)
@@ -69,6 +73,19 @@ export default function TakeQuiz() {
         logAttemptEvent({ quizId: id, eventType: 'start' }).catch(() => {});
       });
   }, [id]);
+
+  // Mirror latest values into refs so page-unload handlers can read them.
+  useEffect(() => {
+    quizRef.current = quiz;
+  }, [quiz]);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  useEffect(() => {
+    timeRemainingRef.current = timeRemaining;
+  }, [timeRemaining]);
 
   const currentQuestion: Question | undefined = quiz?.questions[currentIndex];
 
@@ -192,6 +209,39 @@ export default function TakeQuiz() {
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
   }, []);
+
+  // If the student leaves mid-quiz without submitting, record their score
+  // immediately (keepalive so it survives unload). Fetch keepalive is the only
+  // way to fire a request during page unload, so this bypasses the axios API.
+  const recordLeaveOnUnload = useCallback((): boolean => {
+    const activeQuiz = quizRef.current;
+    if (!activeQuiz || hasSubmittedRef.current || leaveRecordedRef.current) return false;
+    if (timeRemainingRef.current <= 0) return true;
+
+    leaveRecordedRef.current = true;
+    const answerArray = activeQuiz.questions.map((q) => {
+      const existing = answersRef.current.get(q._id);
+      return {
+        questionId: q._id,
+        answer: existing?.answer ?? null,
+        flagged: existing?.flagged ?? false,
+      };
+    });
+    const timeTaken = Math.round((Date.now() - startTimeRef.current) / 1000);
+    submitQuizAbandoned(activeQuiz._id, { answers: answerArray, timeTaken }).catch(() => {});
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const onPageHide = () => {
+      recordLeaveOnUnload();
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      recordLeaveOnUnload();
+    };
+  }, [recordLeaveOnUnload]);
 
   if (loading) return <div className="flex items-center justify-center p-12"><AnimatedSpinner label="Loading quiz..." /></div>;
   if (!quiz) return <div className="p-12 text-center text-slate-500 dark:text-slate-400">Quiz not found</div>;

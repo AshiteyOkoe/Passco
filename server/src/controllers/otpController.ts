@@ -5,6 +5,7 @@ import { createOTP, verifyOTP, sendOTPEmail } from '../utils/otp';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../middleware/auth';
 import { grantTrial } from '../services/subscriptionService';
+import { resolveAvatarUrl } from '../utils/avatar';
 
 interface DbUser {
   id: string;
@@ -28,7 +29,7 @@ function userResponse(user: DbUser) {
     role: user.role,
     institution: user.institution,
     gradeLevel: user.grade_level,
-    avatar: user.avatar || '',
+    avatar: resolveAvatarUrl(user.avatar) || '',
     gender: user.gender || '',
     dateOfBirth: user.date_of_birth || null,
     classLevel: user.class_level || '',

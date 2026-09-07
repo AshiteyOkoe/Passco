@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
+import { resolveAvatarUrl } from '../utils/avatar';
 
 export async function getLeaderboard(_req: Request, res: Response): Promise<void> {
   try {
@@ -32,7 +33,7 @@ export async function getLeaderboard(_req: Request, res: Response): Promise<void
           name: student.name || 'Student',
           institution: student.institution || '',
           classLevel: student.grade_level || '',
-          avatar: student.avatar || '',
+          avatar: resolveAvatarUrl(student.avatar) || '',
           gender: '',
           avg,
           total,
