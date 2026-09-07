@@ -42,6 +42,7 @@ export function isCustomAvatar(avatar?: string): boolean {
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 45000,
 });
 
 api.interceptors.request.use((config) => {

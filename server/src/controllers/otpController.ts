@@ -56,16 +56,15 @@ export async function sendOTP(req: AuthRequest, res: Response): Promise<void> {
     }
 
     const code = await createOTP(email);
-    const { sent, configured, error } = await sendOTPEmail(email, code);
+    const { sent, error } = await sendOTPEmail(email, code);
 
-    // Never echo the OTP back to the client in production when email is configured.
-    const exposeCode = !configured || process.env.NODE_ENV !== 'production';
+    // Option A fallback: expose the code whenever the email did NOT actually send,
+    // so signup always completes. Kept secret only when delivery succeeded in prod.
+    const exposeCode = !sent || process.env.NODE_ENV !== 'production';
 
     const message = sent
       ? 'Verification code sent to your email'
-      : !configured
-        ? 'Email sending is not configured. Your verification code is shown below.'
-        : 'Email sending failed. Please try again or contact support.';
+      : 'Your verification code is shown below. Email delivery is temporarily unavailable.';
 
     res.json({
       message,

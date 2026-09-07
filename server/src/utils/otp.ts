@@ -16,11 +16,16 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
+
 function getTransporter() {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 10_000,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -99,7 +104,6 @@ export async function sendOTPEmail(
 
   try {
     const transporter = getTransporter();
-    await transporter.verify();
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@passco.app',
       to: email,
