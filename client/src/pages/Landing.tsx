@@ -12,6 +12,7 @@ import type { Testimonial } from '../types';
 import { DefaultAvatar } from '../components/DefaultAvatars';
 import FAQSection from '../components/FAQSection';
 import { SUBJECT_META, getQuestions, shuffleArray, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
+import { MOTIVATIONS } from '../data/motivations';
 
 const fadeUpFast = {
   hidden: { opacity: 0, y: 12 },
@@ -36,14 +37,6 @@ function generateDemoQuestions() {
     return { q: q.question, options, correct: correctIdx >= 0 ? correctIdx : 0, subject };
   }).filter(Boolean) as Array<{ q: string; options: string[]; correct: number; subject: SubjectId }>;
 }
-
-const encouragements = [
-  "You're on a roll! Keep the momentum going.",
-  "Every quiz makes you stronger. Let's go!",
-  "Your dedication is inspiring. Time to level up!",
-  "Champions never stop. Take your next assessment!",
-  "Knowledge is your superpower. Keep building it!",
-];
 
 const landingPlans = [
   {
@@ -92,7 +85,7 @@ export default function Landing() {
     setDemoSubmitted(false);
   };
 
-  const encouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+  const [encouragement] = useState(() => MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)]);
 
   const heroData = useMemo(() => {
     try {
