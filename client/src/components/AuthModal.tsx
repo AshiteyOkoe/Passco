@@ -37,6 +37,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpResending, setOtpResending] = useState(false);
+  const [devCode, setDevCode] = useState('');
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [error, setError] = useState('');
@@ -72,7 +73,10 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
     }
     setLoading(true);
     try {
-      await sendOTP(regEmail);
+      const res = await sendOTP(regEmail);
+      if ('code' in res) {
+        setDevCode((res as { code: string }).code);
+      }
       setOtpStep(true);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
@@ -147,7 +151,10 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
     setOtpResending(true);
     setError('');
     try {
-      await sendOTP(regEmail);
+      const res = await sendOTP(regEmail);
+      if ('code' in res) {
+        setDevCode((res as { code: string }).code);
+      }
     } catch {
       setError('Failed to resend code');
     } finally {
@@ -160,6 +167,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
     setError('');
     setOtpStep(false);
     setOtpCode(['', '', '', '', '', '']);
+    setDevCode('');
   };
 
   return (
@@ -311,6 +319,12 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                         We sent a 6-digit code to<br />
                         <span className="font-medium text-slate-700 dark:text-slate-300">{regEmail}</span>
                       </p>
+                      {devCode && (
+                        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 font-mono text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                          Verification code:{' '}
+                          <span className="font-bold tracking-widest">{devCode}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="mb-4 flex justify-center gap-2" onPaste={handleOTPPaste}>
                       {otpCode.map((digit, i) => (
@@ -336,7 +350,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                       {otpLoading ? 'Verifying...' : 'Verify & Create Account'}
                     </button>
                     <div className="mt-3 flex items-center justify-between text-sm">
-                      <button onClick={() => { setOtpStep(false); setOtpCode(['', '', '', '', '', '']); }} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300">
+                      <button onClick={() => { setOtpStep(false); setOtpCode(['', '', '', '', '', '']); setDevCode(''); }} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300">
                         Back
                       </button>
                       <button onClick={handleResendOTP} disabled={otpResending} className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 disabled:opacity-50">

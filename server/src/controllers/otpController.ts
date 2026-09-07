@@ -55,12 +55,22 @@ export async function sendOTP(req: AuthRequest, res: Response): Promise<void> {
       return;
     }
 
-    const code = createOTP(email);
-    const { sent, error } = await sendOTPEmail(email, code);
+    const code = await createOTP(email);
+    const { sent, configured, error } = await sendOTPEmail(email, code);
+
+    // Never echo the OTP back to the client in production when email is configured.
+    const exposeCode = !configured || process.env.NODE_ENV !== 'production';
+
+    const message = sent
+      ? 'Verification code sent to your email'
+      : !configured
+        ? 'Email sending is not configured. Your verification code is shown below.'
+        : 'Email sending failed. Please try again or contact support.';
 
     res.json({
-      message: sent ? 'Verification code sent to your email' : 'Verification code (dev mode)',
-      ...(sent ? {} : { code, smtpError: error }),
+      message,
+      ...(exposeCode ? { code } : {}),
+      ...(error ? { smtpError: error } : {}),
     });
   } catch (error) {
     console.error('Send OTP error:', error);
@@ -82,7 +92,7 @@ export async function verifyOTPAndRegister(req: AuthRequest, res: Response): Pro
       return;
     }
 
-    if (!verifyOTP(email, code)) {
+    if (!(await verifyOTP(email, code))) {
       res.status(400).json({ message: 'Invalid or expired verification code' });
       return;
     }

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { supabase } from '../config/supabase';
 
 interface OTPEntry {
   code: string;
@@ -6,6 +7,8 @@ interface OTPEntry {
   email: string;
 }
 
+// Primary store is the Supabase `otp_codes` table (survives restarts/cold starts).
+// This in-memory map is only a fallback if the table is missing or unreachable.
 const otpStore = new Map<string, OTPEntry>();
 const OTP_TTL = 5 * 60 * 1000;
 
@@ -26,32 +29,72 @@ function getTransporter() {
   });
 }
 
-export function createOTP(email: string): string {
+export async function createOTP(email: string): Promise<string> {
   const code = generateCode();
-  otpStore.set(email.toLowerCase(), {
-    code,
-    expiresAt: Date.now() + OTP_TTL,
-    email: email.toLowerCase(),
-  });
+  const normalized = email.toLowerCase();
+  const expiresAt = new Date(Date.now() + OTP_TTL).toISOString();
+
+  const { error } = await supabase
+    .from('otp_codes')
+    .insert({ email: normalized, code, expires_at: expiresAt });
+
+  if (error) {
+    // Table missing (migration not applied) or transient failure: fall back to memory.
+    otpStore.set(normalized, {
+      code,
+      expiresAt: Date.now() + OTP_TTL,
+      email: normalized,
+    });
+  }
+
   return code;
 }
 
-export function verifyOTP(email: string, code: string): boolean {
-  const entry = otpStore.get(email.toLowerCase());
+export async function verifyOTP(email: string, code: string): Promise<boolean> {
+  const normalized = email.toLowerCase();
+  const now = Date.now();
+
+  const { data: rows, error } = await supabase
+    .from('otp_codes')
+    .select('id, code, expires_at')
+    .eq('email', normalized);
+
+  if (!error) {
+    const valid = rows?.find(
+      (r) => r.code === code && new Date(r.expires_at).getTime() > now
+    );
+    if (valid) {
+      await supabase.from('otp_codes').delete().eq('id', valid.id);
+      return true;
+    }
+    if (rows && rows.length > 0) {
+      await supabase
+        .from('otp_codes')
+        .delete()
+        .eq('email', normalized)
+        .lt('expires_at', new Date(now).toISOString());
+    }
+  }
+
+  // Fallback: check the in-memory store (covers a missing table or a failed insert).
+  const entry = otpStore.get(normalized);
   if (!entry) return false;
-  if (Date.now() > entry.expiresAt) {
-    otpStore.delete(email.toLowerCase());
+  if (now > entry.expiresAt) {
+    otpStore.delete(normalized);
     return false;
   }
   if (entry.code !== code) return false;
-  otpStore.delete(email.toLowerCase());
+  otpStore.delete(normalized);
   return true;
 }
 
-export async function sendOTPEmail(email: string, code: string): Promise<{ sent: boolean; error?: string }> {
+export async function sendOTPEmail(
+  email: string,
+  code: string
+): Promise<{ sent: boolean; configured: boolean; error?: string }> {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
-    return { sent: false };
+    return { sent: false, configured: false };
   }
 
   try {
@@ -72,11 +115,11 @@ export async function sendOTPEmail(email: string, code: string): Promise<{ sent:
         </div>
       `,
     });
-    return { sent: true };
+    return { sent: true, configured: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('Failed to send email:', msg);
     console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
-    return { sent: false, error: msg };
+    return { sent: false, configured: true, error: msg };
   }
 }
