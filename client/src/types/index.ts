@@ -137,6 +137,13 @@ export interface AnswerDetail {
   timeSpent: number;
 }
 
+export interface PlatformStats {
+  activeStudents: number;
+  assessmentsTaken: number;
+  questionsAnswered: number;
+  averageScore: number;
+}
+
 export interface StudentStats {
   totalQuizzes: number;
   averageScore: number;

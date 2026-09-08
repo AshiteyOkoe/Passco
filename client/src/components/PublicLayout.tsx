@@ -390,11 +390,6 @@ src="/images/logos/qna.svg"
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Support</h3>
               <ul className="mt-3 space-y-2">
                 <li>
-                  <Link to="/contact" className="text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
                   <Link to="/contact?subject=Report+a+Question" className="flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400">
                     <Flag className="h-3.5 w-3.5" /> Report an Issue
                   </Link>

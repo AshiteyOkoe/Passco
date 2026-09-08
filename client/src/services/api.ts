@@ -12,6 +12,7 @@ import type {
   AdminCommandCenter,
   Subscription,
   Payment,
+  PlatformStats,
   AIUsageStatus,
   AIGeneratedQuestion,
   Announcement,
@@ -654,6 +655,12 @@ export async function getInProgressAttempts(): Promise<{ attempts: InProgressAtt
 // Testimonials API
 export async function getTestimonials(): Promise<{ testimonials: Testimonial[] }> {
   const res = await api.get('/testimonials');
+  return res.data;
+}
+
+// Platform stats API (public, for Landing page figures)
+export async function getPlatformStats(): Promise<PlatformStats> {
+  const res = await api.get('/stats');
   return res.data;
 }
 

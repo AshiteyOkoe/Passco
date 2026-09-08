@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { stagger, fadeUp } from '../utils/animations';
 import {
   ArrowRight, BarChart3, Sparkles, Shield, Zap,
-  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Gem, ChevronRight, ChevronLeft, Landmark, Target, Layers, Lightbulb, HeartHandshake, Quote
+  BookOpen, Check, Play, Star, Users, Trophy, GraduationCap, RotateCcw, X, Rocket, Flame, Award, ClipboardCheck, TrendingUp, Clock, Medal, Gem, ChevronRight, ChevronLeft, Landmark, Target, Layers, Lightbulb, Quote
 } from 'lucide-react';
-import { resolveUploadUrl, getLeaderboard, isCustomAvatar, getQuestionCounts, getTestimonials, type LeaderboardEntry } from '../services/api';
-import type { Testimonial } from '../types';
+import { resolveUploadUrl, getLeaderboard, isCustomAvatar, getQuestionCounts, getTestimonials, getPlatformStats, type LeaderboardEntry } from '../services/api';
+import type { Testimonial, PlatformStats } from '../types';
 import { DefaultAvatar } from '../components/DefaultAvatars';
 import { SUBJECT_META, getQuestions, shuffleArray, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
 import { MOTIVATIONS } from '../data/motivations';
@@ -46,9 +46,9 @@ const landingPlans = [
     period: '/14 days',
     description: 'Full access to all features',
     icon: Gem,
-    color: 'from-blue-500 to-blue-600',
-    bg: 'bg-blue-50 dark:bg-blue-500/10',
-    border: 'border-blue-200 dark:border-blue-800',
+    color: 'from-indigo-500 to-indigo-600',
+    bg: 'bg-indigo-50 dark:bg-indigo-500/10',
+    border: 'border-indigo-200 dark:border-indigo-800',
     popular: true,
     features: [
       'Access to all subjects',
@@ -117,7 +117,7 @@ function LeaderboardEntryRow({ entry, rank, user, navigate, delay = 0 }: Leaderb
         rank <= 3
           ? 'border-amber-200 dark:border-amber-800/50'
           : 'border-slate-200 dark:border-slate-800'
-      } ${isCurrentUser ? 'ring-2 ring-blue-500/30 dark:ring-blue-400/30' : ''}`}
+      } ${isCurrentUser ? 'ring-2 ring-indigo-500/30 dark:ring-indigo-400/30' : ''}`}
     >
       {/* Top Row: Rank + Profile + Name + Score */}
       <div className="flex items-center gap-3 sm:gap-4">
@@ -147,7 +147,7 @@ function LeaderboardEntryRow({ entry, rank, user, navigate, delay = 0 }: Leaderb
             />
           )}
           <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-950 ${
-            entry.gender === 'female' ? 'bg-pink-400' : 'bg-blue-400'
+            entry.gender === 'female' ? 'bg-pink-400' : 'bg-indigo-400'
           }`} />
         </div>
 
@@ -155,19 +155,19 @@ function LeaderboardEntryRow({ entry, rank, user, navigate, delay = 0 }: Leaderb
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className={`text-sm font-bold truncate sm:text-base ${
-              isCurrentUser ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'
+              isCurrentUser ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'
             }`}>
               {entry.name}
             </p>
             {isCurrentUser && (
-              <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+              <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
                 You
               </span>
             )}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
             {entry.classLevel && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+              <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
                 <GraduationCap className="h-2.5 w-2.5" />
                 {CLASS_META[entry.classLevel as ClassLevel]?.label || entry.classLevel}
               </span>
@@ -242,7 +242,7 @@ function LeaderboardEntryRow({ entry, rank, user, navigate, delay = 0 }: Leaderb
         </button>
         <button
           onClick={() => user ? navigate('/analytics/performance') : navigate('/login')}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20"
         >
           <BarChart3 className="h-3.5 w-3.5" />
           Performance
@@ -333,6 +333,7 @@ export default function Landing() {
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
 
   const carouselItems = testimonials.slice(0, 3);
   const activeTestimonial = carouselItems.length > 0 ? testimonialIndex % carouselItems.length : 0;
@@ -369,6 +370,16 @@ export default function Landing() {
     getTestimonials()
       .then(({ testimonials: t }) => {
         if (!cancelled) setTestimonials(t);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPlatformStats()
+      .then((stats) => {
+        if (!cancelled) setPlatformStats(stats);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -439,7 +450,7 @@ export default function Landing() {
       <section className="relative isolate flex min-h-[80vh] items-center sm:min-h-[70vh] lg:min-h-[80vh]">
         {/* Video Background */}
         <div className="absolute inset-0 -z-20 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-950" />
           <video
             autoPlay
             loop
@@ -450,8 +461,8 @@ export default function Landing() {
           >
             <source src="/videos/designarena_video_w3fzfn5r.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-blue-950/40 to-indigo-950/70" />
-          <div className="absolute right-0 top-0 h-[500px] w-[500px] translate-x-1/3 -translate-y-1/4 rounded-full bg-blue-500/8 blur-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-indigo-950/40 to-indigo-950/70" />
+          <div className="absolute right-0 top-0 h-[500px] w-[500px] translate-x-1/3 -translate-y-1/4 rounded-full bg-indigo-500/8 blur-3xl" />
           <div className="absolute left-0 bottom-0 h-[400px] w-[400px] -translate-x-1/4 translate-y-1/4 rounded-full bg-teal-500/8 blur-3xl" />
         </div>
 
@@ -479,7 +490,7 @@ export default function Landing() {
                     <div>
                       <p className="text-sm text-white/70">Welcome back,</p>
                       <p className="text-xl font-bold text-white">{user.name}</p>
-                      <p className="mt-0.5 text-xs text-blue-200">{encouragement}</p>
+                      <p className="mt-0.5 text-xs text-indigo-200">{encouragement}</p>
                     </div>
                   </div>
 
@@ -523,14 +534,14 @@ export default function Landing() {
                 {user ? (
                   <>
                     Ready to Ace Your{' '}
-                    <span className="bg-gradient-to-r from-blue-300 to-teal-300 bg-clip-text text-transparent">
+                    <span className="bg-gradient-to-r from-indigo-300 to-teal-300 bg-clip-text text-transparent">
                       Next Exam?
                     </span>
                   </>
                 ) : (
                   <>
                     Prepare Smarter.{' '}
-                    <span className="bg-gradient-to-r from-blue-300 to-teal-300 bg-clip-text text-transparent">
+                    <span className="bg-gradient-to-r from-indigo-300 to-teal-300 bg-clip-text text-transparent">
                       Practice Better.
                     </span>{' '}
                     Perform Better.
@@ -547,7 +558,7 @@ export default function Landing() {
                   <>
                     <Link
                       to="/assessment/setup"
-                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-700 hover:to-blue-800"
+                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-700 hover:to-indigo-800"
                     >
                       <motion.span
                         animate={{ rotate: [-5, 5, -5] }}
@@ -577,7 +588,7 @@ export default function Landing() {
                   <>
                     <Link
                       to="/register"
-                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-700 hover:to-blue-800"
+                      className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-700 hover:to-indigo-800"
                     >
                       Get Started Free
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -623,7 +634,7 @@ export default function Landing() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="relative"
             >
-              <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-blue-500/10 to-teal-500/10 blur-2xl" />
+              <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-teal-500/10 blur-2xl" />
 
               {user ? (
                 /* Stats Card for logged-in users */
@@ -647,7 +658,7 @@ export default function Landing() {
                     </div>
                     <div className="rounded-xl bg-white/10 p-3 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <p className="text-2xl font-bold text-blue-300">{leaderboardEntries.findIndex((e: any) => e.name === user?.name) + 1 || '-'}</p>
+                        <p className="text-2xl font-bold text-indigo-300">{leaderboardEntries.findIndex((e: any) => e.name === user?.name) + 1 || '-'}</p>
                       </div>
                       <p className="text-[10px] text-white/50">Leaderboard Rank</p>
                     </div>
@@ -678,7 +689,7 @@ export default function Landing() {
                 /* Stats Card for non-logged-in users */
                 <div className="relative rounded-2xl border border-white/20 bg-white/10 p-5 shadow-xl backdrop-blur-md">
                   <div className="mb-4 flex items-center gap-2">
-                    <Rocket className="h-4 w-4 text-blue-300" />
+                    <Rocket className="h-4 w-4 text-indigo-300" />
                     <p className="text-xs font-semibold text-white/80">Why Passco?</p>
                   </div>
                   <div className="space-y-3">
@@ -690,7 +701,7 @@ export default function Landing() {
                     ].map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3 rounded-xl bg-white/5 p-3">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                          <item.icon className="h-4 w-4 text-blue-300" />
+                          <item.icon className="h-4 w-4 text-indigo-300" />
                         </div>
                         <div>
                           <p className="text-xs font-semibold text-white">{item.label}</p>
@@ -701,7 +712,7 @@ export default function Landing() {
                   </div>
                   <button
                     onClick={() => navigate('/register')}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-teal-500 py-2.5 text-xs font-bold text-white shadow-lg transition hover:from-blue-600 hover:to-teal-600"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-teal-500 py-2.5 text-xs font-bold text-white shadow-lg transition hover:from-indigo-600 hover:to-teal-600"
                   >
                     Get Started Free
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -773,7 +784,7 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-xs font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+            <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
               <Layers className="h-3.5 w-3.5" />
               Explore Subjects
             </span>
@@ -796,7 +807,7 @@ export default function Landing() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.05 }}
-                  className="group flex flex-col rounded-2xl border border-slate-200 bg-slate-50/50 p-6 transition-all hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950 dark:hover:border-blue-700 dark:hover:bg-blue-500/5"
+                  className="group flex flex-col rounded-2xl border border-slate-200 bg-slate-50/50 p-6 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950 dark:hover:border-indigo-700 dark:hover:bg-indigo-500/5"
                 >
                   <meta.icon className="h-7 w-7" aria-hidden="true" />
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">{meta.label}</h3>
@@ -805,7 +816,7 @@ export default function Landing() {
                   </p>
                   <Link
                     to={user ? '/assessment/setup' : '/register'}
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 transition group-hover:gap-2.5 dark:text-blue-400"
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition group-hover:gap-2.5 dark:text-indigo-400"
                   >
                     Start Practice
                     <ChevronRight className="h-4 w-4" />
@@ -928,7 +939,7 @@ export default function Landing() {
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Be the first to take an assessment and claim the top spot!</p>
               <button
                 onClick={() => user ? navigate('/assessment/setup') : navigate('/login')}
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
               >
                 <Play className="h-4 w-4" />
                 Take an Assessment
@@ -942,7 +953,7 @@ export default function Landing() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="mt-8 rounded-2xl bg-gradient-to-r from-blue-500 to-teal-500 p-6 text-center shadow-lg sm:p-8"
+              className="mt-8 rounded-2xl bg-gradient-to-r from-indigo-500 to-teal-500 p-6 text-center shadow-lg sm:p-8"
             >
               <p className="text-lg font-bold text-white sm:text-xl">
                 Join {leaderboardEntries.length} student{leaderboardEntries.length !== 1 ? 's' : ''} already competing!
@@ -950,7 +961,7 @@ export default function Landing() {
               <p className="mt-1 text-sm text-white/80">Sign up free to claim your spot on the leaderboard</p>
               <button
                 onClick={() => navigate('/register')}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-blue-600 shadow-lg transition hover:bg-slate-50"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-indigo-600 shadow-lg transition hover:bg-slate-50"
               >
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
@@ -989,7 +1000,7 @@ export default function Landing() {
             transition={{ duration: 0.5 }}
             className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"
           >
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+            <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-white" />
@@ -1019,7 +1030,7 @@ export default function Landing() {
                         <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-white">
                           {i + 1}. {item.q}
                         </p>
-                        <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                        <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
                           {subMeta && <subMeta.icon className="h-3.5 w-3.5" aria-hidden="true" />} {subMeta?.label}
                         </span>
                         <div className="space-y-2">
@@ -1033,13 +1044,13 @@ export default function Landing() {
                               }}
                               className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition ${
                                 demoAnswers[i] === j
-                                  ? 'border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-500/15'
-                                  : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-600 dark:hover:bg-blue-500/10'
+                                  ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-500/15'
+                                  : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 dark:border-slate-700 dark:hover:border-indigo-600 dark:hover:bg-indigo-500/10'
                               }`}
                             >
                               <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition ${
                                 demoAnswers[i] === j
-                                  ? 'border-blue-500 bg-blue-500'
+                                  ? 'border-indigo-500 bg-indigo-500'
                                   : 'border-slate-300 dark:border-slate-600'
                               }`}>
                                 {demoAnswers[i] === j && (
@@ -1060,7 +1071,7 @@ export default function Landing() {
                         if (demoAnswers.every((a) => a !== null)) setDemoSubmitted(true);
                       }}
                       disabled={demoAnswers.some((a) => a === null)}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-600 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Check className="h-4 w-4" />
                       Submit Answers
@@ -1141,7 +1152,7 @@ export default function Landing() {
                     </button>
                     <button
                       onClick={() => navigate(user ? '/dashboard' : '/register')}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-600 hover:to-blue-700"
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-600 hover:to-indigo-700"
                     >
                       {user ? 'Go to Dashboard' : 'Create Account for Full Access'}
                       <ArrowRight className="h-4 w-4" />
@@ -1186,7 +1197,7 @@ export default function Landing() {
                 transition={{ delay: i * 0.1 }}
                 className="relative text-center"
               >
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-2xl font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100 text-2xl font-bold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
                   <motion.span
                     animate={{ rotate: [-8, 8, -8] }}
                     transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 }}
@@ -1212,14 +1223,14 @@ export default function Landing() {
       </section>
 
       {/* Stats */}
-      <section className="border-t border-slate-200 bg-gradient-to-br from-blue-500 to-blue-700 py-16 dark:from-blue-600 dark:to-blue-900">
+      <section className="border-t border-slate-200 bg-gradient-to-br from-indigo-500 to-indigo-700 py-16 dark:from-indigo-600 dark:to-indigo-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-8 text-center sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { icon: Users, value: '5,000+', label: 'Active Students' },
-              { icon: ClipboardCheck, value: '10,000+', label: 'Assessments Taken' },
-              { icon: Award, value: '50,000+', label: 'Questions Answered' },
-              { icon: Trophy, value: '92%', label: 'Average Score' },
+              { icon: Users, value: platformStats ? `${platformStats.activeStudents.toLocaleString()}+` : '5,000+', label: 'Active Students' },
+              { icon: ClipboardCheck, value: platformStats ? `${platformStats.assessmentsTaken.toLocaleString()}+` : '10,000+', label: 'Assessments Taken' },
+              { icon: Award, value: platformStats ? `${platformStats.questionsAnswered.toLocaleString()}+` : '50,000+', label: 'Questions Answered' },
+              { icon: Trophy, value: platformStats ? `${platformStats.averageScore}%` : '92%', label: 'Average Score' },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -1233,10 +1244,10 @@ export default function Landing() {
                   transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.3 }}
                   className="inline-block"
                 >
-                  <stat.icon className="mx-auto mb-3 h-8 w-8 text-blue-200" />
+                  <stat.icon className="mx-auto mb-3 h-8 w-8 text-indigo-200" />
                 </motion.div>
                 <p className="text-3xl font-bold text-white">{stat.value}</p>
-                <p className="text-sm text-blue-200">{stat.label}</p>
+                <p className="text-sm text-indigo-200">{stat.label}</p>
               </motion.div>
             ))}
           </div>
@@ -1441,26 +1452,26 @@ export default function Landing() {
       )}
 
       {/* Final CTA */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 to-indigo-800 py-20 dark:from-blue-800 dark:to-indigo-950">
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-700 to-indigo-800 py-20 dark:from-indigo-800 dark:to-indigo-950">
         <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
-        <div className="absolute -bottom-16 -left-16 h-72 w-72 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 h-72 w-72 rounded-full bg-indigo-400/20 blur-3xl" />
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <Rocket className="mx-auto mb-4 h-12 w-12 text-blue-200" />
+            <Rocket className="mx-auto mb-4 h-12 w-12 text-indigo-200" />
             <h2 className="text-3xl font-bold text-white sm:text-4xl">
               Ready to Prepare Smarter?
             </h2>
-            <p className="mx-auto mt-4 max-w-lg text-blue-100">
+            <p className="mx-auto mt-4 max-w-lg text-indigo-100">
               Join students across Ghana practicing daily with Passco. Practice a subject now and see your scores improve.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
                 to={user ? '/assessment/setup' : '/register'}
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-blue-700 shadow-lg transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-indigo-700 shadow-lg transition hover:bg-slate-50"
               >
                 Start Practicing
                 <ArrowRight className="h-4 w-4" />
@@ -1480,20 +1491,6 @@ export default function Landing() {
                   See How It Works
                 </Link>
               )}
-            </div>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-blue-100">
-              <span className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-teal-300" />
-                Secure payments
-              </span>
-              <span className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-300" />
-                Instant results
-              </span>
-              <span className="flex items-center gap-2">
-                <HeartHandshake className="h-4 w-4 text-rose-300" />
-                Built for JHS students
-              </span>
             </div>
           </motion.div>
         </div>

@@ -23,6 +23,7 @@ import quizAttemptRoutes from './routes/quizAttempts';
 import testimonialRoutes from './routes/testimonials';
 import contactRoutes from './routes/contact';
 import reportCardRoutes from './routes/reportCards';
+import statsRoutes from './routes/stats';
 
 console.log('dotenv loaded, GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY, 'prefix:', process.env.GEMINI_API_KEY?.substring(0, 8));
 
@@ -71,6 +72,7 @@ app.use('/api/quiz-attempts', quizAttemptRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/report-cards', reportCardRoutes);
+app.use('/api/stats', statsRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
