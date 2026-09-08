@@ -42,6 +42,20 @@ const MAX_QUESTIONS_PER_REQUEST = 200;
 const BATCH_SIZE = 50;
 const MAX_ATTEMPTS = 2;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfter(response: Awaited<ReturnType<typeof fetch>>, bodyText: string): number {
+  const header = Number(response.headers.get('retry-after'));
+  if (Number.isFinite(header) && header > 0) return Math.min(header, 30);
+  const match = bodyText.match(/retry in ([\d.]+)\s*s/i);
+  if (match && Number.isFinite(Number(match[1])) && Number(match[1]) > 0) {
+    return Math.min(Number(match[1]), 30);
+  }
+  return 10;
+}
+
 const SUBJECT_LABELS: Record<string, string> = {
   mathematics: 'Mathematics',
   science: 'Science',
@@ -278,33 +292,65 @@ function isValidQuestion(q: GeneratedQuestion, exclusion: Set<string>): boolean 
 }
 
 async function callGemini(system: string, user: string): Promise<unknown[]> {
-  let aiResponse: Awaited<ReturnType<typeof fetch>>;
-  try {
-    aiResponse = await fetch(GEMINI_URL(GEMINI_MODEL, getGeminiKey()), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(120_000),
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ parts: [{ text: user }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 32768,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
-  } catch (err) {
-    const name = (err as Error)?.name;
-    const isTimeout = name === 'TimeoutError' || name === 'AbortError';
-    const error = new Error(isTimeout
-      ? 'AI request timed out after 120 seconds. Please try fewer questions.'
-      : `Failed to reach the AI service. ${(err as Error)?.message || ''}`.trim()) as Error & { status?: number };
-    if (isTimeout) error.status = 502;
-    throw error;
-  }
+  const MAX_GEMINI_ATTEMPTS = 3;
 
-  if (!aiResponse.ok) {
+  for (let attempt = 1; attempt <= MAX_GEMINI_ATTEMPTS; attempt += 1) {
+    let aiResponse: Awaited<ReturnType<typeof fetch>> | null = null;
+    try {
+      aiResponse = await fetch(GEMINI_URL(GEMINI_MODEL, getGeminiKey()), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(120_000),
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ parts: [{ text: user }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 32768,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
+    } catch (err) {
+      const name = (err as Error)?.name;
+      const isTimeout = name === 'TimeoutError' || name === 'AbortError';
+      if (isTimeout && attempt < MAX_GEMINI_ATTEMPTS) {
+        console.error(`Gemini request timed out, retrying (attempt ${attempt}):`, err);
+        await sleep(2000 * attempt);
+        continue;
+      }
+      const error = new Error(isTimeout
+        ? 'AI request timed out after 120 seconds. Please try fewer questions.'
+        : `Failed to reach the AI service. ${(err as Error)?.message || ''}`.trim()) as Error & { status?: number };
+      if (isTimeout) error.status = 502;
+      throw error;
+    }
+
+    if (aiResponse.ok) {
+      const aiData = (await aiResponse.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const content = (aiData.candidates?.[0]?.content?.parts || [])
+        .map((p) => p.text || '')
+        .join('')
+        .trim();
+
+      const cleaned = content
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+
+      let array: unknown[];
+      try {
+        array = JSON.parse(cleaned);
+      } catch {
+        const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error('Invalid AI response format');
+        array = JSON.parse(jsonMatch[0]);
+      }
+      return Array.isArray(array) ? array : [];
+    }
+
     const errText = await aiResponse.text();
     console.error('Gemini API error:', aiResponse.status, errText);
     let detail = '';
@@ -322,33 +368,26 @@ async function callGemini(system: string, user: string): Promise<unknown[]> {
           ? 'Gemini rejected the API key or request. Check that GEMINI_API_KEY is valid.'
           : 'AI generation failed. Please try again.';
     }
+
+    if (aiResponse.status === 429 && attempt < MAX_GEMINI_ATTEMPTS) {
+      const wait = parseRetryAfter(aiResponse, errText);
+      console.error(`Gemini rate-limit hit, retrying in ${wait}s (attempt ${attempt})`);
+      await sleep(wait * 1000);
+      continue;
+    }
+
+    if (aiResponse.status >= 500 && attempt < MAX_GEMINI_ATTEMPTS) {
+      console.error(`Gemini 5xx error, retrying in ${2000 * attempt}ms (attempt ${attempt})`);
+      await sleep(2000 * attempt);
+      continue;
+    }
+
     const error = new Error(detail) as Error & { status?: number };
     error.status = aiResponse.status;
     throw error;
   }
 
-  const aiData = (await aiResponse.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const content = (aiData.candidates?.[0]?.content?.parts || [])
-    .map((p) => p.text || '')
-    .join('')
-    .trim();
-
-  const cleaned = content
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-  let array: unknown[];
-  try {
-    array = JSON.parse(cleaned);
-  } catch {
-    const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error('Invalid AI response format');
-    array = JSON.parse(jsonMatch[0]);
-  }
-  return Array.isArray(array) ? array : [];
+  throw new Error('AI generation failed. Please try again.');
 }
 
 async function getUserPlan(user: AuthRequest['user']): Promise<string> {
@@ -451,6 +490,7 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
 
       for (let b = 0; b < batchCount; b += 1) {
         if (pool.length >= targetCount) break;
+        if (b > 0) await sleep(2500);
         const batchSize = Math.min(BATCH_SIZE, targetCount - pool.length);
 
         const userPrompt = buildUserPrompt({
@@ -471,7 +511,7 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
           const status = (err as Error & { status?: number }).status;
           const detail = (err as Error).message || 'AI generation failed. Please try again.';
           if (status && status > 0) {
-            res.status(502).json({ message: detail });
+            res.status(status === 429 ? 429 : 502).json({ message: detail });
             return;
           }
           console.error('Gemini generation batch failed (transport error, retrying):', err);

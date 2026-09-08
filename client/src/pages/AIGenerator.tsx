@@ -166,6 +166,8 @@ export default function AIGenerator() {
           msg = 'AI service not configured. Please ask the admin to set the GEMINI_API_KEY.';
         } else if (axiosErr.response?.status === 403) {
           msg = axiosErr.response?.data?.message || 'You have reached your AI generation limit.';
+        } else if (axiosErr.response?.status === 429) {
+          msg = 'Gemini is rate-limiting requests right now. Wait about a minute and try again.';
         } else {
           msg = axiosErr.response?.data?.message || msg;
         }
