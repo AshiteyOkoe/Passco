@@ -474,7 +474,7 @@ export async function generateQuestionsAI(data: {
   assessmentType?: string;
   topic?: string;
 }): Promise<{ questions: AIGeneratedQuestion[]; usage: { used: number; limit: number; remaining: number; month: string } }> {
-  const res = await api.post('/ai-generation/generate', data);
+  const res = await api.post('/ai-generation/generate', data, { timeout: 180000 });
   return res.data;
 }
 

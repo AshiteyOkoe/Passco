@@ -5,6 +5,7 @@ import { getEffectivePlan, PLAN_LIMITS } from '../services/subscriptionService';
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
+import { fileURLToPath } from 'url';
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const GEMINI_URL = (model: string, key: string) =>
@@ -14,7 +15,7 @@ function getGeminiKey(): string {
   const fromEnv = process.env.GEMINI_API_KEY;
   if (fromEnv && /^(AIza|AQ\.)/.test(fromEnv)) return fromEnv;
   try {
-    const envPath = path.resolve(process.cwd(), '.env');
+    const envPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.env');
     const content = fs.readFileSync(envPath, 'utf-8');
     const match = content.match(/^GEMINI_API_KEY=(.+)$/m);
     const key = match?.[1]?.trim() || fromEnv || '';
@@ -277,29 +278,49 @@ function isValidQuestion(q: GeneratedQuestion, exclusion: Set<string>): boolean 
 }
 
 async function callGemini(system: string, user: string): Promise<unknown[]> {
-  const aiResponse = await fetch(GEMINI_URL(GEMINI_MODEL, getGeminiKey()), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ parts: [{ text: user }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 32768,
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
+  let aiResponse: Awaited<ReturnType<typeof fetch>>;
+  try {
+    aiResponse = await fetch(GEMINI_URL(GEMINI_MODEL, getGeminiKey()), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(120_000),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ parts: [{ text: user }] }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 32768,
+          responseMimeType: 'application/json',
+        },
+      }),
+    });
+  } catch (err) {
+    const name = (err as Error)?.name;
+    const isTimeout = name === 'TimeoutError' || name === 'AbortError';
+    const error = new Error(isTimeout
+      ? 'AI request timed out after 120 seconds. Please try fewer questions.'
+      : `Failed to reach the AI service. ${(err as Error)?.message || ''}`.trim()) as Error & { status?: number };
+    if (isTimeout) error.status = 502;
+    throw error;
+  }
 
   if (!aiResponse.ok) {
     const errText = await aiResponse.text();
     console.error('Gemini API error:', aiResponse.status, errText);
-    let detail = 'AI generation failed. Please try again.';
+    let detail = '';
     try {
       const errJson = JSON.parse(errText);
-      detail = errJson?.error?.message || detail;
-    } catch {
+      detail = errJson?.error?.message || '';
+    } catch { /* use fallback below */ }
+    if (!detail) {
       detail = errText.slice(0, 500);
+    }
+    if (!detail) {
+      detail = aiResponse.status === 404
+        ? `Gemini model "${GEMINI_MODEL}" was not found. Check the GEMINI_MODEL setting.`
+        : aiResponse.status === 403 || aiResponse.status === 400
+          ? 'Gemini rejected the API key or request. Check that GEMINI_API_KEY is valid.'
+          : 'AI generation failed. Please try again.';
     }
     const error = new Error(detail) as Error & { status?: number };
     error.status = aiResponse.status;
@@ -449,11 +470,11 @@ export async function generateQuestionsFromAI(req: AuthRequest, res: Response): 
         } catch (err) {
           const status = (err as Error & { status?: number }).status;
           const detail = (err as Error).message || 'AI generation failed. Please try again.';
-          if (status && (status >= 500 || status === 402 || status === 429)) {
+          if (status && status > 0) {
             res.status(502).json({ message: detail });
             return;
           }
-          console.error('Gemini generation batch failed:', err);
+          console.error('Gemini generation batch failed (transport error, retrying):', err);
           continue;
         }
 

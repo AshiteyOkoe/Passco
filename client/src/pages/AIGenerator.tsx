@@ -158,7 +158,9 @@ export default function AIGenerator() {
     } catch (err: unknown) {
       console.error('AI generation error:', err);
       let msg = 'AI generation failed. Please try again.';
-      if (err && typeof err === 'object' && 'response' in err) {
+      if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'ECONNABORTED') {
+        msg = 'Generation timed out. Try fewer questions or a shorter document.';
+      } else if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { message?: string }; status?: number } };
         if (axiosErr.response?.status === 503) {
           msg = 'AI service not configured. Please ask the admin to set the GEMINI_API_KEY.';
