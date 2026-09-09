@@ -34,19 +34,15 @@
 
 .rept-page {
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
   width: 210mm;
-  min-height: 297mm;
   padding: 12mm 14mm 10mm;
   background: var(--rept-bg);
-  page-break-after: always;
-  break-after: page;
 }
 
-.rept-page:last-child {
-  page-break-after: auto;
-  break-after: auto;
+.rept-page + .rept-page {
+  margin-top: 6mm;
+  page-break-before: always;
+  break-before: page;
 }
 
 /* --- Masthead --- */
@@ -341,6 +337,15 @@
   font-weight: 600;
 }
 
+.rept-table thead {
+  display: table-header-group;
+}
+
+.rept-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 .rept-grade {
   display: inline-block;
   min-width: 9mm;
@@ -580,7 +585,7 @@
 
 /* --- Footer --- */
 .rept-footer {
-  margin-top: auto;
+  margin-top: 5mm;
   padding-top: 3mm;
   display: flex;
   justify-content: space-between;
@@ -597,11 +602,8 @@
     box-shadow: none;
   }
 
-  .rept-page {
-    margin: 0;
-    break-inside: avoid;
-    page-break-inside: avoid;
-    box-shadow: none;
+  .rept-page + .rept-page {
+    margin-top: 0;
   }
 
   @page {

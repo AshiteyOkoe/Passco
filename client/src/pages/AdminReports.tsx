@@ -22,6 +22,7 @@ import {
   deleteAdminReportCard,
 } from '../services/api';
 import { parseAssessments, restoreReportData } from '../utils/reportCard';
+import { buildSampleReport } from '../utils/sampleReport';
 import type { ReportData, ReportAssessment } from '../utils/reportCard';
 import type { ReportCardRecord, ReportSettings } from '../types';
 
@@ -214,6 +215,11 @@ export default function AdminReports() {
     setPreview({ data: payload.data, photoData: payload.photoData });
   }, []);
 
+  const handleSamplePreview = useCallback(() => {
+    setError('');
+    setPreview({ data: buildSampleReport(), photoData: null });
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 dark:bg-slate-950">
       <div className="mx-auto max-w-6xl space-y-8">
@@ -224,6 +230,12 @@ export default function AdminReports() {
               Generate, regenerate and manage official academic report cards for students
             </p>
           </div>
+          <button
+            onClick={handleSamplePreview}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-500/30 dark:bg-slate-900 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+          >
+            <Eye className="h-4 w-4" /> Preview Sample Report
+          </button>
         </motion.div>
 
         {error && (

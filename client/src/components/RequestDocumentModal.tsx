@@ -102,7 +102,9 @@ export default function RequestDocumentModal({
 
               {!eligible && (
                 <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                  You haven&apos;t met the requirements yet. Complete them and you&apos;ll be able to submit this request.
+                  {isReport
+                    ? 'Your report could not be generated because there is not enough assessment data for the selected period.'
+                    : "You haven't met the requirements yet. Complete them and you'll be able to submit this request."}
                 </div>
               )}
 

@@ -71,7 +71,15 @@ export default function GenerateReportModal({
   defaultTerm,
 }: GenerateReportModalProps) {
   const years = useMemo(() => listAcademicYears(assessments), [assessments]);
-  const [year, setYear] = useState<number>(defaultYear && years.includes(defaultYear) ? defaultYear : (years[0] || new Date().getFullYear()));
+  const yearsWithData = useMemo(
+    () => years.filter((y) => filterByPeriod(assessments, y, 'Full Year').length > 0),
+    [years, assessments]
+  );
+  const resolveDefaultYear = (): number => {
+    if (defaultYear && years.includes(defaultYear)) return defaultYear;
+    return yearsWithData[0] ?? years[0] ?? new Date().getFullYear();
+  };
+  const [year, setYear] = useState<number>(() => resolveDefaultYear());
   const [term, setTerm] = useState<ReportTerm>(defaultTerm || 'Full Year');
   const [options, setOptions] = useState<ReportOptions>({ ...DEFAULT_REPORT_OPTIONS });
   const [teacherRemark, setTeacherRemark] = useState('');
@@ -83,7 +91,7 @@ export default function GenerateReportModal({
 
   useEffect(() => {
     if (open) {
-      setYear(defaultYear && years.includes(defaultYear) ? defaultYear : (years[0] || new Date().getFullYear()));
+      setYear(resolveDefaultYear());
       setTerm(defaultTerm || 'Full Year');
       setOptions({ ...DEFAULT_REPORT_OPTIONS });
       setTeacherRemark('');

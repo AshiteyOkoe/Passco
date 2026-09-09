@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
 import { X, Printer } from 'lucide-react';
 import ReportDocument from './ReportCard/ReportDocument';
-import { pageWidthPx } from '../utils/reportCard';
 import { useModalA11y } from '../hooks/useModalA11y';
 import type { ReportData } from '../utils/reportCard';
 
@@ -13,23 +11,7 @@ interface ReportPreviewModalProps {
 }
 
 export default function ReportPreviewModal({ open, onClose, data, photoData }: ReportPreviewModalProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.5);
   const { dialogRef } = useModalA11y(open, { onClose });
-
-  useEffect(() => {
-    if (!open) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const measure = () => {
-      const width = el.clientWidth;
-      setScale(Math.min(1, width / pageWidthPx()));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [open]);
 
   if (!open) return null;
 
@@ -69,16 +51,11 @@ export default function ReportPreviewModal({ open, onClose, data, photoData }: R
         </div>
       </div>
 
-      {/* Scaled document */}
-      <div ref={containerRef} className="report-preview-scroll flex-1 overflow-y-auto p-3 sm:p-6">
-        <div className="flex min-h-full justify-center">
-          <div
-            className="report-scale-wrap shrink-0"
-            style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: pageWidthPx() * scale }}
-          >
-            <div className="report-print-root">
-              <ReportDocument data={data} photoData={photoData || null} />
-            </div>
+      {/* Full-size document */}
+      <div className="report-preview-scroll flex-1 overflow-auto p-3 sm:p-6">
+        <div className="min-h-full" style={{ width: 'fit-content', margin: '0 auto' }}>
+          <div className="report-print-root">
+            <ReportDocument data={data} photoData={photoData || null} />
           </div>
         </div>
       </div>

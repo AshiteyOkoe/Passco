@@ -35,6 +35,7 @@ router.post('/report-cards', createReportCardForUser);
 router.post('/report-cards/regenerate', createReportCardForUser);
 router.get('/report-cards/:id', getReportCard);
 router.delete('/report-cards/:id', deleteReportCard);
+router.put('/report-cards/settings', updateReportSettings);
 
 router.get('/document-requests', listDocumentRequests);
 router.post('/document-requests/:id/approve', approveDocumentRequest);

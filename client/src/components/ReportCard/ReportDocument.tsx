@@ -179,7 +179,7 @@ export default function ReportDocument({ data, photoData, className = '' }: Repo
 
         <div className="rept-footer">
           <span>PASSCO · Student Academic Performance Report</span>
-          <span>{data.meta.reportNumber} · Page 1 of 3</span>
+          <span>Report No. {data.meta.reportNumber}</span>
           <span>Generated {fmtDate(data.meta.dateIssued)}</span>
         </div>
       </section>
@@ -269,7 +269,7 @@ export default function ReportDocument({ data, photoData, className = '' }: Repo
 
         <div className="rept-footer">
           <span>PASSCO · Student Academic Performance Report</span>
-          <span>{data.meta.reportNumber} · Page 2 of 3</span>
+          <span>Report No. {data.meta.reportNumber}</span>
           <span>Generated {fmtDate(data.meta.dateIssued)}</span>
         </div>
       </section>
@@ -372,7 +372,7 @@ export default function ReportDocument({ data, photoData, className = '' }: Repo
 
         <div className="rept-footer">
           <span>PASSCO · Student Academic Performance Report</span>
-          <span>{data.meta.reportNumber} · Page 3 of 3</span>
+          <span>Report No. {data.meta.reportNumber}</span>
           <span>Generated {fmtDate(data.meta.dateIssued)}</span>
         </div>
       </section>
