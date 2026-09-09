@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestions, deleteQuestion, approveQuestion, createQuestion, getDocuments } from '../services/api';
@@ -13,9 +13,10 @@ import {
 import { fadeUp } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
 import Pagination from '../components/Pagination';
-import { usePagination } from '../hooks/usePagination';
 import { SUBJECT_META, CLASS_META, normalizeSubject, type SubjectId, type ClassLevel } from '../data/questionBank';
 import type { Question, UploadedDocument, Difficulty } from '../types';
+
+const PAGE_SIZE = 20;
 
 export default function AdminQuestionBank() {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -53,18 +54,44 @@ export default function AdminQuestionBank() {
   const [formAutoApprove, setFormAutoApprove] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
   const load = () => {
     setLoading(true);
-    Promise.all([getQuestions(), getDocuments()])
+    Promise.all([
+      getQuestions({
+        page,
+        limit: PAGE_SIZE,
+        status: filter === 'all' ? undefined : filter,
+        type: typeFilter === 'all' ? undefined : typeFilter,
+        difficulty: difficultyFilter === 'all' ? undefined : difficultyFilter,
+        subject: subjectFilter === 'all' ? undefined : subjectFilter,
+        classLevel: classFilter === 'all' ? undefined : classFilter,
+        search: search.trim() || undefined,
+      }),
+      getDocuments(),
+    ])
       .then(([qRes, dRes]) => {
         setQuestions(qRes.questions);
+        setTotal(qRes.total ?? qRes.questions.length);
         setDocuments(dRes.documents);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setPage(1);
+  }, [filter, typeFilter, difficultyFilter, subjectFilter, classFilter, search]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      load();
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filter, typeFilter, difficultyFilter, subjectFilter, classFilter, search]);
 
   const handleApprove = async (id: string) => {
     try {
@@ -121,10 +148,10 @@ export default function AdminQuestionBank() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedQuestions.size === filtered.length) {
+    if (selectedQuestions.size === questions.length) {
       setSelectedQuestions(new Set());
     } else {
-      setSelectedQuestions(new Set(filtered.map((q) => q._id)));
+      setSelectedQuestions(new Set(questions.map((q) => q._id)));
     }
   };
 
@@ -182,24 +209,8 @@ export default function AdminQuestionBank() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return questions.filter((q) => {
-      if (filter === 'pending' && q.approved) return false;
-      if (filter === 'approved' && !q.approved) return false;
-      if (typeFilter !== 'all' && q.type !== typeFilter) return false;
-      if (difficultyFilter !== 'all' && q.difficulty !== difficultyFilter) return false;
-      if (subjectFilter !== 'all' && q.subject && normalizeSubject(q.subject) !== subjectFilter) return false;
-      if (classFilter !== 'all' && q.classLevel && q.classLevel.toLowerCase() !== classFilter) return false;
-      if (search && !q.question.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [questions, filter, typeFilter, difficultyFilter, subjectFilter, classFilter, search]);
-
-  const { page, totalPages, pageItems, goTo, reset } = usePagination(filtered, 20);
-
-  useEffect(() => {
-    reset();
-  }, [reset, filter, typeFilter, difficultyFilter, subjectFilter, classFilter, search]);
+  const pageItems = questions;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   if (loading) {
     return (
@@ -221,11 +232,11 @@ export default function AdminQuestionBank() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Question Bank</h1>
           <motion.span
             className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
-            key={questions.length}
+            key={total}
             initial={{ scale: 1.3 }}
             animate={{ scale: 1 }}
           >
-            {questions.length}
+            {total}
           </motion.span>
         </div>
         <motion.button
@@ -635,13 +646,13 @@ export default function AdminQuestionBank() {
         >
           <div className={cn(
             'flex h-4 w-4 items-center justify-center rounded border transition',
-            selectedQuestions.size === filtered.length && filtered.length > 0
+            selectedQuestions.size === questions.length && questions.length > 0
               ? 'border-indigo-500 bg-indigo-500 text-white'
               : 'border-slate-300 dark:border-slate-600'
           )}>
-            {selectedQuestions.size === filtered.length && filtered.length > 0 && <CheckCircle2 className="h-3 w-3" />}
+            {selectedQuestions.size === questions.length && questions.length > 0 && <CheckCircle2 className="h-3 w-3" />}
           </div>
-          Select all ({filtered.length})
+          Select all ({questions.length})
         </button>
       </div>
 
@@ -772,7 +783,7 @@ export default function AdminQuestionBank() {
           ))}
         </AnimatePresence>
 
-        {filtered.length === 0 && (
+        {questions.length === 0 && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -797,9 +808,9 @@ export default function AdminQuestionBank() {
         className="mt-4"
         page={page}
         totalPages={totalPages}
-        totalItems={filtered.length}
-        perPage={20}
-        onPageChange={goTo}
+        totalItems={total}
+        perPage={PAGE_SIZE}
+        onPageChange={setPage}
       />
     </div>
   );

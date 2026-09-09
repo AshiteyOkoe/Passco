@@ -22,7 +22,7 @@ export default function AdminCreateQuiz() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([getDocuments(), getQuestions({})])
+    Promise.all([getDocuments(), getQuestions({ page: 1, limit: 1000 })])
       .then(([docsRes, qRes]) => {
         setDocuments(docsRes.documents);
         setQuestions(qRes.questions.filter(q => q.approved));

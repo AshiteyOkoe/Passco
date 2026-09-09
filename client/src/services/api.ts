@@ -210,7 +210,12 @@ export async function getQuestions(params?: {
   difficulty?: string;
   subject?: string;
   classLevel?: string;
-}): Promise<{ questions: Question[] }> {
+  search?: string;
+  status?: 'pending' | 'approved';
+  type?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ questions: Question[]; total: number; page: number; limit: number; totalPages: number }> {
   const res = await api.get('/questions', { params });
   return res.data;
 }
@@ -220,6 +225,7 @@ export async function getApprovedBankQuestions(params?: {
   classLevel?: string;
   difficulty?: string;
   type?: string;
+  count?: number;
 }): Promise<{ questions: Array<{
   id: string;
   question: string;

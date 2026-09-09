@@ -375,14 +375,12 @@ function normalizeClass(value: string): string {
 
 export async function getSubjectQuestionCounts(_req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { data: questions } = await supabase
-      .from('questions')
-      .select('subject, class_level');
+    const questions = await fetchAllQuestionRows();
 
     const counts: Record<string, number> = {};
     const byClass: Record<string, Record<string, number>> = {};
 
-    for (const q of questions || []) {
+    for (const q of questions) {
       const subj = normalizeSubject(q.subject || '');
       const cls = normalizeClass(q.class_level) || 'unassigned';
       if (!subj) continue;
@@ -498,6 +496,19 @@ function monthKey(d: string): string {
   return (d || '').slice(0, 7);
 }
 
+async function fetchAllQuestionRows(): Promise<Array<{ subject: string; class_level: string }>> {
+  const allRows: Array<{ subject: string; class_level: string }> = [];
+  let from = 0;
+  let chunk: Array<{ subject: string; class_level: string }> = [];
+  do {
+    const { data } = await supabase.from('questions').select('subject, class_level').range(from, from + 999);
+    chunk = (data as Array<{ subject: string; class_level: string }>) || [];
+    allRows.push(...chunk);
+    from += chunk.length;
+  } while (chunk.length === 1000);
+  return allRows;
+}
+
 const SUBJECT_DISPLAY: Record<string, string> = {
   mathematics: 'Mathematics',
   english: 'English',
@@ -570,7 +581,7 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
       supabase.from('subscriptions').select('status, created_at'),
       supabase.from('documents').select('id, user_id, original_name, status, created_at'),
       supabase.from('assessment_results').select('user_id, subject, percentage, passed, time_spent, created_at'),
-      supabase.from('questions').select('subject, class_level'),
+      (async () => ({ data: await fetchAllQuestionRows() }))(),
       supabase.from('quiz_attempts').select('id'),
     ]);
 
@@ -815,5 +826,34 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
   } catch (error) {
     console.error('Command center error:', error);
     res.status(500).json({ message: 'Failed to fetch command center data' });
+  }
+}
+
+export async function clearQuestionBank(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { count } = await supabase
+      .from('questions')
+      .select('id', { count: 'exact', head: true });
+
+    const { error } = await supabase
+      .from('questions')
+      .delete()
+      .gte('id', '00000000-0000-0000-0000-000000000000');
+
+    if (error) throw error;
+
+    await logAuditEvent({
+      userId: req.user?.id,
+      action: 'clear_question_bank',
+      entityType: 'questions',
+      entityId: '',
+      details: { deleted: count || 0 },
+      ipAddress: req.ip,
+    });
+
+    res.json({ deleted: count || 0 });
+  } catch (error) {
+    console.error('Clear question bank error:', error);
+    res.status(500).json({ message: 'Failed to clear question bank' });
   }
 }

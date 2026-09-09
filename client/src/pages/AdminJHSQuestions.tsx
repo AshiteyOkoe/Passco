@@ -5,7 +5,7 @@ import { jhs1Questions } from '../data/jhs1Questions';
 import { jhs2Questions } from '../data/jhs2Questions';
 import { jhs3Questions } from '../data/jhs3Questions';
 import { CLASS_META, SUBJECT_META, normalizeSubject, type ClassLevel, type BankQuestion } from '../data/questionBank';
-import { getApprovedBankQuestions } from '../services/api';
+import { getQuestions } from '../services/api';
 import {
   Search, BookOpen, ChevronLeft, ChevronRight,
   Filter, Hash, CheckCircle2, Loader2, Upload,
@@ -66,23 +66,39 @@ export default function AdminJHSQuestions() {
   const [loadingBackend, setLoadingBackend] = useState(true);
 
   useEffect(() => {
-    getApprovedBankQuestions()
-      .then(({ questions }) => {
-        const mapped: QuestionWithMeta[] = questions.map(q => ({
-          id: q.id,
-          question: q.question,
-          type: q.type as BankQuestion['type'],
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          subject: SUBJECT_MAP[q.subject] || q.subject || 'english',
-          explanation: q.explanation,
-          classLevel: CLASS_MAP[q.classLevel] || 'jhs2',
-          source: 'bank' as const,
-        }));
-        setBackendQuestions(mapped);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingBackend(false));
+    let cancelled = false;
+    (async () => {
+      setLoadingBackend(true);
+      try {
+        const collected: QuestionWithMeta[] = [];
+        let fetchedPage = 1;
+        let totalPages = 1;
+        do {
+          const { questions, totalPages: tp } = await getQuestions({ status: 'approved', page: fetchedPage, limit: 1000 });
+          for (const q of questions) {
+            collected.push({
+              id: q._id,
+              question: q.question,
+              type: q.type as BankQuestion['type'],
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              subject: SUBJECT_MAP[q.subject || ''] || q.subject || 'english',
+              explanation: q.explanation,
+              classLevel: CLASS_MAP[q.classLevel || ''] || 'jhs2',
+              source: 'bank',
+            });
+          }
+          totalPages = tp || 1;
+          fetchedPage += 1;
+        } while (fetchedPage <= totalPages && !cancelled);
+        if (!cancelled) setBackendQuestions(collected);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoadingBackend(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const allQuestions: QuestionWithMeta[] = useMemo(() => [

@@ -27,16 +27,35 @@ function normalizeClass(value: string): string {
   return (value || '').toLowerCase().replace(/\s+/g, '');
 }
 
+async function fetchAllQuestionRows(): Promise<Array<{ subject: string; class_level: string }>> {
+  const allRows: Array<{ subject: string; class_level: string }> = [];
+  let from = 0;
+  let chunk: Array<{ subject: string; class_level: string }> = [];
+  do {
+    const { data } = await supabase.from('questions').select('subject, class_level').range(from, from + 999);
+    chunk = (data as Array<{ subject: string; class_level: string }>) || [];
+    allRows.push(...chunk);
+    from += chunk.length;
+  } while (chunk.length === 1000);
+  return allRows;
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export async function getQuestionCounts(_req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { data: questions } = await supabase
-      .from('questions')
-      .select('subject, class_level');
+    const allRows = await fetchAllQuestionRows();
 
     const counts: Record<string, number> = {};
     const byClass: Record<string, Record<string, number>> = {};
 
-    for (const q of questions || []) {
+    for (const q of allRows) {
       const subj = normalizeSubject(q.subject || '');
       const cls = normalizeClass(q.class_level) || 'unassigned';
       if (subj) counts[subj] = (counts[subj] || 0) + 1;
@@ -227,16 +246,34 @@ export async function generateQuestionsFromDocument(req: AuthRequest, res: Respo
 
 export async function getQuestions(req: AuthRequest, res: Response): Promise<void> {
   try {
-    let query = supabase.from('questions').select('*').order('created_at', { ascending: false });
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+    const limit = Math.min(1000, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
+    const offset = (page - 1) * limit;
+
+    let query = supabase.from('questions').select('*', { count: 'exact' }).order('created_at', { ascending: false });
 
     if (req.query.documentId) query = query.eq('document_id', req.query.documentId);
     if (req.query.topic) query = query.eq('topic', req.query.topic);
     if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty);
+    if (req.query.type) query = query.eq('type', req.query.type);
     if (req.query.subject) query = query.ilike('subject', normalizeSubject(req.query.subject as string));
     if (req.query.classLevel) query = query.eq('class_level', normalizeClass(req.query.classLevel as string));
-    if (req.user?.role === 'student') query = query.eq('approved', true);
 
-    const { data: questions } = await query;
+    if (req.user?.role === 'student') {
+      query = query.eq('approved', true);
+    } else if (req.query.status === 'pending') {
+      query = query.eq('approved', false);
+    } else if (req.query.status === 'approved') {
+      query = query.eq('approved', true);
+    }
+
+    const search = typeof req.query.search === 'string' ? req.query.search.trim().replace(/[%_\\]/g, '') : '';
+    if (search) {
+      query = query.or(`question.ilike.%${search}%,topic.ilike.%${search}%`);
+    }
+
+    const { data: questions, count } = await query.range(offset, offset + limit - 1);
+    const totalQ = count ?? 0;
 
     const enriched = await Promise.all(
       (questions || []).map(async (q) => {
@@ -253,7 +290,13 @@ export async function getQuestions(req: AuthRequest, res: Response): Promise<voi
       })
     );
 
-    res.json({ questions: enriched });
+    res.json({
+      questions: enriched,
+      total: totalQ,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(totalQ / limit)),
+    });
   } catch (error) {
     console.error('Get questions error:', error);
     res.status(500).json({ message: 'Failed to fetch questions' });
@@ -328,6 +371,8 @@ export async function deleteQuestion(req: AuthRequest, res: Response): Promise<v
 
 export async function getApprovedQuestions(req: AuthRequest, res: Response): Promise<void> {
   try {
+    const requestedCount = parseInt(String(req.query.count || ''), 10);
+
     let query = supabase.from('questions').select('*').eq('approved', true).order('created_at', { ascending: false });
 
     if (req.query.subject) query = query.ilike('subject', normalizeSubject(req.query.subject as string));
@@ -335,10 +380,8 @@ export async function getApprovedQuestions(req: AuthRequest, res: Response): Pro
     if (req.query.difficulty) query = query.eq('difficulty', req.query.difficulty);
     if (req.query.type) query = query.eq('type', req.query.type);
 
-    const { data: questions } = await query;
-
-    res.json({
-      questions: (questions || []).map((q) => ({
+    const mapRows = (questions: Array<Record<string, unknown>>) =>
+      (questions || []).map((q) => ({
         id: q.id,
         question: q.question,
         type: q.type,
@@ -349,8 +392,39 @@ export async function getApprovedQuestions(req: AuthRequest, res: Response): Pro
         subject: q.subject,
         classLevel: q.class_level,
         topic: q.topic,
-      })),
-    });
+      }));
+
+    if (requestedCount > 0) {
+      const ids: string[] = [];
+      let from = 0;
+      let pageIds: string[] = [];
+      do {
+        let idQuery = supabase.from('questions').select('id').eq('approved', true).order('created_at', { ascending: false });
+        if (req.query.subject) idQuery = idQuery.ilike('subject', normalizeSubject(req.query.subject as string));
+        if (req.query.classLevel) idQuery = idQuery.eq('class_level', normalizeClass(req.query.classLevel as string));
+        if (req.query.difficulty) idQuery = idQuery.eq('difficulty', req.query.difficulty);
+        if (req.query.type) idQuery = idQuery.eq('type', req.query.type);
+        const { data } = await idQuery.range(from, from + 999);
+        pageIds = ((data as Array<{ id: string }>) || []).map((r) => r.id);
+        ids.push(...pageIds);
+        from += pageIds.length;
+      } while (pageIds.length === 1000);
+
+      const n = Math.min(requestedCount, ids.length);
+      shuffleArray(ids);
+      const chosen = ids.slice(0, n);
+      if (chosen.length === 0) {
+        res.json({ questions: [] });
+        return;
+      }
+      const { data } = await supabase.from('questions').select('*').in('id', chosen);
+      res.json({ questions: mapRows(data || []) });
+      return;
+    }
+
+    const { data: questions } = await query;
+
+    res.json({ questions: mapRows(questions || []) });
   } catch (error) {
     console.error('Get approved questions error:', error);
     res.status(500).json({ message: 'Failed to fetch approved questions' });

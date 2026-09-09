@@ -82,6 +82,19 @@ export default function AdminBulkUpload() {
     return { subjects, classes, difficulties, types, approved, total: questions.length };
   }, [questions]);
 
+  const autoDetectedDiffCount = useMemo(
+    () => questions.filter(q => q.difficultyAutoDetected).length,
+    [questions]
+  );
+
+  const autoDetectedDiffLabels = useMemo(() => {
+    const set = new Set<string>();
+    for (const q of questions) {
+      if (q.difficultyAutoDetected && q.difficultySource) set.add(q.difficultySource);
+    }
+    return Array.from(set);
+  }, [questions]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -116,6 +129,7 @@ export default function AdminBulkUpload() {
         subject: (targetSubject || presetSubject || '') as SubjectId || q.subject,
         classLevel: (targetClass || presetClass || '') as ClassLevel || q.classLevel,
         difficulty: (targetDifficulty || '') as DifficultyLevel || q.difficulty,
+        difficultyAutoDetected: (targetDifficulty || '') ? false : q.difficultyAutoDetected,
         status: (targetSubject || presetSubject || targetClass || presetClass || targetDifficulty) ? 'approved' as const : q.status,
       }));
     };
@@ -560,6 +574,31 @@ export default function AdminBulkUpload() {
             </div>
           </div>
 
+          {autoDetectedDiffCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10"
+            >
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+              <div className="text-sm text-amber-700 dark:text-amber-400">
+                <p className="font-semibold">
+                  {autoDetectedDiffCount} question{autoDetectedDiffCount === 1 ? '' : 's'} had a difficulty that wasn't recognized in the file.
+                </p>
+                {autoDetectedDiffLabels.length > 0 && (
+                  <p className="mt-0.5 text-xs">
+                    Unrecognized label{autoDetectedDiffLabels.length === 1 ? '' : 's'}:{' '}
+                    <span className="font-semibold">{autoDetectedDiffLabels.join(', ')}</span>
+                  </p>
+                )}
+                <p className="mt-0.5 text-xs">
+                  It was automatically detected from the question text and may not match your intended Beginner/Expert levels.
+                  Review the difficulty badge on each marked question (or the &quot;Auto&quot; badge) before approving.
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           {/* Action Bar */}
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <button
@@ -818,6 +857,18 @@ export default function AdminBulkUpload() {
                             )}>
                             {getDifficultyLabel(q.difficulty)}
                           </motion.span>
+                          {q.difficultyAutoDetected && (
+                            <motion.span
+                              animate={{ y: [0, -3, 0] }}
+                              transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+                              className="rounded-lg bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                              title={q.difficultySource
+                                ? `Difficulty '${q.difficultySource}' wasn't recognized; auto-detected from question text`
+                                : "Difficulty wasn't in the file; auto-detected from question text"}
+                            >
+                              AUTO
+                            </motion.span>
+                          )}
                           <motion.span
                             animate={{ y: [0, -3, 0] }}
                             transition={{ duration: 2.5, repeat: Infinity, delay: 0.6 }}

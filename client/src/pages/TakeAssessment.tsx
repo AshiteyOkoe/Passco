@@ -181,9 +181,10 @@ function TakeAssessment() {
 
   useEffect(() => {
     if (!state) return;
-    const params: Record<string, string> = {};
+    const params: Record<string, string | number> = {};
     if (state.subject) params.subject = state.subject;
     if (state.classLevel) params.classLevel = state.classLevel;
+    params.count = Math.max(ASSESSMENT_META[state.assessmentType].questionCount, 30);
     getApprovedBankQuestions(params)
       .then(({ questions }) => {
         const mapped: BankQuestion[] = questions.map(q => ({

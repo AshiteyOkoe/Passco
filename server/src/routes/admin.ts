@@ -10,6 +10,7 @@ import {
   getAllDocuments,
   getSubjectQuestionCounts,
   getCommandCenter,
+  clearQuestionBank,
 } from '../controllers/adminController';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import {
@@ -41,5 +42,6 @@ router.get('/students', getStudents);
 router.get('/analytics', getFullAnalytics);
 router.get('/subject-counts', getSubjectQuestionCounts);
 router.get('/command-center', getCommandCenter);
+router.delete('/questions/bank', clearQuestionBank);
 
 export default router;

@@ -664,12 +664,20 @@ export async function saveAIGeneratedQuestions(req: AuthRequest, res: Response):
 
 export async function getAIUsageStats(_req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { data: rows } = await supabase
-      .from('questions')
-      .select('id, created_by, created_at, documents!inner(mime_type)')
-      .eq('documents.mime_type', 'application/ai-generated')
-      .order('created_at', { ascending: false })
-      .limit(10000);
+    const rows: Array<{ created_by: string; created_at: string }> = [];
+    let from = 0;
+    let batch: Array<{ created_by: string; created_at: string }> = [];
+    do {
+      const { data } = await supabase
+        .from('questions')
+        .select('id, created_by, created_at, documents!inner(mime_type)')
+        .eq('documents.mime_type', 'application/ai-generated')
+        .order('created_at', { ascending: false })
+        .range(from, from + 999);
+      batch = (data as Array<{ created_by: string; created_at: string }>) || [];
+      rows.push(...batch);
+      from += batch.length;
+    } while (batch.length === 1000);
 
     const byUser: Record<string, { total: number; months: Record<string, number> }> = {};
     for (const r of rows || []) {

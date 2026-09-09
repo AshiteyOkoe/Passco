@@ -6,18 +6,48 @@ function normalizeText(text: string): string {
   return text.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-function isDuplicate(newQuestion: string, newAnswer: string, existingNormalized: Map<string, string>): boolean {
+const FUZZY_DUPLICATE_SCAN_LIMIT = 3000;
+const FUZZY_SIMILARITY_THRESHOLD = 0.97;
+const FUZZY_SEQUENCE_THRESHOLD = 0.95;
+
+function wordBigrams(words: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < words.length - 1; i++) out.push(words[i] + ' ' + words[i + 1]);
+  return out;
+}
+
+function subjectClassKey(subject: string, classLevel: string): string {
+  return `${subject}|${classLevel}|`;
+}
+
+function isDuplicate(
+  newQuestion: string,
+  newAnswer: string,
+  subject: string,
+  classLevel: string,
+  existingNormalized: Map<string, string>
+): boolean {
   const norm = normalizeText(newQuestion);
-  if (existingNormalized.has(norm)) {
+  const key = subjectClassKey(subject, classLevel) + norm;
+  if (existingNormalized.has(key)) {
     return true;
   }
-  const words = norm.split(' ').filter((w) => w.length > 3);
-  for (const [exNorm] of existingNormalized) {
-    const exWords = exNorm.split(' ').filter((w: string) => w.length > 3);
+  if (existingNormalized.size > FUZZY_DUPLICATE_SCAN_LIMIT) {
+    return false;
+  }
+  const prefix = subjectClassKey(subject, classLevel);
+  const words = norm.split(' ').filter((w) => w.length > 1);
+  const newBigrams = wordBigrams(words);
+  for (const [exKey, exNorm] of existingNormalized) {
+    if (!exKey.startsWith(prefix)) continue;
+    const exWords = exNorm.split(' ').filter((w: string) => w.length > 1);
     if (words.length > 0 && exWords.length > 0) {
       const overlap = words.filter((w: string) => exWords.includes(w)).length;
       const similarity = overlap / Math.max(words.length, exWords.length);
-      if (similarity >= 0.85) {
+      const exBigrams = wordBigrams(exWords);
+      const seqOverlap = newBigrams.filter((b: string) => exBigrams.includes(b)).length;
+      const seqSim = seqOverlap / Math.max(newBigrams.length, exBigrams.length);
+      if (similarity >= FUZZY_SIMILARITY_THRESHOLD && seqSim >= FUZZY_SEQUENCE_THRESHOLD) {
         return true;
       }
     }
@@ -132,14 +162,20 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const { data: existingQuestions } = await supabase
-      .from('questions')
-      .select('question, correct_answer')
-      .limit(10000);
+    const allExisting: Array<{ question: string; correct_answer: string; subject?: string; class_level?: string }> = [];
+    let from = 0;
+    let rows: Array<{ question: string; correct_answer: string; subject?: string; class_level?: string }> = [];
+    do {
+      const { data } = await supabase.from('questions').select('question, correct_answer, subject, class_level').range(from, from + 999);
+      rows = (data as Array<{ question: string; correct_answer: string }>) || [];
+      allExisting.push(...rows);
+      from += rows.length;
+    } while (rows.length === 1000);
 
     const existingNormalized = new Map<string, string>();
-    (existingQuestions || []).forEach((eq) => {
-      existingNormalized.set(normalizeText(eq.question), normalizeText(String(eq.correct_answer)));
+    allExisting.forEach((eq) => {
+      const key = subjectClassKey(eq.subject || 'General', eq.class_level || '') + normalizeText(eq.question);
+      existingNormalized.set(key, normalizeText(String(eq.correct_answer)));
     });
 
     const skippedDuplicates: string[] = [];
@@ -148,14 +184,16 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
     for (const q of questions) {
       const qText = (q.question as string) || '';
       const qAnswer = (q.correctAnswer as string) || '';
+      const qSubject = (q.subject as string) || 'General';
+      const qClass = (q.classLevel as string) || '';
 
-      if (isDuplicate(qText, qAnswer, existingNormalized)) {
+      if (isDuplicate(qText, qAnswer, qSubject, qClass, existingNormalized)) {
         skippedDuplicates.push(qText);
         continue;
       }
 
       const norm = normalizeText(qText);
-      existingNormalized.set(norm, normalizeText(qAnswer));
+      existingNormalized.set(subjectClassKey(qSubject, qClass) + norm, normalizeText(qAnswer));
       filteredQuestions.push(q);
     }
 

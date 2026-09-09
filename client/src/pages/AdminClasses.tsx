@@ -10,38 +10,19 @@ import {
   CLASS_META, SUBJECT_META, getSubjectQuestionCount,
   type ClassLevel, type SubjectId,
 } from '../data/questionBank';
-import { getApprovedBankQuestions } from '../services/api';
+import { getAdminSubjectCounts } from '../services/api';
 import { fadeUp, stagger, bounceIn, slideUp } from '../utils/animations';
 
 const CLASS_KEYS: ClassLevel[] = ['jhs1', 'jhs2', 'jhs3'];
 const SUBJECT_KEYS: SubjectId[] = Object.keys(SUBJECT_META) as SubjectId[];
 
-const CLASS_MAP: Record<string, ClassLevel> = {
-  'JHS 1': 'jhs1', 'JHS 2': 'jhs2', 'JHS 3': 'jhs3',
-  'jhs1': 'jhs1', 'jhs2': 'jhs2', 'jhs3': 'jhs3',
-};
-
-const SUBJECT_MAP: Record<string, string> = {
-  'Mathematics': 'mathematics', 'Science': 'science', 'English Language': 'english',
-  'Social Studies': 'social-studies', 'ICT': 'ict',
-  'Religious and Moral Education': 'rme', 'Religious & Moral Education': 'rme',
-  'Creative Arts and Design': 'creative-arts', 'Career Technology': 'career-tech',
-};
-
 export default function AdminClasses() {
   const [uploadedCounts, setUploadedCounts] = useState<Record<string, Record<string, number>>>({});
 
   useEffect(() => {
-    getApprovedBankQuestions()
-      .then(({ questions }) => {
-        const counts: Record<string, Record<string, number>> = {};
-        for (const q of questions) {
-          const cls = CLASS_MAP[q.classLevel] || 'jhs2';
-          const subj = SUBJECT_MAP[q.subject] || q.subject || 'english';
-          counts[cls] = counts[cls] || {};
-          counts[cls][subj] = (counts[cls][subj] || 0) + 1;
-        }
-        setUploadedCounts(counts);
+    getAdminSubjectCounts()
+      .then(({ byClass }) => {
+        setUploadedCounts(byClass);
       })
       .catch(() => {});
   }, []);

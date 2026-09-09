@@ -17,6 +17,8 @@ export interface ExtractedQuestion {
   confidence: number;
   status: 'pending' | 'approved' | 'edited';
   originalIndex: number;
+  difficultyAutoDetected?: boolean;
+  difficultySource?: string;
 }
 
 const SUBJECT_KEYWORDS: Record<SubjectId, string[]> = {
@@ -224,8 +226,15 @@ export function detectDifficulty(text: string, options?: string[]): DifficultyLe
   return 'intermediate';
 }
 
+function isTrueFalseOptions(options: string[]): boolean {
+  const cleaned = options.filter(o => o.trim().length > 0);
+  return cleaned.length === 2 && cleaned.every(o => ['TRUE', 'FALSE'].includes(o.trim().toUpperCase()));
+}
+
 export function detectQuestionType(text: string, options?: string[]): QuestionType {
   const lower = text.toLowerCase().trim();
+
+  if (options && isTrueFalseOptions(options)) return 'true-false';
 
   if (lower.startsWith('is ') || lower.startsWith('are ') || lower.startsWith('was ') ||
       lower.startsWith('do ') || lower.startsWith('does ') || lower.startsWith('did ') ||
@@ -400,17 +409,51 @@ function parseQuestionsFromText(text: string): Array<{
   return results;
 }
 
+function parseCSVLine(line: string): string[] {
+  const cols: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  const len = line.length;
+  for (let i = 0; i < len; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      cols.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  if (inQuotes) {
+    cur = cur.trim().replace(/^"|"$/g, '');
+  }
+  cols.push(cur);
+  return cols;
+}
+
 function parseCSVContent(text: string): ExtractedQuestion[] {
   const questions: ExtractedQuestion[] = [];
   const lines = text.split('\n').filter(l => l.trim().length > 0);
   if (lines.length < 2) return questions;
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+  const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
   const questionCol = headers.findIndex(h => h.includes('question') || h.includes('q'));
   const typeCol = headers.findIndex(h => h.includes('type'));
   const subjectCol = headers.findIndex(h => h.includes('subject'));
-  const classCol = headers.findIndex(h => h.includes('class') || h.includes('level'));
-  const diffCol = headers.findIndex(h => h.includes('difficult') || h.includes('level'));
+  const diffCol = headers.findIndex(h => h.includes('difficult') || h.includes('diff') || h.includes('complexity'));
+  const classCol = headers.findIndex((h, i) => i !== diffCol && (h.includes('class') || h.includes('level') || h.includes('grade')));
   const optACol = headers.findIndex(h => h === 'a' || h.includes('option a') || h.includes('opta'));
   const optBCol = headers.findIndex(h => h === 'b' || h.includes('option b') || h.includes('optb'));
   const optCCol = headers.findIndex(h => h === 'c' || h.includes('option c') || h.includes('optc'));
@@ -422,14 +465,15 @@ function parseCSVContent(text: string): ExtractedQuestion[] {
   if (questionCol === -1) return questions;
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    const cols = parseCSVLine(lines[i]).map(c => c.trim());
     const questionText = cols[questionCol];
     if (!questionText || questionText.length < 5) continue;
 
     const type = typeCol >= 0 ? mapType(cols[typeCol]) : undefined;
     const subject = subjectCol >= 0 ? mapSubject(cols[subjectCol]) : undefined;
     const classLevel = classCol >= 0 ? mapClass(cols[classCol]) : undefined;
-    const difficulty = diffCol >= 0 ? mapDifficulty(cols[diffCol]) : undefined;
+    const rawDifficulty = diffCol >= 0 ? cols[diffCol] : '';
+    const mappedDifficulty = diffCol >= 0 && rawDifficulty.trim() ? mapDifficulty(rawDifficulty) : undefined;
 
     const options: string[] = [];
     if (optACol >= 0 && cols[optACol]) options.push(cols[optACol]);
@@ -440,14 +484,16 @@ function parseCSVContent(text: string): ExtractedQuestion[] {
     const detectedType = type || detectQuestionType(questionText, options.length > 0 ? options : undefined);
     const detectedSubject = subject || detectSubject(questionText);
     const detectedClass = classLevel || detectClassLevel(questionText);
-    const detectedDifficulty = difficulty || detectDifficulty(questionText, options.length > 0 ? options : undefined);
+    const detectedDifficulty = mappedDifficulty || detectDifficulty(questionText, options.length > 0 ? options : undefined);
+    const difficultyAutoDetected = !mappedDifficulty;
+    const difficultySource = rawDifficulty.trim() || undefined;
 
     let correctAnswer = answerCol >= 0 ? cols[answerCol] : '';
-    if (!correctAnswer && detectedType === 'multiple-choice' && options.length > 0) {
+    if (detectedType === 'true-false') {
+      const ans = correctAnswer.trim().toUpperCase();
+      correctAnswer = ans === 'TRUE' || ans === 'T' ? 'True' : ans === 'FALSE' || ans === 'F' ? 'False' : 'True';
+    } else if (!correctAnswer && options.length > 0) {
       correctAnswer = detectCorrectAnswerFromText(lines[i], options) || 'A';
-    }
-    if (!correctAnswer && detectedType === 'true-false') {
-      correctAnswer = 'True';
     }
 
     const explanation = explanationCol >= 0 ? cols[explanationCol] : '';
@@ -467,6 +513,8 @@ function parseCSVContent(text: string): ExtractedQuestion[] {
       confidence: 0.85,
       status: 'pending',
       originalIndex: i - 1,
+      difficultyAutoDetected,
+      difficultySource,
     });
   }
 
@@ -492,7 +540,10 @@ function parseJSONContent(text: string): ExtractedQuestion[] {
       const type = item.type ? mapType(item.type) : detectQuestionType(questionText, options);
       const subject = item.subject ? mapSubject(item.subject) : detectSubject(questionText);
       const classLevel = item.classLevel || item.class ? mapClass(item.classLevel || item.class) : detectClassLevel(questionText);
-      const difficulty = item.difficulty ? mapDifficulty(item.difficulty) : detectDifficulty(questionText, options);
+      const rawDifficulty = typeof item.difficulty === 'string' ? item.difficulty : '';
+      const mappedDifficulty = rawDifficulty.trim() ? mapDifficulty(rawDifficulty) : undefined;
+      const difficulty = mappedDifficulty || detectDifficulty(questionText, options);
+      const difficultyAutoDetected = !mappedDifficulty;
 
       let correctAnswer = item.correctAnswer || item.answer || item.correct || item.correct_option || item.correctOption || item.answerKey || '';
       if (typeof correctAnswer === 'number' && options.length > 0) {
@@ -503,6 +554,10 @@ function parseJSONContent(text: string): ExtractedQuestion[] {
         if (idx >= 0 && idx < options.length) {
           correctAnswer = String.fromCharCode(65 + idx);
         }
+      }
+      if (type === 'true-false') {
+        const ans = String(correctAnswer).trim().toUpperCase();
+        correctAnswer = ans === 'TRUE' || ans === 'T' ? 'True' : ans === 'FALSE' || ans === 'F' ? 'False' : 'True';
       }
 
       questions.push({
@@ -519,6 +574,8 @@ function parseJSONContent(text: string): ExtractedQuestion[] {
         confidence: 0.9,
         status: 'pending',
         originalIndex: i,
+        difficultyAutoDetected,
+        difficultySource: rawDifficulty.trim() || undefined,
       });
     }
     return questions;
@@ -553,11 +610,25 @@ function mapClass(val: string): ClassLevel {
   return 'jhs2';
 }
 
-function mapDifficulty(val: string): DifficultyLevel {
-  const lower = val.toLowerCase().trim();
-  if (lower.includes('beginner') || lower.includes('easy') || lower.includes('simple') || lower.includes('low')) return 'beginner';
-  if (lower.includes('expert') || lower.includes('hard') || lower.includes('difficult') || lower.includes('advanced') || lower.includes('high')) return 'expert';
-  return 'intermediate';
+function mapDifficulty(val: string): DifficultyLevel | undefined {
+  const raw = String(val).trim();
+  if (!raw) return undefined;
+  const lower = raw.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const stars = raw.replace(/\s/g, '');
+  if (/^[★*]{1,5}$/.test(stars)) {
+    if (stars.length <= 1) return 'beginner';
+    if (stars.length === 2) return 'intermediate';
+    return 'expert';
+  }
+  if (/^(l|level|grade)\s?1$/.test(lower) || /^1(\s?of\s?3)?$/.test(lower)) return 'beginner';
+  if (/^(l|level|grade)\s?2$/.test(lower) || /^2(\s?of\s?3)?$/.test(lower)) return 'intermediate';
+  if (/^(l|level|grade)\s?3$/.test(lower) || /^3(\s?of\s?3)?$/.test(lower)) return 'expert';
+
+  if (/\b(beginner|easy|simple|elementary|intro|introduction|foundation|basic|novice|starter|low)\b/.test(lower)) return 'beginner';
+  if (/\b(expert|hard|difficult|advanced|high|intensive|challenging|complex|proficient|senior)\b/.test(lower)) return 'expert';
+  if (/\b(intermediate|moderate|medium|mid|average|standard|normal|typical|core|ordinary|fair)\b/.test(lower)) return 'intermediate';
+  return undefined;
 }
 
 export function extractQuestionsFromText(text: string): ExtractedQuestion[] {
@@ -568,7 +639,7 @@ export function extractQuestionsFromText(text: string): ExtractedQuestion[] {
     if (jsonQuestions.length > 0) return jsonQuestions;
   }
 
-  const hasCSVHeaders = /^(question|q|text|subject|type|answer|option)/im.test(trimmed.split('\n')[0] || '');
+  const hasCSVHeaders = /^(question|q|text|subject|type|answer|option|difficult|class|level|grade|no\.)/im.test(trimmed.split('\n')[0] || '');
   if (hasCSVHeaders && trimmed.includes(',')) {
     const csvQuestions = parseCSVContent(trimmed);
     if (csvQuestions.length > 0) return csvQuestions;
