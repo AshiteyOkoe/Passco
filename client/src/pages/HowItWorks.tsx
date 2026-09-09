@@ -61,7 +61,8 @@ export default function HowItWorks() {
   return (
     <div>
       {/* Hero */}
-      <section className="border-b border-slate-200 bg-gradient-to-br from-indigo-50 to-white py-20 dark:border-slate-800 dark:from-slate-950 dark:to-slate-900">
+      <section className="relative isolate overflow-hidden border-b border-slate-200 bg-gradient-to-br from-indigo-50 to-white py-20 dark:border-slate-800 dark:from-slate-950 dark:to-slate-900">
+        <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--green left-[-8%] top-[-18%] h-72 w-72 rounded-full sm:h-96 sm:w-96" />
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
           <motion.div variants={stagger} initial="hidden" animate="visible">
             <motion.h1 variants={fadeUp} className="text-4xl font-bold text-slate-900 sm:text-5xl dark:text-white">

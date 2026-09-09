@@ -448,22 +448,13 @@ export default function Landing() {
     <div className="overflow-hidden">
       {/* Hero */}
       <section className="relative isolate flex min-h-[80vh] items-center sm:min-h-[70vh] lg:min-h-[80vh]">
-        {/* Video Background */}
+        {/* Background */}
         <div className="absolute inset-0 -z-20 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-950" />
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 h-full w-full object-cover opacity-50"
-          >
-            <source src="/videos/designarena_video_w3fzfn5r.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-indigo-950/40 to-indigo-950/70" />
           <div className="absolute right-0 top-0 h-[500px] w-[500px] translate-x-1/3 -translate-y-1/4 rounded-full bg-indigo-500/8 blur-3xl" />
           <div className="absolute left-0 bottom-0 h-[400px] w-[400px] -translate-x-1/4 translate-y-1/4 rounded-full bg-teal-500/8 blur-3xl" />
+          <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--purple left-1/4 top-1/3 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full" />
+          <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--green right-1/4 -bottom-28 h-[380px] w-[380px] translate-x-1/2 rounded-full" />
         </div>
 
         <div className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:px-8 lg:pb-32 lg:pt-32">
@@ -776,7 +767,7 @@ export default function Landing() {
       </section>
 
       {/* Explore Subjects */}
-      <section id="subjects" className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+      <section id="subjects" className="ui-surface-tinted border-t border-slate-200 py-20 dark:border-slate-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
             className="mx-auto mb-14 max-w-2xl text-center"
@@ -807,7 +798,7 @@ export default function Landing() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.05 }}
-                  className="group flex flex-col rounded-2xl border border-slate-200 bg-slate-50/50 p-6 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950 dark:hover:border-indigo-700 dark:hover:bg-indigo-500/5"
+                  className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950 dark:hover:border-indigo-700 dark:hover:bg-indigo-500/5"
                 >
                   <meta.icon className="h-7 w-7" aria-hidden="true" />
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">{meta.label}</h3>
@@ -829,7 +820,7 @@ export default function Landing() {
       </section>
 
       {/* Top 10 Student Leaderboard */}
-      <section id="leaderboard" className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+      <section id="leaderboard" className="ui-surface-tinted border-t border-slate-200 py-20 dark:border-slate-800">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <motion.div
             className="mx-auto mb-12 max-w-2xl text-center"
@@ -973,7 +964,7 @@ export default function Landing() {
 
       {/* Demo Quiz Preview - Only for non-logged-in users */}
       {!user && (
-      <section id="demo" className="border-t border-slate-200 bg-slate-50/50 py-20 dark:border-slate-800 dark:bg-slate-950/50">
+      <section id="demo" className="ui-surface-mint border-t border-slate-200 py-20 dark:border-slate-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
             className="mx-auto mb-12 max-w-2xl text-center"
@@ -1167,7 +1158,9 @@ export default function Landing() {
       )}
 
       {/* How It Works Summary */}
-      <section className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+      <section className="relative isolate overflow-hidden border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+        <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--green -z-10 left-[-8%] top-1/2 h-80 w-80 -translate-y-1/2 rounded-full" />
+        <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--purple -z-10 right-[-8%] top-1/2 h-80 w-80 -translate-y-1/2 rounded-full" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
             className="mx-auto mb-16 max-w-2xl text-center"
@@ -1255,7 +1248,7 @@ export default function Landing() {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="border-t border-slate-200 bg-slate-50/50 py-20 dark:border-slate-800 dark:bg-slate-950/50">
+      <section id="testimonials" className="ui-surface-cream border-t border-slate-200 py-20 dark:border-slate-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
             className="mx-auto mb-14 max-w-2xl text-center"
@@ -1359,7 +1352,8 @@ export default function Landing() {
 
       {/* Subscription Plans */}
       {!user && (
-        <section id="plans" className="border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+        <section id="plans" className="relative isolate overflow-hidden border-t border-slate-200 bg-white py-20 dark:border-slate-800 dark:bg-slate-900">
+          <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--yellow -z-10 left-1/2 top-8 h-80 w-80 -translate-x-1/2 rounded-full" />
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

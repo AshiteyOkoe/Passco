@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./ui-system.css";
 
 @variant dark (&:where(.dark, .dark *));
 

@@ -48,7 +48,8 @@ const socials = [
 
 function ContactHero() {
   return (
-    <section className="border-b border-slate-200 bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-20 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 sm:py-24">
+    <section className="relative isolate overflow-hidden border-b border-slate-200 bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-20 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 sm:py-24">
+      <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--purple left-[-8%] bottom-[-20%] h-72 w-72 rounded-full sm:h-96 sm:w-96" />
       <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
         <motion.div variants={stagger} initial="hidden" animate="visible">
           <motion.span variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-600 shadow-sm dark:border-indigo-500/30 dark:bg-slate-900 dark:text-indigo-400">

@@ -37,11 +37,12 @@ function AboutHero() {
     { Icon: Zap, cls: 'right-[6%] bottom-[28%] text-indigo-300/20 animate-[floatUp_10s_ease-in-out_infinite]' },
   ];
   return (
-    <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-20 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 sm:py-28">
+    <section className="relative isolate overflow-hidden border-b border-slate-200 bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-20 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 sm:py-28">
       <div className="pointer-events-none absolute inset-0 hidden sm:block">
         {icons.map(({ Icon, cls }, i) => (
           <Icon key={i} className={`absolute h-8 w-8 ${cls}`} />
         ))}
+        <div className="ui-pastel-blob ui-pastel-blob--orange right-[8%] bottom-[-30%] h-64 w-64 rounded-full" />
         <div className="absolute -left-16 top-8 h-56 w-56 rounded-full bg-indigo-400/10 blur-3xl" />
         <div className="absolute -right-16 bottom-8 h-56 w-56 rounded-full bg-purple-400/10 blur-3xl" />
       </div>
@@ -115,7 +116,7 @@ function Story() {
 
 function Mission() {
   return (
-    <section className="border-y border-slate-200 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-950">
+    <section className="ui-surface-tinted border-y border-slate-200 py-20 dark:border-slate-800">
       <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Our Mission" title="Practice Shouldn't Be a Punishment" />
         <motion.blockquote
@@ -282,7 +283,7 @@ const compared = [
 
 function WhyUs() {
   return (
-    <section className="border-y border-slate-200 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-950">
+    <section className="ui-surface-cream border-y border-slate-200 py-20 dark:border-slate-800">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Why PASSCO" title="Built to Practise — Not Just to Read" />
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
@@ -420,7 +421,8 @@ function Creator() {
     { label: 'Tech Stack', value: '10+' },
   ];
   return (
-    <section className="pb-20">
+    <section className="relative isolate overflow-hidden pb-20">
+      <div aria-hidden="true" className="ui-pastel-blob ui-pastel-blob--purple -z-10 left-1/2 top-10 h-80 w-80 -translate-x-1/2 rounded-full" />
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Meet the Creator" title="The Mind Behind PASSCO" />
         <motion.div

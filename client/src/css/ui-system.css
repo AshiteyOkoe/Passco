@@ -1,0 +1,96 @@
+:root {
+  --ui-pastel-yellow: #f6ecd5;
+  --ui-pastel-green: #e1ecdd;
+  --ui-pastel-blue: #cfe0ea;
+  --ui-pastel-purple: #e3e1f4;
+  --ui-pastel-pink: #f4dedf;
+  --ui-pastel-orange: #f7e3d8;
+
+  --ui-gradient-hero: linear-gradient(135deg, #faf8f4 0%, #fde9e3 45%, #e3e1f4 100%);
+  --ui-gradient-cream: linear-gradient(135deg, #fcf4e4 0%, #f6ecd5 100%);
+  --ui-gradient-green: linear-gradient(135deg, #e8f1e6 0%, #dce8da 100%);
+  --ui-gradient-blue: linear-gradient(135deg, #e0ecf4 0%, #cfe0ea 100%);
+  --ui-gradient-dark: linear-gradient(135deg, #0b0f1a 0%, #151a2e 55%, #160f2a 100%);
+
+  --ui-bg-offwhite: #f7f5f0;
+  --ui-bg-cream: #fcf4e4;
+  --ui-bg-soft-mint: #eaf3ea;
+  --ui-bg-soft-blue: #e2eef6;
+  --ui-card-bg-tinted: #fdfdfa;
+  --ui-border-light: #e7e2d8;
+
+  --ui-success: #10b981;
+  --ui-success-bg: #ecfdf5;
+}
+
+.dark {
+  --ui-gradient-hero: linear-gradient(135deg, #0b0f1a 0%, #161c31 55%, #171230 100%);
+  --ui-gradient-cream: linear-gradient(135deg, #1b191d 0%, #23201a 100%);
+  --ui-gradient-green: linear-gradient(135deg, #101b16 0%, #0f1a13 100%);
+  --ui-gradient-blue: linear-gradient(135deg, #101821 0%, #0d141d 100%);
+  --ui-gradient-dark: linear-gradient(135deg, #020617 0%, #0b1020 100%);
+
+  --ui-bg-offwhite: #0f1524;
+  --ui-bg-cream: #1b1a22;
+  --ui-bg-soft-mint: #101b16;
+  --ui-bg-soft-blue: #101821;
+  --ui-card-bg-tinted: #141924;
+  --ui-border-light: #1e2430;
+
+  --ui-success: #34d399;
+  --ui-success-bg: rgba(16, 185, 129, 0.12);
+}
+
+.ui-pastel-blob {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.24;
+  background: radial-gradient(circle, var(--ui-blob, var(--ui-pastel-blue)) 0%, transparent 70%);
+}
+
+.ui-pastel-blob--purple {
+  --ui-blob: var(--ui-pastel-purple);
+}
+
+.ui-pastel-blob--green {
+  --ui-blob: var(--ui-pastel-green);
+}
+
+.ui-pastel-blob--yellow {
+  --ui-blob: var(--ui-pastel-yellow);
+}
+
+.ui-pastel-blob--pink {
+  --ui-blob: var(--ui-pastel-pink);
+}
+
+.ui-pastel-blob--orange {
+  --ui-blob: var(--ui-pastel-orange);
+}
+
+.dark .ui-pastel-blob {
+  opacity: 0.5;
+}
+
+.ui-hero-pastel {
+  background: var(--ui-gradient-hero);
+}
+
+.ui-surface-tinted {
+  background-color: var(--ui-bg-offwhite);
+}
+
+.ui-surface-cream {
+  background-color: var(--ui-bg-cream);
+}
+
+.ui-surface-mint {
+  background-color: var(--ui-bg-soft-mint);
+}
+
+.ui-card-tinted {
+  background-color: var(--ui-card-bg-tinted);
+  border-color: var(--ui-border-light);
+}
