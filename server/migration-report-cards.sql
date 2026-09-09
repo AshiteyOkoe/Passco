@@ -70,5 +70,7 @@ ON CONFLICT (key) DO NOTHING;
 -- RLS - permissive policy matching the rest of the schema (ownership enforced in controllers)
 ALTER TABLE report_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON report_cards;
 CREATE POLICY "Allow all for authenticated" ON report_cards FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all for authenticated" ON platform_settings;
 CREATE POLICY "Allow all for authenticated" ON platform_settings FOR ALL USING (true) WITH CHECK (true);

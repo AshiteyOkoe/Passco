@@ -33,4 +33,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_document_requests_pending_unique ON docume
 
 -- RLS - permissive policy matching the rest of the schema (ownership enforced in controllers)
 ALTER TABLE document_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON document_requests;
 CREATE POLICY "Allow all for authenticated" ON document_requests FOR ALL USING (true) WITH CHECK (true);
