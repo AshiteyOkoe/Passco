@@ -93,72 +93,87 @@ function serialize(row: Record<string, unknown>) {
   };
 }
 
+export interface GenerateReportRecordInput {
+  targetUserId: string;
+  actorUserId?: string;
+  body: Record<string, unknown>;
+  ip?: string;
+}
+
+export async function generateReportRecord(input: GenerateReportRecordInput): Promise<ReturnType<typeof serialize>> {
+  const { targetUserId, actorUserId, body: b, ip } = input;
+
+  const academicYear = String(b.academicYear || String(new Date().getFullYear()));
+  const term = String(b.term || 'Full Year');
+
+  const { data: targetUser } = await supabase.from('users').select('name').eq('id', targetUserId).maybeSingle();
+  if (!targetUser) throw new Error('Student not found');
+
+  const reportNumber = await generateUniqueReportNumber(academicYear);
+  const verificationCode = await generateUniqueVerificationCode();
+
+  const overallScore = Math.max(0, Math.min(100, Number(b.overallScore ?? 0)));
+  const overallGrade = String(b.overallGrade || 'F');
+  const overallRemark = String(b.overallRemark || '');
+
+  await supabase
+    .from('report_cards')
+    .update({ status: 'superseded' })
+    .eq('user_id', targetUserId)
+    .eq('academic_year', academicYear)
+    .eq('term', term)
+    .eq('status', 'current');
+
+  const { data: record, error } = await supabase
+    .from('report_cards')
+    .insert({
+      user_id: targetUserId,
+      report_number: reportNumber,
+      verification_code: verificationCode,
+      academic_year: academicYear,
+      term,
+      period_label: String(b.periodLabel || ''),
+      period_start: b.periodStart || null,
+      period_end: b.periodEnd || null,
+      overall_score: overallScore,
+      overall_grade: overallGrade,
+      overall_remark: overallRemark,
+      data_snapshot: b.dataSnapshot || {},
+      profile_photo_snapshot_url: String(b.profilePhotoSnapshotUrl || ''),
+      generated_by: actorUserId,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  await logAuditEvent({
+    userId: actorUserId,
+    action: 'report_generated',
+    entityType: 'report_card',
+    entityId: record.id,
+    ipAddress: ip,
+    details: { userId: targetUserId, academicYear, term, overallScore, reportNumber },
+  });
+
+  return serialize(record);
+}
+
 async function createReport(req: AuthRequest, res: Response, adminUserId?: string): Promise<void> {
+  const targetUserId = adminUserId || req.user?.id;
+  if (!targetUserId) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
   try {
-    const targetUserId = adminUserId || req.user?.id;
-    if (!targetUserId) {
-      res.status(401).json({ message: 'Unauthorized' });
-      return;
-    }
-
-    const b = (req.body || {}) as Record<string, unknown>;
-    const academicYear = String(b.academicYear || String(new Date().getFullYear()));
-    const term = String(b.term || 'Full Year');
-
-    const { data: targetUser } = await supabase.from('users').select('name').eq('id', targetUserId).maybeSingle();
-    if (!targetUser) {
-      res.status(400).json({ message: 'Student not found' });
-      return;
-    }
-
-    const reportNumber = await generateUniqueReportNumber(academicYear);
-    const verificationCode = await generateUniqueVerificationCode();
-
-    const overallScore = Math.max(0, Math.min(100, Number(b.overallScore ?? 0)));
-    const overallGrade = String(b.overallGrade || 'F');
-    const overallRemark = String(b.overallRemark || '');
-
-    await supabase
-      .from('report_cards')
-      .update({ status: 'superseded' })
-      .eq('user_id', targetUserId)
-      .eq('academic_year', academicYear)
-      .eq('term', term)
-      .eq('status', 'current');
-
-    const { data: record, error } = await supabase
-      .from('report_cards')
-      .insert({
-        user_id: targetUserId,
-        report_number: reportNumber,
-        verification_code: verificationCode,
-        academic_year: academicYear,
-        term,
-        period_label: String(b.periodLabel || ''),
-        period_start: b.periodStart || null,
-        period_end: b.periodEnd || null,
-        overall_score: overallScore,
-        overall_grade: overallGrade,
-        overall_remark: overallRemark,
-        data_snapshot: b.dataSnapshot || {},
-        profile_photo_snapshot_url: String(b.profilePhotoSnapshotUrl || ''),
-        generated_by: req.user?.id,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    await logAuditEvent({
-      userId: req.user?.id,
-      action: 'report_generated',
-      entityType: 'report_card',
-      entityId: record.id,
-      ipAddress: clientIp(req),
-      details: { userId: targetUserId, academicYear, term, overallScore, reportNumber },
+    const record = await generateReportRecord({
+      targetUserId,
+      actorUserId: req.user?.id,
+      body: (req.body || {}) as Record<string, unknown>,
+      ip: clientIp(req),
     });
-
-    res.status(201).json({ report: serialize(record) });
+    res.status(201).json({ report: record });
   } catch (error) {
     console.error('Create report card error:', error);
     res.status(500).json({ message: 'Your report could not be generated. Please try again.' });

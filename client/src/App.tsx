@@ -45,6 +45,7 @@ import VerifyReport from './pages/VerifyReport';
 import ReportsPage from './pages/ReportsPage';
 import AdminReports from './pages/AdminReports';
 import AdminReportSettings from './pages/AdminReportSettings';
+import AdminDocumentRequests from './pages/AdminDocumentRequests';
 import VerifyOTP from './pages/VerifyOTP';
 import GoogleCallback from './pages/GoogleCallback';
 import { useState, useCallback, useEffect } from 'react';
@@ -174,6 +175,7 @@ export default function App() {
             <Route path="support" element={<AdminContactMessages />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="report-settings" element={<AdminReportSettings />} />
+            <Route path="document-requests" element={<AdminDocumentRequests />} />
             <Route path="profile" element={<AdminProfile />} />
           </Route>
 

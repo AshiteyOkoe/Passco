@@ -335,17 +335,5 @@ export function computeBadgeSummary(all: ProfileAssessment[]): { stats: ProfileS
 
 export function isEligibleForCertificate(all: ProfileAssessment[]): boolean {
   const stats = computeProfileStats(all);
-  return stats.avgScore >= 90 && stats.completed >= 10;
-}
-
-export function generateCertificateCode(userId: string): string {
-  if (!userId) return '';
-  let hash = 0;
-  const str = `PASSCO-${userId}-${CURRENT_YEAR}`;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const hex = Math.abs(hash).toString(16).toUpperCase().slice(0, 8).padStart(8, '0');
-  return `PAS-${CURRENT_YEAR}-${hex.slice(0, 4)}-${hex.slice(4)}`;
+  return stats.avgScore >= 70 && stats.completed >= 20;
 }

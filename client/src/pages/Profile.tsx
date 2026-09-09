@@ -15,8 +15,9 @@ import { DefaultAvatar } from '../components/DefaultAvatars';
 import ImageCropper from '../components/ImageCropper';
 import { cn } from '../utils';
 import { fadeUp } from '../utils/animations';
-import { resolveUploadUrl, isCustomAvatar, getProfile, getMyAssessmentResults, getMyActivity, changePassword, revokeSessions, deactivateAccount, type AuditLogEntry } from '../services/api';
-import type { User as UserType } from '../types';
+import { resolveUploadUrl, isCustomAvatar, getProfile, getMyAssessmentResults, getMyActivity, getMyDocumentRequests, createDocumentRequest, changePassword, revokeSessions, deactivateAccount, type AuditLogEntry } from '../services/api';
+import type { User as UserType, DocumentRequestRecord } from '../types';
+import { useToast } from '../components/toast/ToastProvider';
 import {
   getLocalAssessments,
   mergeAssessments,
@@ -29,7 +30,6 @@ import {
   buildActivityDays,
   computeBadgeSummary,
   isEligibleForCertificate,
-  generateCertificateCode,
   getClassLabel,
   getAssessmentTypeLabel,
 } from '../utils/learningProfile';
@@ -125,6 +125,9 @@ export default function Profile() {
   const [serverResults, setServerResults] = useState<Array<Record<string, unknown>>>([]);
   const [activity, setActivity] = useState<AuditLogEntry[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [certRequests, setCertRequests] = useState<DocumentRequestRecord[]>([]);
+  const [requestingCert, setRequestingCert] = useState(false);
+  const toast = useToast();
 
   const [range, setRange] = useState(30);
   const [showPasswords, setShowPasswords] = useState(false);
@@ -145,9 +148,10 @@ export default function Profile() {
     let alive = true;
     (async () => {
       try {
-        const [profile, results] = await Promise.all([
+        const [profile, results, docRequests] = await Promise.all([
           getProfile(),
           getMyAssessmentResults().catch(() => ({ results: [] })),
+          getMyDocumentRequests().catch(() => ({ requests: [] })),
         ]);
         if (!alive) return;
         setName(profile.name || name);
@@ -158,6 +162,7 @@ export default function Profile() {
         setInstitution(profile.institution || institution);
         setClassLevel(profile.classLevel || classLevel);
         setServerResults(Array.isArray(results.results) ? results.results : []);
+        setCertRequests((docRequests.requests || []).filter((r) => r.kind === 'certificate'));
         if (user?.id) getMyActivity(user.id, 40).then((logs) => { if (alive) setActivity(logs); }).catch(() => {});
       } catch {
         /* keep defaults */
@@ -175,7 +180,10 @@ export default function Profile() {
   const badgeSummary = useMemo(() => computeBadgeSummary(all), [all]);
   const streaks = useMemo(() => computeStreaks(all), [all]);
   const eligible = useMemo(() => isEligibleForCertificate(all), [all]);
-  const certCode = useMemo(() => (user ? generateCertificateCode(user.id) : ''), [user]);
+  const certRequest = useMemo(() => (certRequests.length > 0 ? certRequests[0] : null), [certRequests]);
+  const certApproved = certRequest?.status === 'approved';
+  const certPending = certRequest?.status === 'pending';
+  const requestBusy = requestingCert; // alias for readability below
 
   const filtered = useMemo(() => filterByRange(all, range), [all, range]);
   const timeSeries = useMemo(() => buildTimeSeries(filtered, { cumulative: true }), [filtered]);
@@ -225,6 +233,20 @@ export default function Profile() {
   const togglePref = async (section: 'notifications' | 'privacy', key: string, value: boolean) => {
     const next = { ...prefs, [section]: { ...(prefs[section] || {}), [key]: value } };
     await updateProfile({ preferences: next } as Partial<UserType>);
+  };
+
+  const requestCertificate = async () => {
+    setRequestingCert(true);
+    try {
+      const { request } = await createDocumentRequest({ kind: 'certificate' });
+      setCertRequests((prev) => [request, ...prev.filter((r) => r.kind !== 'certificate' || r.status !== 'pending')]);
+      toast.success('Certificate request submitted.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to submit request.';
+      toast.error(msg);
+    } finally {
+      setRequestingCert(false);
+    }
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -762,20 +784,70 @@ export default function Profile() {
 
         {/* ===== 11 · Certificates ===== */}
         <Section id="profile-certificate" icon={Award} title="Certificates" subtitle="The A+ Excellence Certificate">
-          {eligible ? (
+          {certApproved ? (
             <div className="flex flex-col gap-4 rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 sm:flex-row sm:items-center dark:border-emerald-800 dark:from-emerald-500/10 dark:to-teal-500/10">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
                 <CheckCircle2 className="h-7 w-7" />
               </div>
               <div className="flex-1">
-                <p className="text-lg font-bold text-slate-900 dark:text-white">Certificate earned! 🎓</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">Certificate approved! 🎓</p>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  Certificate code: <span className="font-mono font-semibold">{certCode}</span> — view and print it from the Achievements page.
+                  Certificate code: <span className="font-mono font-semibold">{certRequest?.certificateCode || ''}</span> — view and print it from the Achievements page.
                 </p>
               </div>
               <Link to="/achievements" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1e3a5f] to-[#0f2340] px-5 py-2.5 text-sm font-semibold text-yellow-400 shadow-lg transition hover:shadow-xl">
                 View Certificate <ArrowRight className="h-4 w-4" />
               </Link>
+            </div>
+          ) : certPending ? (
+            <div className="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-6 sm:flex-row sm:items-center dark:border-amber-800 dark:bg-amber-500/10">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg">
+                <Loader2 className="h-7 w-7 animate-spin" />
+              </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold text-slate-900 dark:text-white">Certificate request pending review</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Submitted {new Date(certRequest?.requestedAt || '').toLocaleDateString()}. We'll notify you once an admin approves or rejects it.
+                </p>
+              </div>
+            </div>
+          ) : certRequest?.status === 'rejected' ? (
+            <div className="flex flex-col gap-4 rounded-2xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-800 dark:bg-rose-500/10">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg">
+                <AlertCircle className="h-7 w-7" />
+              </div>
+              <div className="flex-1">
+                <p className="text-lg font-bold text-slate-900 dark:text-white">Certificate request declined</p>
+                {certRequest?.adminNote ? (
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{certRequest.adminNote}</p>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">You can request again once you meet the requirements.</p>
+                )}
+              </div>
+            </div>
+          ) : eligible ? (
+            <div className="rounded-2xl border border-dashed border-emerald-300 bg-emerald-50 p-6 dark:border-emerald-700 dark:bg-emerald-500/10">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-white">You're eligible!</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Submit a request and an admin will issue your A+ Excellence Certificate.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <ReqRow label="Average score" value={`${stats.avgScore}%`} met={stats.avgScore >= 70} />
+                <ReqRow label="Completed assessments" value={`${stats.completed}`} met={stats.completed >= 20} />
+              </div>
+              <button
+                onClick={requestCertificate}
+                disabled={requestBusy}
+                className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1e3a5f] to-[#0f2340] px-5 py-2.5 text-sm font-semibold text-yellow-400 shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {requestBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
+                {requestBusy ? 'Submitting...' : 'Request Certificate'}
+              </button>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-800/50">
@@ -785,12 +857,12 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-800 dark:text-white">A+ Excellence Certificate</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Score 90%+ average across 10+ completed assessments</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Score 70%+ average across 20+ completed assessments</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <ReqRow label="Average score" value={`${stats.avgScore}%`} met={stats.avgScore >= 90} />
-                <ReqRow label="Completed assessments" value={`${stats.completed}`} met={stats.completed >= 10} />
+                <ReqRow label="Average score" value={`${stats.avgScore}%`} met={stats.avgScore >= 70} />
+                <ReqRow label="Completed assessments" value={`${stats.completed}`} met={stats.completed >= 20} />
               </div>
               <p className="mt-4 text-xs text-slate-400 dark:text-slate-500">Keep it up — you're getting there!</p>
             </div>

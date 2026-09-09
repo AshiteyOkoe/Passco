@@ -1,25 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Plus, Printer, Eye, AlertCircle, ArrowLeft, ShieldCheck, Download, RefreshCw } from 'lucide-react';
+import { FileText, Plus, Printer, Eye, AlertCircle, ArrowLeft, ShieldCheck, Download, ClipboardList, XCircle, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AnimatedSpinner from '../components/AnimatedSpinner';
 import Pagination from '../components/Pagination';
 import { usePagination } from '../hooks/usePagination';
 import { useToast } from '../components/toast/ToastProvider';
-import GenerateReportModal, { type ReportGeneratePayload } from '../components/GenerateReportModal';
+import RequestDocumentModal from '../components/RequestDocumentModal';
 import ReportPreviewModal from '../components/ReportPreviewModal';
 import { useAuth } from '../context/AuthContext';
 import { fadeUp } from '../utils/animations';
 import {
   getMyReportCards,
-  getReportSettings,
   getMyAssessmentResults,
-  createReportCard,
+  getMyDocumentRequests,
+  createDocumentRequest,
+  cancelDocumentRequest,
+  getDocumentEligibility,
   getReportCard,
 } from '../services/api';
-import { parseAssessments, restoreReportData } from '../utils/reportCard';
+import { parseAssessments, restoreReportData, listAcademicYears } from '../utils/reportCard';
 import type { ReportData } from '../utils/reportCard';
-import type { ReportCardRecord, ReportSettings } from '../types';
+import type { ReportCardRecord, DocumentRequestRecord, DocumentRequestKind, EligibilityResult } from '../types';
 
 interface PreviewState {
   data: ReportData;
@@ -31,22 +33,25 @@ export default function ReportsPage() {
   const { user } = useAuth();
   const toast = useToast();
   const [reports, setReports] = useState<ReportCardRecord[]>([]);
-  const [settings, setSettings] = useState<ReportSettings>({
-    gradeConfig: [],
-    thresholds: { pass: 50, improve: 60, strength: 75 },
-    branding: { reportTitle: 'Academic Report Card', subtitle: '', schoolName: '', directorName: '', directorTitle: '', footerNote: '' },
-  });
+  const [requests, setRequests] = useState<DocumentRequestRecord[]>([]);
+  const [requestEligibility, setRequestEligibility] = useState<EligibilityResult | null>(null);
   const [assessments, setAssessments] = useState<ReturnType<typeof parseAssessments>>([]);
   const [loading, setLoading] = useState(true);
-  const [generateOpen, setGenerateOpen] = useState(false);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [preview, setPreview] = useState<PreviewState | null>(null);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([getMyReportCards(), getReportSettings(), getMyAssessmentResults()])
-      .then(([repRes, setRes, asRes]) => {
+    Promise.all([
+      getMyReportCards(),
+      getMyAssessmentResults(),
+      getMyDocumentRequests(),
+      getDocumentEligibility('report'),
+    ])
+      .then(([repRes, asRes, reqRes, eligRes]) => {
         if (!mounted) return;
         const server = Array.isArray(asRes.results) ? asRes.results : [];
         let local: unknown[] = [];
@@ -55,18 +60,8 @@ export default function ReportsPage() {
           if (raw) local = JSON.parse(raw) as unknown[];
         } catch { local = []; }
         setReports(repRes.reports || []);
-        setSettings({
-          gradeConfig: setRes.settings?.gradeConfig || [],
-          thresholds: setRes.settings?.thresholds || { pass: 50, improve: 60, strength: 75 },
-          branding: {
-            reportTitle: 'Academic Report Card',
-            subtitle: '',
-            schoolName: '',
-            directorName: '',
-            directorTitle: '',
-            footerNote: '',
-          },
-        });
+        setRequests((reqRes.requests || []).filter((r) => r.kind === 'report'));
+        setRequestEligibility(eligRes);
         setAssessments(parseAssessments(server, local));
       })
       .catch(() => {
@@ -78,48 +73,50 @@ export default function ReportsPage() {
     return () => { mounted = false; };
   }, []);
 
-  const openGenerate = useCallback(() => {
+  const openRequest = useCallback(() => {
     setError('');
-    setGenerateOpen(true);
-  }, []);
+    setEligibilityLoading(true);
+    setRequestModalOpen(true);
+    getDocumentEligibility('report')
+      .then((elig) => {
+        if (elig) setRequestEligibility(elig);
+      })
+      .catch(() => {
+        toast.error('Could not verify your eligibility.');
+      })
+      .finally(() => setEligibilityLoading(false));
+  }, [toast]);
 
-  const handlePreview = useCallback((payload: ReportGeneratePayload) => {
-    setGenerateOpen(false);
-    setPreview({ data: payload.data, photoData: payload.photoData });
-  }, []);
-
-  const replaceNumbers = (data: ReportData, record: ReportCardRecord): ReportData => ({
-    ...data,
-    meta: { ...data.meta, reportNumber: record.reportNumber, verificationCode: record.verificationCode },
-  });
-
-  const handleGenerate = useCallback(async (payload: ReportGeneratePayload) => {
-    setBusy(true);
+  const submitRequest = useCallback(async (payload: { kind: DocumentRequestKind; academicYear?: string; term?: string }) => {
+    setSubmitting(true);
     setError('');
     try {
-      const res = await createReportCard({
-        academicYear: String(payload.academicYear),
+      const { request } = await createDocumentRequest({
+        kind: payload.kind,
+        academicYear: payload.academicYear,
         term: payload.term,
-        periodLabel: payload.data.meta.periodLabel,
-        periodStart: payload.data.meta.periodStart,
-        periodEnd: payload.data.meta.periodEnd,
-        overallScore: payload.data.overall.score,
-        overallGrade: payload.data.overall.grade,
-        overallRemark: payload.data.overall.remark,
-        dataSnapshot: payload.data as unknown as Record<string, unknown>,
-        profilePhotoSnapshotUrl: payload.photoData || '',
       });
-      const report = res.report;
-      setReports((prev) => [report, ...prev.filter((r) => r.id !== report.id)]);
-      setGenerateOpen(false);
-      toast.success(`Report ${report.reportNumber} generated successfully.`);
-      setPreview({ data: replaceNumbers(payload.data, report), photoData: payload.photoData, printAfterOpen: true });
-    } catch {
-      setError('Your report could not be generated. Please try again.');
+      setRequests((prev) => [request, ...prev]);
+      setRequestModalOpen(false);
+      toast.success('Your report request has been submitted for admin review.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Your request could not be submitted.';
+      setError(msg);
+      toast.error(msg);
     } finally {
-      setBusy(false);
+      setSubmitting(false);
     }
-  }, []);
+  }, [toast]);
+
+  const handleCancelRequest = useCallback(async (id: string) => {
+    try {
+      const { request } = await cancelDocumentRequest(id);
+      setRequests((prev) => prev.map((r) => (r.id === id ? request : r)));
+      toast.info('Request cancelled.');
+    } catch {
+      toast.error('Could not cancel that request.');
+    }
+  }, [toast]);
 
   const openReport = useCallback(async (id: string, printNow = false) => {
     try {
@@ -175,16 +172,15 @@ export default function ReportsPage() {
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white">Academic Report Cards</h1>
             <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              Generate, print and share official PASSCO performance report cards
+              Request, view and print official PASSCO performance report cards
             </p>
           </div>
           <div className="flex w-full justify-start sm:w-auto sm:justify-end">
             <button
-              onClick={openGenerate}
-              disabled={hasNoData}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={openRequest}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
             >
-              <Plus className="h-4 w-4" /> Download Academic Report
+              <Plus className="h-4 w-4" /> Request Report Card
             </button>
           </div>
         </motion.div>
@@ -203,7 +199,7 @@ export default function ReportsPage() {
             </div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">No report data yet</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Your report card is generated from your assessment results. Complete at least one assessment and it will appear here.
+              Report cards are issued after completing assessments and submitting a request. Complete at least one assessment to get started.
             </p>
             <Link
               to="/assessment/setup"
@@ -223,6 +219,66 @@ export default function ReportsPage() {
               </div>
             </div>
 
+            {/* My Requests */}
+            <div>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+                  <ClipboardList className="h-5 w-5 text-indigo-500" /> My Requests
+                </h2>
+              </div>
+
+              {requests.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    No requests yet. Submit one and track its status here.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+                  {requests.map((r) => (
+                    <li key={r.id} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                          {r.status === 'approved' ? (r.reportNumber || 'Report issued') : `Report Card · ${r.academicYear} · ${r.term}`}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          Requested {new Date(r.requestedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {r.processedAt ? ` · Processed ${new Date(r.processedAt).toLocaleDateString()}` : ''}
+                        </p>
+                        {r.status === 'rejected' && r.adminNote && (
+                          <p className="mt-1 text-xs text-rose-500 dark:text-rose-400">{r.adminNote}</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span
+                          className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
+                            r.status === 'approved'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                              : r.status === 'pending'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                                : r.status === 'rejected'
+                                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
+                                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                          }`}
+                        >
+                          {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                        </span>
+                        {r.status === 'pending' && (
+                          <button
+                            onClick={() => handleCancelRequest(r.id)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                            aria-label={`Cancel request for ${r.academicYear} ${r.term}`}
+                          >
+                            <XCircle className="h-3.5 w-3.5" /> Cancel
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             {/* My Reports */}
             <div>
               <div className="mb-4 flex items-center justify-between">
@@ -234,7 +290,7 @@ export default function ReportsPage() {
               {reportCards.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No reports generated yet. Click <strong>"Download Academic Report"</strong> to create your first report card.
+                    No reports issued yet. Click <strong>"Request Report Card"</strong> — an admin will review and issue it once approved.
                   </p>
                 </div>
               ) : (
@@ -321,24 +377,17 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* Generate modal */}
+      {/* Request modal */}
       {user && (
-        <GenerateReportModal
-          open={generateOpen}
-          onClose={() => setGenerateOpen(false)}
-          student={{
-            id: user.id,
-            name: user.name,
-            institution: user.institution,
-            classLevel: user.classLevel || user.gradeLevel,
-            avatar: user.avatar,
-          }}
-          assessments={assessments}
-          gradeConfig={settings.gradeConfig}
-          thresholds={settings.thresholds}
-          onPreview={handlePreview}
-          onGenerate={handleGenerate}
-          generating={busy}
+        <RequestDocumentModal
+          open={requestModalOpen}
+          onClose={() => setRequestModalOpen(false)}
+          kind="report"
+          years={listAcademicYears(assessments)}
+          eligibility={requestEligibility}
+          loadingEligibility={eligibilityLoading}
+          submitting={submitting}
+          onSubmit={submitRequest}
         />
       )}
 

@@ -20,6 +20,11 @@ import {
   deleteReportCard,
   updateReportSettings,
 } from '../controllers/reportCardController';
+import {
+  listDocumentRequests,
+  approveDocumentRequest,
+  rejectDocumentRequest,
+} from '../controllers/documentRequestController';
 
 const router = Router();
 
@@ -30,6 +35,10 @@ router.post('/report-cards', createReportCardForUser);
 router.post('/report-cards/regenerate', createReportCardForUser);
 router.get('/report-cards/:id', getReportCard);
 router.delete('/report-cards/:id', deleteReportCard);
+
+router.get('/document-requests', listDocumentRequests);
+router.post('/document-requests/:id/approve', approveDocumentRequest);
+router.post('/document-requests/:id/reject', rejectDocumentRequest);
 
 router.get('/students/:id/results', getStudentResults);
 router.get('/students/:id', getStudentDetail);

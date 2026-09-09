@@ -25,6 +25,8 @@ import type {
   ReportCardRecord,
   ReportSettings,
   ReportVerifyResponse,
+  DocumentRequestRecord,
+  EligibilityResult,
 } from '../types';
 
 const API_BASE = import.meta.env.DEV ? '/api' : '/api';
@@ -848,6 +850,41 @@ export async function verifyReportCode(verificationCode: string): Promise<Report
     validateStatus: (s) => s < 500,
   });
   return res.data as ReportVerifyResponse;
+}
+
+export async function getDocumentEligibility(kind: string): Promise<EligibilityResult> {
+  const res = await api.get('/document-requests/eligibility', { params: { kind } });
+  return res.data;
+}
+
+export async function createDocumentRequest(data: { kind: string; academicYear?: string; term?: string }): Promise<{ request: DocumentRequestRecord }> {
+  const res = await api.post('/document-requests', data);
+  return res.data;
+}
+
+export async function getMyDocumentRequests(): Promise<{ requests: DocumentRequestRecord[] }> {
+  const res = await api.get('/document-requests/my');
+  return res.data;
+}
+
+export async function cancelDocumentRequest(id: string): Promise<{ request: DocumentRequestRecord }> {
+  const res = await api.post(`/document-requests/${id}/cancel`);
+  return res.data;
+}
+
+export async function getAdminDocumentRequests(kind?: string): Promise<{ requests: DocumentRequestRecord[] }> {
+  const res = await api.get('/admin/document-requests', { params: kind ? { kind } : {} });
+  return res.data;
+}
+
+export async function approveDocumentRequest(id: string, data: Record<string, unknown>): Promise<{ request: DocumentRequestRecord }> {
+  const res = await api.post(`/admin/document-requests/${id}/approve`, data);
+  return res.data;
+}
+
+export async function rejectDocumentRequest(id: string, note: string): Promise<{ request: DocumentRequestRecord }> {
+  const res = await api.post(`/admin/document-requests/${id}/reject`, { note });
+  return res.data;
 }
 
 export default api;

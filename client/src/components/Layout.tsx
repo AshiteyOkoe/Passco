@@ -6,7 +6,7 @@ import {
   BookOpen, Home, BarChart3, FileText, Library, PlusCircle,
   LogOut, Sun, Moon, ClipboardCheck, History,
   Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, Award, Gem,
-  Sparkles, CreditCard, LayoutDashboard, Quote, Settings, MessageSquare, Flag, Menu, X
+  Sparkles, CreditCard, LayoutDashboard, Quote, Settings, MessageSquare, Flag, Menu, X, ClipboardList
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,6 +95,7 @@ export default function Layout() {
     {
       title: 'Academic Reports',
       links: [
+        { to: '/admin/document-requests', label: 'Document Requests', icon: ClipboardList },
         { to: '/admin/reports', label: 'Report Cards', icon: FileText },
         { to: '/admin/report-settings', label: 'Report Settings', icon: Settings },
       ],
@@ -103,7 +104,7 @@ export default function Layout() {
       title: 'Support',
       links: [
         { to: '/admin/support', label: 'Contact & Reports', icon: MessageSquare },
-        { to: '/admin/certificates', label: 'Certificates', icon: Award },
+        { to: '/admin/certificates', label: 'Certificate Settings', icon: Award },
         { to: '/profile', label: 'My Profile', icon: User },
       ],
     },

@@ -427,3 +427,36 @@ export interface ReportVerifyResponse {
   generatedAt?: string;
   studentNameMasked?: string;
 }
+
+export type DocumentRequestKind = 'report' | 'certificate';
+export type DocumentRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface DocumentRequestRecord {
+  id: string;
+  userId?: string;
+  kind: DocumentRequestKind;
+  academicYear: string;
+  term: string;
+  status: DocumentRequestStatus;
+  adminNote: string;
+  reportId: string | null;
+  certificateCode: string;
+  approvedBy: string | null;
+  requestedAt: string;
+  processedAt: string | null;
+  studentName?: string;
+  reportNumber?: string;
+}
+
+export interface EligibilityRequirement {
+  key: string;
+  label: string;
+  target: number;
+  current: number;
+  met: boolean;
+}
+
+export interface EligibilityResult {
+  eligible: boolean;
+  requirements: EligibilityRequirement[];
+}

@@ -5,7 +5,7 @@ import {
   Trophy, Award, Star, Medal, Shield, Gem, Target,
   BookOpen, ClipboardCheck, GraduationCap, Brain, Zap, Flame,
   TrendingUp, CheckCircle2, Lock, Download, Printer, Upload,
-  ArrowRight, Sparkles, ChevronDown, ChevronUp, Eye, X, FileUp, BadgeCheck,
+  ArrowRight, Sparkles, ChevronDown, ChevronUp, Eye, X, FileUp, BadgeCheck, Loader2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../utils';
@@ -13,6 +13,9 @@ import { fadeUp, slideUp, stagger, bounceIn } from '../utils/animations';
 import { SUBJECT_META, CLASS_META, type ClassLevel, type SubjectId } from '../data/questionBank';
 import Pagination from '../components/Pagination';
 import { usePagination } from '../hooks/usePagination';
+import { getMyDocumentRequests, createDocumentRequest } from '../services/api';
+import { useToast } from '../components/toast/ToastProvider';
+import type { DocumentRequestRecord } from '../types';
 
 interface LocalAssessment {
   classLevel: ClassLevel;
@@ -101,18 +104,6 @@ const CATEGORY_CONFIG: Record<BadgeCategory, { label: string; color: string }> =
   mastery: { label: 'Grand Mastery', color: 'text-yellow-500' },
 };
 
-function generateCode(userId: string): string {
-  let hash = 0;
-  const str = `PASSCO-${userId}-${new Date().getFullYear()}`;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
-  }
-  const hex = Math.abs(hash).toString(16).toUpperCase().slice(0, 8).padStart(8, '0');
-  return `PAS-${new Date().getFullYear()}-${hex.slice(0, 4)}-${hex.slice(4)}`;
-}
-
 export default function StudentAchievements() {
   const { user } = useAuth();
   const [showCertificate, setShowCertificate] = useState(false);
@@ -128,6 +119,19 @@ export default function StudentAchievements() {
     return localStorage.getItem('passco-admin-signature-image') || '';
   });
   const [showSignatureUpload, setShowSignatureUpload] = useState(false);
+  const [certRequests, setCertRequests] = useState<DocumentRequestRecord[]>([]);
+  const [requestingCert, setRequestingCert] = useState(false);
+  const toast = useToast();
+
+  useEffect(() => {
+    let alive = true;
+    getMyDocumentRequests()
+      .then((res) => {
+        if (alive) setCertRequests((res.requests || []).filter((r) => r.kind === 'certificate'));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const localAssessments = useMemo(() => {
     try {
@@ -329,10 +333,27 @@ export default function StudentAchievements() {
   }, [pageItems]);
 
   const isEligibleForCertificate = useMemo(() => {
-    return stats.avgScore >= 90 && stats.totalCompleted >= 10;
+    return stats.avgScore >= 70 && stats.totalCompleted >= 20;
   }, [stats]);
 
-  const certCode = useMemo(() => user ? generateCode(user.id) : '', [user]);
+  const certRequest = useMemo(() => (certRequests.length > 0 ? certRequests[0] : null), [certRequests]);
+  const certApproved = certRequest?.status === 'approved';
+  const certPending = certRequest?.status === 'pending';
+  const certCode = certRequest?.certificateCode || '';
+
+  const requestCertificate = useCallback(async () => {
+    setRequestingCert(true);
+    try {
+      const { request } = await createDocumentRequest({ kind: 'certificate' });
+      setCertRequests((prev) => [request, ...prev.filter((r) => r.status !== 'pending')]);
+      toast.success('Certificate request submitted.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to submit request.';
+      toast.error(msg);
+    } finally {
+      setRequestingCert(false);
+    }
+  }, [toast]);
 
   const handleSignatureUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -393,7 +414,7 @@ export default function StudentAchievements() {
           <OverviewCard icon={Medal} value={earnedBadges.length} total={totalBadges} label="Badges Earned" gradient="from-yellow-400 to-amber-500" />
           <OverviewCard icon={Star} value={stats.avgScore} suffix="%" label="Avg Score" gradient="from-blue-500 to-blue-600" />
           <OverviewCard icon={Flame} value={stats.totalCompleted} label="Assessments" gradient="from-emerald-500 to-teal-600" />
-          <OverviewCard icon={Award} value={isEligibleForCertificate ? 1 : 0} label="Certificates" gradient="from-violet-500 to-purple-600" />
+          <OverviewCard icon={Award} value={certApproved ? 1 : 0} label="Certificates" gradient="from-violet-500 to-purple-600" />
         </motion.div>
 
         {/* Badge Progress Bar */}
@@ -541,20 +562,24 @@ export default function StudentAchievements() {
               <div>
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">A+ Certificate Award</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {isEligibleForCertificate
-                    ? 'Congratulations! You are eligible for the A+ Excellence Certificate.'
-                    : `Score 90%+ average with 10+ completed assessments to qualify.`
+                  {certApproved
+                    ? 'Your A+ Excellence Certificate has been issued.'
+                    : certPending
+                      ? 'Your certificate request is under review.'
+                      : certRequest?.status === 'rejected'
+                        ? 'Your certificate request was declined.'
+                        : 'Score 70%+ average with 20+ completed assessments to qualify.'
                   }
                 </p>
               </div>
             </div>
 
-            {isEligibleForCertificate ? (
+            {certApproved ? (
               <>
                 {/* Requirements Met */}
                 <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <ReqCard icon={TrendingUp} label="Avg Score" value={`${stats.avgScore}%`} met={stats.avgScore >= 90} />
-                  <ReqCard icon={ClipboardCheck} label="Assessments" value={`${stats.totalCompleted}`} met={stats.totalCompleted >= 10} />
+                  <ReqCard icon={TrendingUp} label="Avg Score" value={`${stats.avgScore}%`} met={stats.avgScore >= 70} />
+                  <ReqCard icon={ClipboardCheck} label="Assessments" value={`${stats.totalCompleted}`} met={stats.totalCompleted >= 20} />
                   <ReqCard icon={Medal} label="Badges" value={`${earnedBadges.length}`} met={earnedBadges.length >= 5} />
                 </div>
 
@@ -604,6 +629,53 @@ export default function StudentAchievements() {
                   </div>
                 )}
               </>
+            ) : certPending ? (
+              <div className="rounded-xl bg-amber-50 p-6 text-center dark:bg-amber-500/10">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
+                  <Loader2 className="h-8 w-8 text-amber-500" />
+                </div>
+                <h3 className="mb-2 text-sm font-bold text-slate-800 dark:text-white">Certificate request pending review</h3>
+                <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+                  An admin is reviewing your request. You'll be able to preview, print and download your certificate once it's approved.
+                </p>
+              </div>
+            ) : certRequest?.status === 'rejected' ? (
+              <div className="rounded-xl bg-rose-50 p-6 text-center dark:bg-rose-500/10">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-500/20">
+                  <Lock className="h-8 w-8 text-rose-500" />
+                </div>
+                <h3 className="mb-2 text-sm font-bold text-slate-800 dark:text-white">Certificate request declined</h3>
+                {certRequest.adminNote && <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">{certRequest.adminNote}</p>}
+                {isEligibleForCertificate && (
+                  <button
+                    onClick={requestCertificate}
+                    disabled={requestingCert}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1e3a5f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142c4a] disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {requestingCert ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Award className="h-3.5 w-3.5" />}
+                    Request Again
+                  </button>
+                )}
+              </div>
+            ) : isEligibleForCertificate ? (
+              <>
+                {/* Requirements Met */}
+                <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <ReqCard icon={TrendingUp} label="Avg Score" value={`${stats.avgScore}%`} met={stats.avgScore >= 70} />
+                  <ReqCard icon={ClipboardCheck} label="Assessments" value={`${stats.totalCompleted}`} met={stats.totalCompleted >= 20} />
+                  <ReqCard icon={Medal} label="Badges" value={`${earnedBadges.length}`} met={earnedBadges.length >= 5} />
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={requestCertificate}
+                    disabled={requestingCert}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1e3a5f] to-[#0f2340] px-5 py-2.5 text-sm font-semibold text-yellow-400 shadow-lg shadow-blue-900/25 transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {requestingCert ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
+                    {requestingCert ? 'Submitting...' : 'Request Certificate'}
+                  </button>
+                </div>
+              </>
             ) : (
               <div className="rounded-xl bg-slate-50 p-6 text-center dark:bg-slate-800/50">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
@@ -611,7 +683,7 @@ export default function StudentAchievements() {
                 </div>
                 <h3 className="mb-2 text-sm font-bold text-slate-800 dark:text-white">Keep Working!</h3>
                 <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-                  Complete more assessments and maintain a high average to unlock your A+ Certificate.
+                  Complete more assessments and maintain a high average to qualify for your A+ Certificate.
                 </p>
                 <Link
                   to="/assessment/setup"
