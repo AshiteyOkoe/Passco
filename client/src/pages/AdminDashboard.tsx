@@ -32,6 +32,7 @@ interface Student {
   institution?: string;
   gradeLevel?: string;
   quizzesTaken: number;
+  assessmentsTaken: number;
   avgScore: number;
   documentsUploaded: number;
   createdAt: string;
@@ -43,7 +44,7 @@ export default function AdminDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState<'name' | 'avgScore' | 'quizzesTaken' | 'createdAt'>('name');
+  const [sortField, setSortField] = useState<'name' | 'avgScore' | 'quizzesTaken' | 'assessmentsTaken' | 'createdAt'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
@@ -233,6 +234,7 @@ export default function AdminDashboard() {
                     { key: 'name' as const, label: 'Student' },
                     { key: 'name' as const, label: 'Institution' },
                     { key: 'quizzesTaken' as const, label: 'Quizzes' },
+                    { key: 'assessmentsTaken' as const, label: 'Exams' },
                     { key: 'avgScore' as const, label: 'Avg Score' },
                     { key: 'name' as const, label: 'Documents' },
                     { key: 'createdAt' as const, label: 'Joined' },
@@ -274,6 +276,9 @@ export default function AdminDashboard() {
                     </td>
                     <td className="py-3 pr-4">
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.quizzesTaken}</span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.assessmentsTaken}</span>
                     </td>
                     <td className="py-3 pr-4">
                       <span className={cn(
@@ -326,6 +331,10 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-xs text-slate-500 dark:text-slate-400">Quizzes</dt>
                     <dd className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.quizzesTaken}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-xs text-slate-500 dark:text-slate-400">Exams</dt>
+                    <dd className="text-sm font-medium text-slate-700 dark:text-slate-300">{student.assessmentsTaken}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-xs text-slate-500 dark:text-slate-400">Avg Score</dt>

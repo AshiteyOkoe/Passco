@@ -10,7 +10,12 @@
     "start:prod": "tsx src/index.ts",
     "seed": "tsx src/seed.ts",
     "migrate:avatars": "tsx src/migrateAvatars.ts",
-    "reconcile:questions": "tsx src/reconcileAiQuestions.ts"
+    "reconcile:questions": "tsx src/reconcileAiQuestions.ts",
+    "reconcile:answers": "tsx src/reconcileCorrectAnswers.ts",
+    "import:csv": "tsx src/importCsv.ts",
+    "audit:answers": "tsx src/auditQuestionAnswers.ts",
+    "test:smtp": "tsx src/testSMTP.ts",
+    "reset": "tsx src/resetUsers.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",

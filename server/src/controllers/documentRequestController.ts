@@ -52,7 +52,7 @@ export async function computeEligibility(userId: string, kind: DocumentKind): Pr
   if (kind === 'report') {
     const requirement = {
       key: 'completedAssessments',
-      label: 'Completed assessments',
+      label: 'Completed assessments (incl. Likely BECE)',
       target: MIN_COMPLETED_REPORT,
       current: completed,
       met: completed >= MIN_COMPLETED_REPORT,
@@ -62,14 +62,14 @@ export async function computeEligibility(userId: string, kind: DocumentKind): Pr
 
   const avgReq = {
     key: 'averageScore',
-    label: 'Average score',
+    label: 'Average score (all outcomes)',
     target: MIN_AVG_CERTIFICATE,
     current: avgScore,
     met: avgScore >= MIN_AVG_CERTIFICATE,
   };
   const completedReq = {
     key: 'completedAssessments',
-    label: 'Completed assessments',
+    label: 'Completed assessments (incl. Likely BECE)',
     target: MIN_COMPLETED_CERTIFICATE,
     current: completed,
     met: completed >= MIN_COMPLETED_CERTIFICATE,

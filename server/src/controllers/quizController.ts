@@ -19,8 +19,23 @@ interface AnswerDetail {
   time_spent: number;
 }
 
+function resolveCorrectAnswerText(question: { correct_answer: unknown; type?: string; options?: unknown }): string {
+  const raw = String(question.correct_answer ?? '').trim();
+  if (question.type !== 'true-false' && Array.isArray(question.options) && question.options.length > 0) {
+    const options = question.options.map((o) => (o === null || o === undefined ? '' : String(o).trim()));
+    const exact = options.find((o) => o !== '' && o.toLowerCase() === raw.toLowerCase());
+    if (exact !== undefined) return exact;
+    if (/^[A-D]$/i.test(raw)) {
+      const optionIndex = raw.toUpperCase().charCodeAt(0) - 65;
+      const optionText = options[optionIndex];
+      if (optionText !== undefined && optionText !== null) return String(optionText).trim();
+    }
+  }
+  return raw;
+}
+
 function gradeAnswers(
-  questions: Array<{ id: string; correct_answer: unknown; type?: string }>,
+  questions: Array<{ id: string; correct_answer: unknown; type?: string; options?: unknown }>,
   answers: AttemptAnswerInput[]
 ): { correctCount: number; incorrectCount: number; skippedCount: number; answerDetails: AnswerDetail[] } {
   let correctCount = 0;
@@ -35,7 +50,7 @@ function gradeAnswers(
     if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
       skippedCount++;
     } else {
-      isCorrect = String(userAnswer).toLowerCase().trim() === String(question.correct_answer).toLowerCase().trim();
+      isCorrect = String(userAnswer).toLowerCase().trim() === resolveCorrectAnswerText(question).toLowerCase().trim();
       if (isCorrect) correctCount++;
       else incorrectCount++;
     }
@@ -61,7 +76,7 @@ async function computeAndInsertResult(
   const { data: qqRows } = await supabase.from('quiz_questions').select('question_id').eq('quiz_id', quizId);
   const questionIds = (qqRows || []).map((r) => r.question_id);
 
-  const { data: questions } = await supabase.from('questions').select('id, correct_answer, type').in('id', questionIds);
+  const { data: questions } = await supabase.from('questions').select('id, correct_answer, type, options').in('id', questionIds);
 
   const graded = gradeAnswers(questions || [], answers);
   const totalQ = (questions || []).length;

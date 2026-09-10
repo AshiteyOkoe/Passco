@@ -84,14 +84,19 @@ export async function getStudents(req: AuthRequest, res: Response): Promise<void
 
     const studentsWithStats = await Promise.all(
       (students || []).map(async (student) => {
-        const [resultCount, avgResult, docCount] = await Promise.all([
+        const [resultCount, avgResult, assessmentsRaw, docCount] = await Promise.all([
           supabase.from('results').select('id', { count: 'exact', head: true }).eq('user_id', student.id),
           supabase.from('results').select('score').eq('user_id', student.id),
+          supabase.from('assessment_results').select('percentage').eq('user_id', student.id),
           supabase.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', student.id),
         ]);
 
         const scores = (avgResult.data || []).map((r) => r.score);
-        const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+        const assessmentPercentages = (assessmentsRaw.data || [])
+          .map((r) => Number(r.percentage))
+          .filter((n) => !Number.isNaN(n));
+        const allScores = [...scores, ...assessmentPercentages];
+        const avgScore = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
 
         return {
           id: student.id,
@@ -102,6 +107,7 @@ export async function getStudents(req: AuthRequest, res: Response): Promise<void
           avatar: resolveAvatarUrl(student.avatar) || '',
           gender: student.gender || '',
           quizzesTaken: resultCount.count || 0,
+          assessmentsTaken: assessmentPercentages.length,
           avgScore,
           documentsUploaded: docCount.count || 0,
           createdAt: student.created_at,
@@ -118,11 +124,23 @@ export async function getStudents(req: AuthRequest, res: Response): Promise<void
 
 export async function getFullAnalytics(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { data: results } = await supabase.from('results').select('score, completed_at');
+    const [resultsRes, assessmentsRes] = await Promise.all([
+      supabase.from('results').select('score, completed_at'),
+      supabase.from('assessment_results').select('percentage, created_at'),
+    ]);
 
-    const totalQuizzes = results?.length || 0;
-    const averageScore = totalQuizzes > 0
-      ? Math.round(results!.reduce((sum, r) => sum + r.score, 0) / totalQuizzes)
+    const results = resultsRes.data || [];
+    const assessments = assessmentsRes.data || [];
+
+    const quizScores = results.map((r) => r.score);
+    const assessmentPercentages = assessments
+      .map((r) => Number(r.percentage))
+      .filter((n) => !Number.isNaN(n));
+    const allScores = [...quizScores, ...assessmentPercentages];
+
+    const totalAttempts = allScores.length;
+    const averageScore = totalAttempts > 0
+      ? Math.round(allScores.reduce((sum, s) => sum + s, 0) / totalAttempts)
       : 0;
 
     const scoreDistribution = [
@@ -134,21 +152,29 @@ export async function getFullAnalytics(req: AuthRequest, res: Response): Promise
       { range: '90-100', count: 0 },
     ];
 
-    for (const r of results || []) {
-      if (r.score < 25) scoreDistribution[0].count++;
-      else if (r.score < 50) scoreDistribution[1].count++;
-      else if (r.score < 60) scoreDistribution[2].count++;
-      else if (r.score < 75) scoreDistribution[3].count++;
-      else if (r.score < 90) scoreDistribution[4].count++;
+    for (const s of allScores) {
+      if (s < 25) scoreDistribution[0].count++;
+      else if (s < 50) scoreDistribution[1].count++;
+      else if (s < 60) scoreDistribution[2].count++;
+      else if (s < 75) scoreDistribution[3].count++;
+      else if (s < 90) scoreDistribution[4].count++;
       else scoreDistribution[5].count++;
     }
 
     const dayMap: Record<string, { count: number; totalScore: number }> = {};
-    for (const r of results || []) {
+    for (const r of results) {
       const day = r.completed_at?.slice(0, 10) || 'unknown';
       if (!dayMap[day]) dayMap[day] = { count: 0, totalScore: 0 };
       dayMap[day].count++;
       dayMap[day].totalScore += r.score;
+    }
+    for (const a of assessments) {
+      const day = a.created_at?.slice(0, 10) || 'unknown';
+      const score = Number(a.percentage);
+      if (Number.isNaN(score)) continue;
+      if (!dayMap[day]) dayMap[day] = { count: 0, totalScore: 0 };
+      dayMap[day].count++;
+      dayMap[day].totalScore += score;
     }
 
     const resultsByDay = Object.entries(dayMap)
@@ -158,10 +184,10 @@ export async function getFullAnalytics(req: AuthRequest, res: Response): Promise
         avgScore: Math.round(data.totalScore / data.count),
       }))
       .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 30);
+      .slice(-30);
 
     res.json({
-      totalQuizzes,
+      totalQuizzes: totalAttempts,
       averageScore,
       scoreDistribution,
       resultsByDay,
@@ -219,8 +245,30 @@ export async function getStudentDetail(req: AuthRequest, res: Response): Promise
       .select('id', { count: 'exact', head: true })
       .eq('created_by', student.id);
 
-    const avgScore = resultsWithQuiz.length > 0
-      ? Math.round(resultsWithQuiz.reduce((sum, r) => sum + r.score, 0) / resultsWithQuiz.length)
+    const { data: assessmentsRaw } = await supabase
+      .from('assessment_results')
+      .select('id, subject, percentage, grade, passed, time_spent, total_questions, assessment_type, created_at')
+      .eq('user_id', student.id)
+      .order('created_at', { ascending: false });
+
+    const assessmentResults = (assessmentsRaw || []).map((a) => ({
+      id: a.id,
+      subject: a.subject || 'Unknown',
+      percentage: a.percentage,
+      grade: a.grade || '',
+      passed: !!a.passed,
+      timeSpent: a.time_spent || 0,
+      totalQuestions: a.total_questions || 0,
+      assessmentType: a.assessment_type || 'mock',
+      completedAt: a.created_at,
+    }));
+
+    const allScores = [
+      ...resultsWithQuiz.map((r) => r.score),
+      ...assessmentResults.map((a) => Number(a.percentage) || 0),
+    ];
+    const avgScore = allScores.length > 0
+      ? Math.round(allScores.reduce((sum, s) => sum + s, 0) / allScores.length)
       : 0;
 
     res.json({
@@ -240,10 +288,12 @@ export async function getStudentDetail(req: AuthRequest, res: Response): Promise
         createdAt: doc.created_at,
       })),
       results: resultsWithQuiz,
+      assessmentResults,
       questionsCreated: questionsCount || 0,
       stats: {
         documentsUploaded: documents?.length || 0,
         quizzesTaken: resultsWithQuiz.length,
+        assessmentsTaken: assessmentResults.length,
         questionsCreated: questionsCount || 0,
         avgScore,
       },
@@ -339,9 +389,28 @@ export async function getStudentResults(req: AuthRequest, res: Response): Promis
       })
     );
 
+    const { data: assessmentsRaw } = await supabase
+      .from('assessment_results')
+      .select('id, subject, percentage, grade, passed, time_spent, total_questions, assessment_type, created_at')
+      .eq('user_id', student.id)
+      .order('created_at', { ascending: false });
+
+    const assessmentResults = (assessmentsRaw || []).map((a) => ({
+      id: a.id,
+      subject: a.subject || 'Unknown',
+      percentage: a.percentage,
+      grade: a.grade || '',
+      passed: !!a.passed,
+      timeSpent: a.time_spent || 0,
+      totalQuestions: a.total_questions || 0,
+      assessmentType: a.assessment_type || 'mock',
+      completedAt: a.created_at,
+    }));
+
     res.json({
       student: { id: student.id, name: student.name, email: student.email },
       results: resultsWithQuiz,
+      assessmentResults,
     });
   } catch (error) {
     console.error('Get student results error:', error);
@@ -542,6 +611,7 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
       { count: totalDocuments },
       { count: pendingQuestions },
       { count: activeSubscriptions },
+      { count: totalAssessments },
     ] = await Promise.all([
       supabase.from('users').select('id', { count: 'exact', head: true }).eq('role', 'student'),
       supabase.from('results').select('id', { count: 'exact', head: true }),
@@ -549,6 +619,7 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
       supabase.from('documents').select('id', { count: 'exact', head: true }),
       supabase.from('questions').select('id', { count: 'exact', head: true }).eq('approved', false),
       supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('assessment_results').select('id', { count: 'exact', head: true }).eq('abandoned', false),
     ]);
 
     const monthStart = new Date();
@@ -560,8 +631,6 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
     const [
       { data: newStudents },
       { data: resultsForActivity },
-      { data: resultsCount30 },
-      { data: resultsCountPrev },
       { data: questionsRecent },
       { data: docsRecent },
       { data: payments },
@@ -570,11 +639,12 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
       { data: assessmentRaw },
       { data: questionBankRaw },
       { data: inProgressAttempts },
+      { data: assessmentsForActivity },
+      { data: assessmentsCount30 },
+      { data: assessmentsCountPrev },
     ] = await Promise.all([
       supabase.from('users').select('id').eq('role', 'student').gte('created_at', daysAgoIso(30)),
       supabase.from('results').select('user_id, completed_at').gte('completed_at', daysAgoIso(range)),
-      supabase.from('results').select('id').gte('completed_at', monthStart.toISOString()),
-      supabase.from('results').select('id').lt('completed_at', monthStart.toISOString()).gte('completed_at', prevMonthStart.toISOString()),
       supabase.from('questions').select('id').gte('created_at', daysAgoIso(7)),
       supabase.from('documents').select('id').gte('created_at', daysAgoIso(30)),
       supabase.from('payments').select('amount, status, created_at'),
@@ -583,18 +653,22 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
       supabase.from('assessment_results').select('user_id, subject, percentage, passed, time_spent, created_at'),
       (async () => ({ data: await fetchAllQuestionRows() }))(),
       supabase.from('quiz_attempts').select('id'),
+      supabase.from('assessment_results').select('user_id, created_at').gte('created_at', daysAgoIso(range)),
+      supabase.from('assessment_results').select('id').gte('created_at', monthStart.toISOString()),
+      supabase.from('assessment_results').select('id').lt('created_at', monthStart.toISOString()).gte('created_at', prevMonthStart.toISOString()),
     ]);
 
     const totalStudentsN = totalStudents || 0;
     const totalResultsN = totalResults || 0;
     const totalQuestionsN = totalQuestions || 0;
+    const totalAssessmentsN = totalAssessments || 0;
 
     // KPI delta labels (trend indicators)
     const kpis = {
       students: { value: totalStudentsN, delta: percentChange(newStudents?.length || 0, totalStudentsN - (newStudents?.length || 0)) },
       results: {
-        value: totalResultsN,
-        delta: percentChange(resultsCount30?.length || 0, resultsCountPrev?.length || 0),
+        value: totalAssessmentsN,
+        delta: percentChange(assessmentsCount30?.length || 0, assessmentsCountPrev?.length || 0),
       },
       questions: { value: totalQuestionsN, delta: percentChange(questionsRecent?.length || 0, totalQuestionsN - (questionsRecent?.length || 0)) },
       documents: { value: totalDocuments || 0, delta: percentChange(docsRecent?.length || 0, (totalDocuments || 0) - (docsRecent?.length || 0)) },
@@ -603,13 +677,20 @@ export async function getCommandCenter(req: AuthRequest, res: Response): Promise
       revenueThisMonth: Math.round((payments || []).filter((p) => p.status === 'success' && monthKey(p.created_at) === monthKey(new Date().toISOString())).reduce((sum, p) => sum + (p.amount || 0), 0)),
     };
 
-    // Student activity series (attempts + distinct active students per day)
+    // Student activity series (attempts + distinct active students per day: quizzes + assessments)
     const buckets = buildDayBuckets(range);
     for (const r of resultsForActivity || []) {
       const date = (r.completed_at || '').slice(0, 10);
       if (buckets[date]) {
         buckets[date].attempts++;
         if (r.user_id) buckets[date].students.add(r.user_id);
+      }
+    }
+    for (const a of assessmentsForActivity || []) {
+      const date = (a.created_at || '').slice(0, 10);
+      if (buckets[date]) {
+        buckets[date].attempts++;
+        if (a.user_id) buckets[date].students.add(a.user_id);
       }
     }
     const activity = Object.entries(buckets).map(([date, v]) => ({

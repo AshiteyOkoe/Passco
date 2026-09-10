@@ -127,7 +127,7 @@ export default function AssessmentHistory() {
     const labels: { key: string; label: string; clear: () => void }[] = [];
     if (filterClass !== 'all') labels.push({ key: 'class', label: CLASS_META[filterClass as ClassLevel]?.label ?? filterClass, clear: () => setFilterClass('all') });
     if (filterSubject !== 'all') labels.push({ key: 'subject', label: SUBJECT_META[filterSubject as SubjectId]?.label ?? filterSubject, clear: () => setFilterSubject('all') });
-    if (filterType !== 'all') labels.push({ key: 'type', label: filterType === 'mock' ? 'Mock Test' : 'Examination', clear: () => setFilterType('all') });
+    if (filterType !== 'all') labels.push({ key: 'type', label: filterType === 'mock' ? 'Mock Test' : filterType === 'likely-bece' ? 'Likely BECE' : 'Examination', clear: () => setFilterType('all') });
     return labels;
   }, [filterClass, filterSubject, filterType]);
 
@@ -289,6 +289,7 @@ export default function AssessmentHistory() {
                       <option value="all">All Types</option>
                       <option value="mock">Mock Test</option>
                       <option value="examination">Examination</option>
+                      <option value="likely-bece">Likely BECE</option>
                     </select>
                     <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                   </div>
@@ -382,7 +383,7 @@ export default function AssessmentHistory() {
                           )}
                           <span className="text-slate-300 dark:text-slate-600">·</span>
                           <span className="text-sm capitalize text-slate-600 dark:text-slate-400">
-                            {entry.assessmentType === 'mock' ? 'Mock Test' : entry.assessmentType === 'examination' ? 'Examination' : 'Assessment'}
+                            {entry.assessmentType === 'mock' ? 'Mock Test' : entry.assessmentType === 'examination' ? 'Examination' : entry.assessmentType === 'likely-bece' ? 'Likely BECE' : 'Assessment'}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">

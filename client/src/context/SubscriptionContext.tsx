@@ -51,15 +51,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
   }, [authLoading, user, refresh]);
 
-  const effectivePlan = data?.effectivePlan || 'free';
-  const isPremium = effectivePlan !== 'free';
+  const effectivePlan = user?.role === 'admin' ? 'premium' : data?.effectivePlan || 'free';
+  const isPremium = user?.role === 'admin' || effectivePlan !== 'free';
 
   const hasFeature = useCallback(
     (feature: PremiumFeatureKey): boolean => {
+      if (user?.role === 'admin') return true;
       if (effectivePlan !== 'free') return true;
       return !!data?.planLimits?.[feature];
     },
-    [data, effectivePlan]
+    [data, effectivePlan, user]
   );
 
   return (

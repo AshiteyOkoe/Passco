@@ -1,9 +1,32 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { supabase } from '../config/supabase';
+import { resolveAnswerToText } from '../utils/questionNormalize';
 
 function normalizeText(text: string): string {
-  return text.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s+\-*/=<>()[\]{}.,!?%^_:;@&$#~|']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeTrueFalseAnswer(value: unknown): unknown {
+  if (typeof value === 'boolean') return value;
+  const s = String(value ?? '').trim().toLowerCase();
+  if (s === 'true' || s === '1' || s === 't' || s === 'yes') return true;
+  if (s === 'false' || s === '0' || s === 'f' || s === 'no') return false;
+  return value;
+}
+
+function normalizeCorrectAnswer(q: { type?: string; options?: unknown[]; correctAnswer?: unknown }): unknown {
+  const raw = String(q.correctAnswer ?? '').trim();
+  if (q.type === 'true-false') return normalizeTrueFalseAnswer(q.correctAnswer);
+  if (Array.isArray(q.options) && q.options.length > 0) {
+    const resolved = resolveAnswerToText(q.options as string[], raw);
+    if (resolved.ok) return resolved.value;
+  }
+  return q.correctAnswer;
 }
 
 const FUZZY_DUPLICATE_SCAN_LIMIT = 3000;
@@ -254,7 +277,7 @@ export async function saveBulkQuestions(req: AuthRequest, res: Response): Promis
         question: q.question,
         type: q.type || 'multiple-choice',
         options: q.type === 'multiple-choice' ? q.options : [],
-        correct_answer: q.correctAnswer,
+        correct_answer: normalizeCorrectAnswer(q),
         explanation: q.explanation || '',
         difficulty: q.difficulty || 'intermediate',
         topic: (q.topic as string) || (q.subject as string) || 'General',

@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
-import { createOTP, verifyOTP, sendOTPEmail } from '../utils/otp';
+import { createOTP, verifyOTP, sendOTPEmail, smtpConfigured } from '../utils/otp';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../middleware/auth';
 import { grantTrial } from '../services/subscriptionService';
@@ -56,20 +56,53 @@ export async function sendOTP(req: AuthRequest, res: Response): Promise<void> {
     }
 
     const code = await createOTP(email);
+
+    // SMTP unavailable: signal it to the client. The code is ONLY exposed in
+    // non-production environments to keep local dev sign-ups working.
+    if (!smtpConfigured()) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('Send OTP error: SMTP is not configured. To deliver verification codes, set SMTP_HOST/SMTP_USER/SMTP_PASS and a verified sender.');
+        res.status(503).json({
+          message: 'We could not send a verification email right now. Please check your email address and try again in a few minutes.',
+          sent: false,
+          configured: false,
+        });
+        return;
+      }
+      console.warn('[dev] SMTP not configured - returning code for local sign-up.');
+      res.json({
+        message: 'Email delivery is not configured in this environment, so your verification code is shown below.',
+        sent: false,
+        configured: false,
+        code,
+      });
+      return;
+    }
+
     const { sent, error } = await sendOTPEmail(email, code);
 
-    // Option A fallback: expose the code whenever the email did NOT actually send,
-    // so signup always completes. Kept secret only when delivery succeeded in prod.
-    const exposeCode = !sent || process.env.NODE_ENV !== 'production';
+    if (sent) {
+      res.json({ message: 'Verification code sent to your email', sent: true, configured: true });
+      return;
+    }
 
-    const message = sent
-      ? 'Verification code sent to your email'
-      : 'Your verification code is shown below. Email delivery is temporarily unavailable.';
+    // Delivery failed.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('Send OTP error:', error);
+      res.status(503).json({
+        message: 'We could not send the verification email right now. The email address may be incorrect, or our mail service is temporarily unavailable. Please try again in a few minutes.',
+        sent: false,
+        configured: true,
+      });
+      return;
+    }
 
+    console.warn('[dev] SMTP send failed - returning code for local sign-up:', error);
     res.json({
-      message,
-      ...(exposeCode ? { code } : {}),
-      ...(error ? { smtpError: error } : {}),
+      message: 'Email delivery temporarily failed in this environment, so your verification code is shown below.',
+      sent: false,
+      configured: true,
+      code,
     });
   } catch (error) {
     console.error('Send OTP error:', error);

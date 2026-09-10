@@ -13,6 +13,7 @@ import {
   Trophy,
   ClipboardList,
   Award,
+  Star,
 } from 'lucide-react';
 
 export interface BankQuestion {
@@ -23,11 +24,12 @@ export interface BankQuestion {
   correctAnswer: string | boolean;
   subject: string;
   explanation: string;
+  difficulty?: DifficultyLevel;
 }
 
 export type JHSCategory = 'jhs1' | 'jhs2' | 'jhs3';
 export type ClassLevel = JHSCategory;
-export type AssessmentType = 'mock' | 'examination';
+export type AssessmentType = 'mock' | 'examination' | 'likely-bece';
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'expert';
 export type JHSSubjectId = 'mathematics' | 'science' | 'english' | 'social-studies' | 'ict' | 'rme' | 'creative-arts' | 'career-tech';
 export type SubjectId = JHSSubjectId;
@@ -50,8 +52,9 @@ export const SUBJECT_META: Record<SubjectId, { label: string; icon: LucideIcon; 
 };
 
 export const ASSESSMENT_META: Record<AssessmentType, { label: string; questionCount: number; timeLimit: number; description: string; icon: LucideIcon }> = {
-  mock: { label: 'Mock Test', questionCount: 20, timeLimit: 900, description: 'Practice test with 20 questions and a timed environment', icon: ClipboardList },
-  examination: { label: 'Examination', questionCount: 50, timeLimit: 3000, description: 'Full examination with 50 questions under strict timing', icon: Award },
+  mock: { label: 'Mock Test', questionCount: 10, timeLimit: 420, description: 'Practice test with 10 questions and a 7-minute timer', icon: ClipboardList },
+  examination: { label: 'Examination', questionCount: 20, timeLimit: 900, description: 'Examination with 20 questions under a 15-minute timer', icon: Award },
+  'likely-bece': { label: 'Likely BECE', questionCount: 50, timeLimit: 3000, description: '50 likely BECE questions with a 50-minute countdown', icon: Star },
 };
 
 export const CLASS_META: Record<ClassLevel, { label: string; description: string; icon: LucideIcon }> = {

@@ -21,6 +21,7 @@ interface Student {
   institution?: string;
   gradeLevel?: string;
   quizzesTaken: number;
+  assessmentsTaken: number;
   avgScore: number;
   documentsUploaded: number;
   createdAt: string;
@@ -36,24 +37,40 @@ interface StudentDetail {
     createdAt: string;
   };
   results: Array<{
-    _id: string;
-    quizId: string | { _id: string; title: string };
+    id: string;
+    quizTitle: string;
     score: number;
     totalQuestions: number;
     correctCount: number;
+    incorrectCount: number;
+    skippedCount: number;
+    timeTaken: number;
+    completedAt: string;
+  }>;
+  assessmentResults: Array<{
+    id: string;
+    subject: string;
+    percentage: number;
+    grade: string;
+    passed: boolean;
+    timeSpent: number;
+    totalQuestions: number;
+    assessmentType: string;
     completedAt: string;
   }>;
   documents: Array<{
     id: string;
-    originalName: string;
+    name: string;
     fileSize: number;
     status: string;
     createdAt: string;
   }>;
   stats: {
-    totalQuizzes: number;
-    averageScore: number;
-    totalDocuments: number;
+    documentsUploaded: number;
+    quizzesTaken: number;
+    assessmentsTaken: number;
+    questionsCreated: number;
+    avgScore: number;
   };
 }
 
@@ -104,9 +121,9 @@ export default function AdminAnalytics() {
   }, [studentId]);
 
   const handleExport = () => {
-    let csv = 'Student Name,Email,Institution,Grade Level,Quizzes Taken,Average Score,Documents Uploaded,Joined\n';
+    let csv = 'Student Name,Email,Institution,Grade Level,Quizzes Taken,Exams Taken,Average Score,Documents Uploaded,Joined\n';
     students.forEach((s) => {
-      csv += `"${s.name}","${s.email}","${s.institution || ''}","${s.gradeLevel || ''}",${s.quizzesTaken},${s.avgScore},${s.documentsUploaded},"${new Date(s.createdAt).toLocaleDateString()}"\n`;
+      csv += `"${s.name}","${s.email}","${s.institution || ''}","${s.gradeLevel || ''}",${s.quizzesTaken},${s.assessmentsTaken},${s.avgScore},${s.documentsUploaded},"${new Date(s.createdAt).toLocaleDateString()}"\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -171,7 +188,7 @@ export default function AdminAnalytics() {
           initial="hidden"
           animate="visible"
         >
-          <Metric icon={BarChart3} value={analytics.totalQuizzes} label="Total Quizzes" color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" />
+          <Metric icon={BarChart3} value={analytics.totalQuizzes} label="Total Quizzes & Exams" color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" />
           <Metric icon={TrendingUp} value={`${analytics.averageScore}%`} label="Average Score" color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" />
           <Metric icon={Users} value={students.length} label="Total Students" color="text-amber-500" bg="bg-amber-50 dark:bg-amber-500/10" />
           <Metric icon={Trophy} value={students.filter((s) => s.avgScore >= 75).length} label="Top Performers" color="text-violet-500" bg="bg-violet-50 dark:bg-violet-500/10" />
@@ -259,7 +276,7 @@ export default function AdminAnalytics() {
                   <Link to={`/admin/analytics?student=${s.id}`} className="truncate text-sm font-medium text-slate-800 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400">
                     {s.name}
                   </Link>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.quizzesTaken} quizzes · {s.institution || 'N/A'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.quizzesTaken} quizzes · {s.assessmentsTaken} exams</p>
                 </div>
                 <span className={cn(
                   'text-sm font-bold',
@@ -357,6 +374,10 @@ export default function AdminAnalytics() {
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">Quizzes</p>
                     </div>
                     <div className="text-center">
+                      <p className="text-sm font-bold text-slate-800 dark:text-white">{s.assessmentsTaken}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Exams</p>
+                    </div>
+                    <div className="text-center">
                       <p className={cn(
                         'text-sm font-bold',
                         s.avgScore >= 75 ? 'text-emerald-500' : s.avgScore >= 50 ? 'text-amber-500' : 'text-rose-500'
@@ -398,15 +419,11 @@ export default function AdminAnalytics() {
 }
 
 function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () => void }) {
-  const { student, results, documents, stats } = detail;
+  const { student, results, assessmentResults, documents, stats } = detail;
 
   const quizPagination = usePagination(results, 10);
+  const examsPagination = usePagination(assessmentResults, 10);
   const documentsPagination = usePagination(documents, 10);
-
-  const quizTitle = (qId: string | { _id: string; title: string }) => {
-    if (typeof qId === 'object' && qId !== null) return qId.title;
-    return 'Quiz';
-  };
 
   return (
     <div className="p-4 sm:p-6">
@@ -446,14 +463,15 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
       </motion.div>
 
       <motion.div
-        className="mb-6 grid grid-cols-3 gap-3"
+        className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
         variants={stagger}
         initial="hidden"
         animate="visible"
       >
-        <StatMini icon={BarChart3} value={stats.totalQuizzes} label="Quizzes Taken" color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" />
-        <StatMini icon={TrendingUp} value={`${stats.averageScore}%`} label="Average Score" color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" />
-        <StatMini icon={FileText} value={stats.totalDocuments} label="Documents" color="text-blue-500" bg="bg-blue-50 dark:bg-blue-500/10" />
+        <StatMini icon={BarChart3} value={stats.quizzesTaken} label="Quizzes Taken" color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" />
+        <StatMini icon={BookOpen} value={stats.assessmentsTaken} label="Exams" color="text-violet-500" bg="bg-violet-50 dark:bg-violet-500/10" />
+        <StatMini icon={TrendingUp} value={`${stats.avgScore}%`} label="Average Score" color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" />
+        <StatMini icon={FileText} value={stats.documentsUploaded} label="Documents" color="text-blue-500" bg="bg-blue-50 dark:bg-blue-500/10" />
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -475,7 +493,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
             <div className="space-y-3">
               {quizPagination.pageItems.map((r, i) => (
                 <motion.div
-                  key={r._id}
+                  key={r.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05, duration: 0.3 }}
@@ -493,7 +511,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800 dark:text-white">{quizTitle(r.quizId)}</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-white">{r.quizTitle}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {r.correctCount}/{r.totalQuestions} correct · {new Date(r.completedAt).toLocaleDateString()}
                     </p>
@@ -545,7 +563,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800 dark:text-white">{doc.originalName}</p>
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-white">{doc.name}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {(doc.fileSize / 1024).toFixed(1)} KB · {new Date(doc.createdAt).toLocaleDateString()}
                     </p>
@@ -572,6 +590,69 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
           />
         </motion.div>
 
+        <motion.div
+          className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+          variants={slideUp}
+          initial="hidden"
+          animate="visible"
+        >
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+            <BookOpen className="h-4 w-4 text-violet-500" /> Exam Results
+          </h3>
+          {assessmentResults.length === 0 ? (
+            <div className="flex flex-col items-center py-8">
+              <BookOpen className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">No exam results yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {examsPagination.pageItems.map((a, i) => (
+                <motion.div
+                  key={a.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.3 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                    a.percentage >= 75 ? 'bg-emerald-100 dark:bg-emerald-500/10' : a.percentage >= 50 ? 'bg-amber-100 dark:bg-amber-500/10' : 'bg-rose-100 dark:bg-rose-500/10'
+                  )}>
+                    <span className={cn(
+                      'text-sm font-bold',
+                      a.percentage >= 75 ? 'text-emerald-600 dark:text-emerald-400' : a.percentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                    )}>
+                      {a.percentage}%
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-white">
+                      {a.subject} {a.assessmentType === 'trial' ? 'Trial' : ''}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Grade {a.grade || '—'} · {new Date(a.completedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                    a.passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
+                  )}>
+                    {a.passed ? 'Passed' : 'Failed'}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          )}
+          <Pagination
+            page={examsPagination.page}
+            totalPages={examsPagination.totalPages}
+            totalItems={assessmentResults.length}
+            perPage={10}
+            onPageChange={examsPagination.goTo}
+            className="mt-5"
+          />
+        </motion.div>
+
         {results.length > 0 && (
           <motion.div
             className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 lg:col-span-2"
@@ -585,7 +666,7 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
             <div className="flex items-end gap-2 overflow-x-auto pb-2">
               {results.slice().reverse().map((r, i) => (
                 <motion.div
-                  key={r._id}
+                  key={r.id}
                   className="flex flex-col items-center gap-1"
                   style={{ minWidth: '40px' }}
                   initial={{ opacity: 0, y: 15 }}

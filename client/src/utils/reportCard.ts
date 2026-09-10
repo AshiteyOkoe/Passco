@@ -65,6 +65,37 @@ export interface ReportSubjectRow {
   remark: string;
 }
 
+export interface ReportBeceSubject {
+  subjectKey: SubjectId;
+  label: string;
+  attempts: number;
+  bestScore: number;
+  bestGrade: string;
+  passed: boolean;
+}
+
+export interface ReportBeceEligibilityRequirement {
+  key: string;
+  label: string;
+  current: number;
+  target: number;
+  met: boolean;
+}
+
+export interface ReportBeceEligibility {
+  eligible: boolean;
+  requirements: ReportBeceEligibilityRequirement[];
+}
+
+export interface ReportBece {
+  attempts: number;
+  bestScore: number;
+  bestGrade: string;
+  passed: boolean;
+  subjects: ReportBeceSubject[];
+  eligibility: ReportBeceEligibility;
+}
+
 export interface ReportData {
   meta: {
     academicYearLabel: string;
@@ -128,6 +159,7 @@ export interface ReportData {
     isSystem: boolean;
   };
   recommendations: string[];
+  bece?: ReportBece;
   overall: {
     score: number;
     grade: string;
@@ -297,6 +329,108 @@ export function defaultThresholds(): ReportThresholds {
   return { pass: 50, improve: 60, strength: 75 };
 }
 
+// ---------- BECE helpers ----------
+
+function isMockType(type: string): boolean {
+  const t = type.toLowerCase();
+  return t === 'mock' || t.includes('mock');
+}
+
+function isExamType(type: string): boolean {
+  const t = type.toLowerCase();
+  return t === 'examination' || (t.includes('exam') && !isBeceType(type));
+}
+
+function isBeceType(type: string): boolean {
+  const t = type.toLowerCase();
+  return t === 'likely-bece' || t === 'bece' || t.includes('bece');
+}
+
+const BECE_SUBJECT_TARGET = 8;
+const BECE_MIN_AVG = 70;
+
+export function computeBeceEligibilityFromList(list: ReportAssessment[]): ReportBeceEligibility {
+  const passedMocks = new Set(
+    list.filter((a) => a.passed && isMockType(a.assessmentType)).map((a) => a.subjectKey)
+  ).size;
+  const passedExams = new Set(
+    list.filter((a) => a.passed && isExamType(a.assessmentType)).map((a) => a.subjectKey)
+  ).size;
+  const scores = list.map((a) => a.percentage).filter((n) => Number.isFinite(n));
+  const avg = scores.length > 0 ? Math.round(scores.reduce((s, n) => s + n, 0) / scores.length) : 0;
+
+  const requirements: ReportBeceEligibilityRequirement[] = [
+    {
+      key: 'passedMocks',
+      label: 'Passed mocks across subjects',
+      current: passedMocks,
+      target: BECE_SUBJECT_TARGET,
+      met: passedMocks >= BECE_SUBJECT_TARGET,
+    },
+    {
+      key: 'passedExams',
+      label: 'Passed examinations across subjects',
+      current: passedExams,
+      target: BECE_SUBJECT_TARGET,
+      met: passedExams >= BECE_SUBJECT_TARGET,
+    },
+    {
+      key: 'averageScore',
+      label: 'Average score',
+      current: avg,
+      target: BECE_MIN_AVG,
+      met: avg >= BECE_MIN_AVG,
+    },
+  ];
+
+  return {
+    eligible: requirements.every((r) => r.met),
+    requirements,
+  };
+}
+
+function buildBeceBlock(
+  completed: ReportAssessment[],
+  fullList: ReportAssessment[],
+  passThreshold: number,
+  gradeConfig: ReportGradeRow[]
+): ReportBece | null {
+  const beceList = completed.filter((a) => isBeceType(a.assessmentType));
+  if (beceList.length === 0) return null;
+
+  const bestScore = Math.max(...beceList.map((a) => a.percentage));
+  const bestGrade = gradeFor(bestScore, gradeConfig).grade;
+
+  const bySubject = new Map<SubjectId, ReportAssessment[]>();
+  beceList.forEach((a) => {
+    const rows = bySubject.get(a.subjectKey) || [];
+    rows.push(a);
+    bySubject.set(a.subjectKey, rows);
+  });
+
+  const subjects: ReportBeceSubject[] = SUBJECT_ORDER.filter((key) => bySubject.has(key)).map((key) => {
+    const rows = bySubject.get(key)!;
+    const top = Math.max(...rows.map((r) => r.percentage));
+    return {
+      subjectKey: key,
+      label: SUBJECT_META[key].label,
+      attempts: rows.length,
+      bestScore: top,
+      bestGrade: gradeFor(top, gradeConfig).grade,
+      passed: top >= passThreshold,
+    };
+  });
+
+  return {
+    attempts: beceList.length,
+    bestScore,
+    bestGrade,
+    passed: bestScore >= passThreshold,
+    subjects,
+    eligibility: computeBeceEligibilityFromList(fullList),
+  };
+}
+
 export function deriveStudentId(userId: string): string {
   const hex = (userId || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase();
   return `PASSCO-${hex || '000000'}`;
@@ -383,6 +517,7 @@ export function buildReportData(opts: {
 }): ReportData {
   const list = filterByPeriod(opts.assessments, opts.year, opts.term);
   const completed = list.filter((a) => a.answeredQuestions > 0 || a.percentage > 0);
+  const bece = buildBeceBlock(completed, opts.assessments, opts.thresholds.pass || 50, opts.gradeConfig);
 
   const range = termRange(opts.year, opts.term);
   const issued = opts.dateIssued || Date.now();
@@ -591,6 +726,7 @@ export function buildReportData(opts: {
     achievements,
     remark,
     recommendations: recs.slice(0, 6),
+    bece: bece ?? undefined,
     overall: { score: overallScore, grade: gradeRow.grade, remark: overallRemark, status },
   };
 }

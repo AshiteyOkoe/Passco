@@ -19,9 +19,12 @@ import {
   Navigation,
   MoreHorizontal,
 } from 'lucide-react';
-import { getQuestions, shuffleArray, ASSESSMENT_META, ClassLevel, AssessmentType, BankQuestion } from '../data/questionBank';
+import { getQuestions, shuffleArray, ASSESSMENT_META, ClassLevel, AssessmentType, BankQuestion, DifficultyLevel } from '../data/questionBank';
 import { saveAssessmentResult, saveAssessmentResultKeepalive, getApprovedBankQuestions, logAttemptEvent, reportQuestion } from '../services/api';
 import SubscriptionGate from '../components/SubscriptionGate';
+import { useBeceEligibility } from '../hooks/useBeceEligibility';
+import { useToast } from '../components/toast/ToastProvider';
+import { composeAssessment, ASSESSMENT_MIX } from '../utils/assessmentMixer';
 import { cn } from '../utils';
 import { cardFlip, fadeUp, bounceIn } from '../utils/animations';
 
@@ -72,6 +75,30 @@ interface AssessmentComputed {
   wrongCount: number;
 }
 
+function normalizeTrueFalseAnswer(value: unknown): string | null {
+  if (typeof value === 'boolean') return String(value);
+  const s = String(value ?? '').trim().toLowerCase();
+  if (s === 'true' || s === '1' || s === 't' || s === 'yes') return 'true';
+  if (s === 'false' || s === '0' || s === 'f' || s === 'no') return 'false';
+  return null;
+}
+
+function resolveCorrectAnswerText(q: BankQuestion): string {
+  const raw = String(q.correctAnswer ?? '').trim();
+  if (q.type === 'true-false') {
+    return normalizeTrueFalseAnswer(q.correctAnswer) ?? raw.toLowerCase();
+  }
+  if (q.options?.length) {
+    const exact = q.options.find((o) => o.trim().toLowerCase() === raw.toLowerCase());
+    if (exact !== undefined) return exact.trim();
+  }
+  if (/^[A-D]$/i.test(raw) && q.options?.length) {
+    const optionIndex = raw.toUpperCase().charCodeAt(0) - 65;
+    return q.options?.[optionIndex]?.trim() ?? raw;
+  }
+  return raw;
+}
+
 function scoreAssessment(
   questions: BankQuestion[],
   answers: Map<string, AssessmentAnswer>
@@ -79,14 +106,14 @@ function scoreAssessment(
   const scoreResults: ScoreResult[] = questions.map((q) => {
     const answer = answers.get(q.id);
     const userAnswer = answer?.selectedOption ?? null;
+    const correctAnswer = resolveCorrectAnswerText(q);
     let resolvedAnswer: string;
     if (q.type === 'true-false') {
       resolvedAnswer = userAnswer === 'True' ? 'true' : 'false';
     } else {
       const optionIndex = userAnswer ? userAnswer.charCodeAt(0) - 65 : -1;
-      resolvedAnswer = q.options?.[optionIndex] ?? '';
+      resolvedAnswer = q.options?.[optionIndex]?.trim() ?? '';
     }
-    const correctAnswer = String(q.correctAnswer);
     const isCorrect = userAnswer !== null && resolvedAnswer === correctAnswer;
     const marksPossible = 1;
     return {
@@ -157,6 +184,7 @@ function TakeAssessment() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const toast = useToast();
 
   // On a fresh navigation the config comes from location.state; after a refresh
   // it's lost, so fall back to the persisted config to keep the quiz open.
@@ -177,17 +205,48 @@ function TakeAssessment() {
     return fromLocation as LocationState;
   });
 
-  const [backendQuestions, setBackendQuestions] = useState<BankQuestion[]>([]);
+  const beceGateEnabled = state?.assessmentType === 'likely-bece';
+  const { eligible: beceAchieved, usageLocked: beceUsageLocked } = useBeceEligibility(beceGateEnabled);
+
+  useEffect(() => {
+    if (state?.assessmentType !== 'likely-bece') return;
+    if (beceUsageLocked) {
+      toast.error('BECE attempts used for this window', 'You can retake Likely BECE once the 72-hour window reopens.');
+      navigate('/assessment/setup');
+      return;
+    }
+    if (beceAchieved === false) {
+      toast.error('Requirements not met', 'Likely BECE is locked until you pass a mock and an examination in every subject, and reach a 70% average score.');
+      navigate('/assessment/setup');
+    }
+  }, [state, beceAchieved, beceUsageLocked, navigate, toast]);
+
+  const [backendByDifficulty, setBackendByDifficulty] = useState<Record<DifficultyLevel, BankQuestion[]>>({
+    beginner: [],
+    intermediate: [],
+    expert: [],
+  });
 
   useEffect(() => {
     if (!state) return;
-    const params: Record<string, string | number> = {};
-    if (state.subject) params.subject = state.subject;
-    if (state.classLevel) params.classLevel = state.classLevel;
-    params.count = Math.max(ASSESSMENT_META[state.assessmentType].questionCount, 30);
-    getApprovedBankQuestions(params)
-      .then(({ questions }) => {
-        const mapped: BankQuestion[] = questions.map(q => ({
+    const mix = ASSESSMENT_MIX[state.assessmentType];
+    const difficultyKeys = (Object.keys(mix) as DifficultyLevel[]).filter((d) => mix[d] > 0);
+
+    Promise.all(
+      difficultyKeys.map((difficulty) => {
+        const params: Record<string, string | number> = {};
+        if (state.subject) params.subject = state.subject;
+        if (state.classLevel) params.classLevel = state.classLevel;
+        params.difficulty = difficulty;
+        params.count = mix[difficulty] + 5;
+        return getApprovedBankQuestions(params)
+          .then(({ questions }) => ({ difficulty, questions }))
+          .catch(() => ({ difficulty, questions: [] }));
+      })
+    ).then((results) => {
+      const next: Record<DifficultyLevel, BankQuestion[]> = { beginner: [], intermediate: [], expert: [] };
+      for (const r of results) {
+        next[r.difficulty] = r.questions.map((q) => ({
           id: q.id,
           question: q.question,
           type: q.type as BankQuestion['type'],
@@ -195,10 +254,11 @@ function TakeAssessment() {
           correctAnswer: q.correctAnswer,
           subject: q.subject || state.subject || '',
           explanation: q.explanation,
+          difficulty: q.difficulty as DifficultyLevel,
         }));
-        setBackendQuestions(mapped);
-      })
-      .catch(() => {});
+      }
+      setBackendByDifficulty(next);
+    });
   }, [state]);
 
   const questions = useMemo(() => {
@@ -206,8 +266,17 @@ function TakeAssessment() {
     const targetCount = ASSESSMENT_META[state.assessmentType].questionCount;
     const staticQs = getQuestions(state.classLevel, targetCount, state.subject);
 
-    // Uploaded (approved) questions are primary; static questions fill any shortfall.
-    const combined = dedupeQuestions([...backendQuestions, ...staticQs]);
+    // Difficulty-weighted mix (backend by difficulty + static filler). Falls back
+    // to the legacy all-sources shuffle if weighting couldn't reach the target.
+    const weighted = composeAssessment(state.assessmentType, backendByDifficulty, staticQs, targetCount);
+    if (weighted.length >= targetCount) return weighted;
+
+    const combined = dedupeQuestions([
+      ...backendByDifficulty.beginner,
+      ...backendByDifficulty.intermediate,
+      ...backendByDifficulty.expert,
+      ...staticQs,
+    ]);
 
     // Always reshuffle so every user (and every re-entry/refresh) gets a new order.
     const shuffled = shuffleArray(combined);
@@ -217,7 +286,7 @@ function TakeAssessment() {
       result.push(shuffled[i % shuffled.length]);
     }
     return result.filter(Boolean);
-  }, [state, backendQuestions]);
+  }, [state, backendByDifficulty]);
 
   const meta = useMemo(() => {
     if (!state) return null;
@@ -249,13 +318,11 @@ function TakeAssessment() {
 
   const timerRef = useRef<HTMLDivElement>(null);
   const navigatorRef = useRef<HTMLDivElement>(null);
-  const initialLoadDone = useRef(false);
   const answersRef = useRef<Map<string, AssessmentAnswer>>(new Map());
   const timeLeftRef = useRef(meta?.timeLimit ?? 600);
   const questionsRef = useRef<BankQuestion[]>(questions);
   const metaRef = useRef(meta);
   const stateRef = useRef(state);
-  const storageKeyRef = useRef(storageKey);
   const userRef = useRef(user);
   const isSubmittedRef = useRef(isSubmitted);
   const isAbandoningRef = useRef(isAbandoning);
@@ -266,7 +333,6 @@ function TakeAssessment() {
   useEffect(() => { questionsRef.current = questions; }, [questions]);
   useEffect(() => { metaRef.current = meta; }, [meta]);
   useEffect(() => { stateRef.current = state; }, [state]);
-  useEffect(() => { storageKeyRef.current = storageKey; }, [storageKey]);
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { isSubmittedRef.current = isSubmitted; }, [isSubmitted]);
   useEffect(() => { isAbandoningRef.current = isAbandoning; }, [isAbandoning]);
@@ -316,36 +382,6 @@ function TakeAssessment() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [isSubmitted, isAbandoning]);
-
-  useEffect(() => {
-    if (initialLoadDone.current || !storageKey) return;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const restored = new Map<string, AssessmentAnswer>(parsed.answers || []);
-        setAnswers(restored);
-        setCurrentIndex(parsed.currentIndex || 0);
-        if (parsed.timeLeft > 0) {
-          setTimeLeft(parsed.timeLeft);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    initialLoadDone.current = true;
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (!storageKey || isSubmitted) return;
-    const toStore = {
-      answers: Array.from(answers.entries()),
-      currentIndex,
-      timeLeft,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(storageKey, JSON.stringify(toStore));
-  }, [answers, currentIndex, timeLeft, storageKey, isSubmitted]);
 
   const handleSubmit = useCallback(() => {
     if (isSubmitted) return;
@@ -433,14 +469,10 @@ function TakeAssessment() {
       answers: scoreResults,
     }).catch(() => {});
 
-    if (storageKey) {
-      localStorage.removeItem(storageKey);
-    }
-
     setTimeout(() => {
       navigate('/assessment/result', { state: resultPayload });
     }, 800);
-  }, [answers, questions, meta, timeLeft, state, storageKey, navigate, isSubmitted]);
+  }, [answers, questions, meta, timeLeft, state, navigate, isSubmitted]);
 
   const persistAbandonedAssessment = useCallback((navigateAfter: boolean) => {
     if (leaveRecordedRef.current) return;
@@ -530,10 +562,6 @@ function TakeAssessment() {
       answers: enrichedAnswers,
       abandoned: true,
     };
-
-    if (storageKeyRef.current) {
-      localStorage.removeItem(storageKeyRef.current);
-    }
 
     if (navigateAfter) {
       setIsAbandoning(true);
@@ -712,8 +740,8 @@ function TakeAssessment() {
     const q = questions[index];
     if (!q) return 'unanswered';
     const answer = answers.get(q.id);
-    if (answer?.flagged) return 'flagged';
     if (answer?.selectedOption !== null) return 'answered';
+    if (answer?.flagged) return 'flagged';
     return 'unanswered';
   };
 
@@ -848,13 +876,10 @@ function TakeAssessment() {
                         key={index}
                         onClick={() => goToQuestion(index)}
                         className={cn(
-                          'relative w-10 h-10 rounded-xl text-sm font-medium transition-all duration-200',
+                          'relative w-10 h-10 rounded-xl text-sm font-medium transition-colors duration-200',
                           isCurrent && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900',
-                          status === 'answered' && !isCurrent && 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
-                          status === 'unanswered' && !isCurrent && 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
-                          status === 'flagged' && !isCurrent && 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-                          isCurrent && 'bg-blue-600 text-white',
-                          'hover:scale-105 active:scale-95'
+                          status === 'answered' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white',
+                          'hover:brightness-95 active:scale-95'
                         )}
                       >
                         {index + 1}
@@ -876,14 +901,14 @@ function TakeAssessment() {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded bg-slate-300 dark:bg-slate-600" />
+                      <div className="w-3 h-3 rounded bg-rose-500" />
                       <span className="text-slate-600 dark:text-slate-400">Unanswered</span>
                     </div>
                     <span className="font-medium text-slate-700 dark:text-slate-300">{unansweredCount}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded bg-amber-500" />
+                      <Flag className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="text-slate-600 dark:text-slate-400">Flagged</span>
                     </div>
                     <span className="font-medium text-slate-700 dark:text-slate-300">{flaggedCount}</span>
@@ -1119,12 +1144,9 @@ function TakeAssessment() {
                       key={index}
                       onClick={() => goToQuestion(index)}
                       className={cn(
-                        'relative w-10 h-10 rounded-xl text-sm font-medium transition-all duration-200',
+                        'relative w-10 h-10 rounded-xl text-sm font-medium transition-colors duration-200',
                         isCurrent && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900',
-                        status === 'answered' && !isCurrent && 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
-                        status === 'unanswered' && !isCurrent && 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
-                        status === 'flagged' && !isCurrent && 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
-                        isCurrent && 'bg-blue-600 text-white'
+                        status === 'answered' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
                       )}
                     >
                       {index + 1}
@@ -1146,14 +1168,14 @@ function TakeAssessment() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-slate-300 dark:bg-slate-600" />
+                    <div className="w-3 h-3 rounded bg-rose-500" />
                     <span className="text-slate-600 dark:text-slate-400">Unanswered</span>
                   </div>
                   <span className="font-semibold text-slate-700 dark:text-slate-300">{unansweredCount}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-amber-500" />
+                    <Flag className="w-3 h-3 text-amber-500 fill-amber-500" />
                     <span className="text-slate-600 dark:text-slate-400">Flagged</span>
                   </div>
                   <span className="font-semibold text-slate-700 dark:text-slate-300">{flaggedCount}</span>

@@ -74,7 +74,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
     setLoading(true);
     try {
       const res = await sendOTP(regEmail);
-      if ('code' in res) {
+      if (import.meta.env.DEV && 'code' in res) {
         setDevCode((res as { code: string }).code);
       }
       setOtpStep(true);
@@ -152,7 +152,7 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
     setError('');
     try {
       const res = await sendOTP(regEmail);
-      if ('code' in res) {
+      if (import.meta.env.DEV && 'code' in res) {
         setDevCode((res as { code: string }).code);
       }
     } catch {
@@ -319,12 +319,12 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                         We sent a 6-digit code to<br />
                         <span className="font-medium text-slate-700 dark:text-slate-300">{regEmail}</span>
                       </p>
-                      {devCode && (
-                        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 font-mono text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                          Verification code:{' '}
-                          <span className="font-bold tracking-widest">{devCode}</span>
-                        </p>
-                      )}
+{devCode && import.meta.env.DEV && (
+  <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 font-mono text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+    Verification code:{' '}
+    <span className="font-bold tracking-widest">{devCode}</span>
+  </p>
+)}
                     </div>
                     <div className="mb-4 flex justify-center gap-2" onPaste={handleOTPPaste}>
                       {otpCode.map((digit, i) => (

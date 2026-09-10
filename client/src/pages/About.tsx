@@ -161,7 +161,7 @@ function Vision() {
 
 const provides = [
   { icon: BookMarked, title: 'Eight Subjects', desc: 'Mathematics, Science, English Language, Social Studies, ICT, RME, Creative Arts and Career Technology.' },
-  { icon: Timer, title: 'Three Practice Modes', desc: 'Quiz (7 min), Mock Test (15 min) and full Examination (50 min) — mirroring real BECE-style conditions.', accent: 'text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-500/10' },
+  { icon: Timer, title: 'Four Practice Modes', desc: 'Mock Test (10 Qs · 7 min), Examination (20 Qs · 15 min) and Likely BECE (50 Qs · 50 min) — mirroring real BECE-style conditions.', accent: 'text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-500/10' },
   { icon: Zap, title: 'Instant Results', desc: 'Your score appears immediately after submission — percentage, grade from A+ to F, and pass or fail.', accent: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/10' },
   { icon: FileCheck2, title: 'Detailed Reviews', desc: 'A question-by-question breakdown with the correct answer and explanation for every item.' },
   { icon: TrendingUp, title: 'Progress Tracking', desc: 'Analytics, subject-wise performance, learning streaks, achievements and a weekly leaderboard.' },

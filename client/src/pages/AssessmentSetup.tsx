@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, GraduationCap, Trophy, Shield, ChevronRight, ChevronLeft, Clock, CheckCircle2, ArrowLeft, Sparkles, Lock, Gem } from 'lucide-react';
-import { CLASS_META, ASSESSMENT_META, SUBJECT_META, getSubjectQuestionCount, getSubjectsForClassLevel, type SubjectId, type ClassLevel, type AssessmentType } from '../data/questionBank';
+import { BookOpen, GraduationCap, Trophy, Shield, ChevronRight, ChevronLeft, Clock, CheckCircle2, ArrowLeft, Sparkles, Lock, Gem, Star } from 'lucide-react';
+import { CLASS_META, ASSESSMENT_META, SUBJECT_META, getSubjectsForClassLevel, type SubjectId, type ClassLevel, type AssessmentType } from '../data/questionBank';
 import { useSubscription } from '../context/SubscriptionContext';
+import { useBeceEligibility } from '../hooks/useBeceEligibility';
+import { useToast } from '../components/toast/ToastProvider';
+import CountdownTimer from '../components/CountdownTimer';
 
 const classIcons: Record<ClassLevel, React.ReactNode> = {
   jhs1: <BookOpen className="h-8 w-8" />,
@@ -20,6 +23,7 @@ const classDescriptions: Record<ClassLevel, string> = {
 const assessmentIcons: Record<AssessmentType, React.ReactNode> = {
   mock: <Shield className="h-8 w-8" />,
   examination: <Trophy className="h-8 w-8" />,
+  'likely-bece': <Star className="h-8 w-8" />,
 };
 
 const subjectColorMap: Record<string, { border: string; bg: string; text: string; ring: string; iconBg: string }> = {
@@ -45,15 +49,22 @@ const slideVariants = {
 
 export default function AssessmentSetup() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { hasFeature, isTrial, trialDaysLeft } = useSubscription();
+  const { eligible: beceAchieved, requirements: beceRequirements, usage: beceUsage, usageLocked: beceUsageLocked } = useBeceEligibility();
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [classLevel, setClassLevel] = useState<ClassLevel | null>(null);
   const [subject, setSubject] = useState<SubjectId | null>(null);
   const [assessmentType, setAssessmentType] = useState<AssessmentType | null>(null);
 
+  const hasBeceAchievement = beceAchieved !== false;
   const isTypeLocked = (type: AssessmentType): boolean =>
-    !hasFeature(type === 'mock' ? 'mocks' : 'examinations');
+    type === 'mock'
+      ? !hasFeature('mocks')
+      : type === 'likely-bece'
+        ? !hasFeature('examinations') || !hasBeceAchievement || beceUsageLocked
+        : !hasFeature('examinations');
 
   const handleNext = () => { if (currentStep < 3) { setDirection(1); setCurrentStep(p => p + 1); } };
   const handleBack = () => { if (currentStep > 1) { setDirection(-1); setCurrentStep(p => p - 1); } };
@@ -137,13 +148,11 @@ export default function AssessmentSetup() {
                   const meta = SUBJECT_META[subId];
                   const colors = subjectColorMap[meta.color] || subjectColorMap.blue;
                   const isSelected = subject === subId;
-                  const questionCount = classLevel ? getSubjectQuestionCount(classLevel, meta.label) : 0;
                   return (
                     <motion.button key={subId} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setSubject(subId)} className={`relative cursor-pointer rounded-2xl border-2 p-5 text-left transition-all duration-200 ${isSelected ? `${colors.border} ${colors.bg} ring-2 ${colors.ring}/50 shadow-lg` : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'}`}>
                       {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className={`h-5 w-5 ${colors.text}`} /></motion.div>}
                       <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${isSelected ? `${colors.iconBg}` : 'bg-slate-100 dark:bg-slate-700'}`}><meta.icon className="h-6 w-6" aria-hidden="true" /></div>
                       <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">{meta.label}</h3>
-                      <p className="mb-2 text-xs font-semibold text-slate-400 dark:text-slate-500">{questionCount} questions</p>
                       <p className={`text-xs font-medium ${isSelected ? colors.text : 'text-blue-500 dark:text-blue-400'}`}>Take Assessment</p>
                     </motion.button>
                   );
@@ -157,30 +166,59 @@ export default function AssessmentSetup() {
                   const meta = ASSESSMENT_META[type];
                   const isSelected = assessmentType === type;
                   const locked = isTypeLocked(type);
+                  const beceLockedByAchievement = type === 'likely-bece' && hasFeature('examinations') && beceAchieved === false;
+                  const beceLockedByUsage = type === 'likely-bece' && hasFeature('examinations') && beceAchieved !== false && beceUsageLocked;
+                  const isHot = type === 'likely-bece';
                   return (
                     <motion.button
                       key={type}
                       whileHover={locked ? { scale: 1 } : { scale: 1.03 }}
                       whileTap={locked ? { scale: 1 } : { scale: 0.97 }}
                       onClick={() => {
-                        if (locked) { navigate('/subscription'); return; }
+                        if (locked) {
+                          if (beceLockedByUsage) {
+                            toast.info('BECE attempts used for this window', 'You can retake Likely BECE once the 72-hour window reopens.');
+                            return;
+                          }
+                          if (beceLockedByAchievement) {
+                            toast.info('Requirements not met yet', 'Unlock Likely BECE by passing a mock and an examination in every subject, and reaching a 70% average score.');
+                            return;
+                          }
+                          navigate('/subscription');
+                          return;
+                        }
                         setAssessmentType(type);
                       }}
                       className={`relative cursor-pointer rounded-2xl border-2 p-6 text-left transition-all duration-200 ${
                         locked
                           ? 'border-slate-200 bg-white opacity-80 dark:border-slate-700 dark:bg-slate-800'
                           : isSelected
-                            ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-200 ring-2 ring-blue-400/50 dark:border-blue-400 dark:bg-blue-950/50 dark:shadow-blue-900/40'
-                            : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'
+                            ? isHot
+                              ? 'border-amber-500 bg-amber-50 shadow-lg shadow-amber-200 ring-2 ring-amber-400/50 dark:border-amber-400 dark:bg-amber-950/50 dark:shadow-amber-900/40'
+                              : 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-200 ring-2 ring-blue-400/50 dark:border-blue-400 dark:bg-blue-950/50 dark:shadow-blue-900/40'
+                            : isHot
+                              ? 'border-slate-200 bg-white shadow-sm hover:border-amber-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-amber-500/40'
+                              : 'border-slate-200 bg-white shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'
                       }`}
                     >
-                      {!locked && isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className="h-6 w-6 text-blue-500 dark:text-blue-400" /></motion.div>}
+                      {!locked && isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-3 top-3"><CheckCircle2 className={`h-6 w-6 ${isHot ? 'text-amber-500 dark:text-amber-400' : 'text-blue-500 dark:text-blue-400'}`} /></motion.div>}
                       {locked && (
                         <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-                          <Gem className="h-3 w-3" /> Premium
+                          {beceLockedByUsage ? (
+                            <><Lock className="h-3 w-3" /> {beceUsage?.used ?? 0}/{beceUsage?.limit ?? 2} used</>
+                          ) : beceLockedByAchievement ? (
+                            <><Lock className="h-3 w-3" /> Requirement</>
+                          ) : (
+                            <><Gem className="h-3 w-3" /> Premium</>
+                          )}
                         </div>
                       )}
-                      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${locked ? 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : isSelected ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                      {!locked && !isSelected && isHot && (
+                        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                          <Star className="h-3 w-3 fill-current" /> Likely
+                        </div>
+                      )}
+                      <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${locked ? 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : isSelected ? (isHot ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/60 dark:text-amber-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300') : isHot ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
                         {locked ? <Lock className="h-7 w-7" /> : assessmentIcons[type]}
                       </div>
                       <h3 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">{meta.label}</h3>
@@ -190,9 +228,39 @@ export default function AssessmentSetup() {
                         <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{meta.timeLimit / 60} min</span>
                       </div>
                       <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{meta.description}</p>
+                      {beceLockedByAchievement && (
+                        <div className="mt-3 space-y-2 rounded-xl bg-slate-100 p-3 dark:bg-slate-800/60">
+                          {beceRequirements.map((r) => (
+                            <div key={r.key} className="flex items-center justify-between text-xs">
+                              <span className="text-slate-600 dark:text-slate-300">{r.label}</span>
+                              <span className={r.met ? 'font-semibold text-emerald-600 dark:text-emerald-400' : 'font-semibold text-rose-500'}>
+                                {r.current}/{r.target}
+                                {r.met && <CheckCircle2 className="ml-1 inline h-3 w-3" />}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {beceLockedByUsage && (
+                        <div className="mt-3 rounded-xl bg-slate-100 p-3 dark:bg-slate-800/60">
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <span className="text-slate-600 dark:text-slate-300">Reopens in</span>
+                            <span className="font-semibold text-amber-600 dark:text-amber-400">
+                              <CountdownTimer until={beceUsage?.nextUnlockAt ?? ''} className="text-sm" />
+                            </span>
+                          </div>
+                          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                            You can take Likely BECE up to {beceUsage?.limit ?? 2} times per 72-hour window.
+                          </p>
+                        </div>
+                      )}
                       {locked && (
                         <p className="mt-3 text-xs font-medium text-amber-600 dark:text-amber-400">
-                          Requires a subscription{isTrial ? '' : ` — subscribe to keep using after your 3-day trial${trialDaysLeft > 0 ? ` (${trialDaysLeft} days left)` : ''} ends`}
+                          {beceLockedByUsage
+                            ? 'Reopens when the 72-hour window rolls over.'
+                            : beceLockedByAchievement
+                              ? 'Unlocks when you pass a mock and an examination in every subject, and reach a 70% average score.'
+                              : `Requires a subscription${isTrial ? '' : ` — subscribe to keep using after your 3-day trial${trialDaysLeft > 0 ? ` (${trialDaysLeft} days left)` : ''} ends`}`}
                         </p>
                       )}
                     </motion.button>

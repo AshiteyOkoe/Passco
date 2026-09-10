@@ -3,6 +3,122 @@ import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 import { getEffectivePlan, PLAN_LIMITS } from '../services/subscriptionService';
 
+const BECE_SUBJECT_TARGET = 8;
+const MIN_AVG_BECE = 70;
+const BECE_MAX_ATTEMPTS = 2;
+const BECE_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+interface BeceRequirement {
+  key: string;
+  label: string;
+  target: number;
+  current: number;
+  met: boolean;
+}
+
+export interface BeceUsageResult {
+  used: number;
+  limit: number;
+  nextUnlockAt: string | null;
+}
+
+export interface BeceEligibilityResult {
+  eligible: boolean;
+  requirements: BeceRequirement[];
+  usage: BeceUsageResult;
+}
+
+export async function checkBeceEligibility(userId: string): Promise<BeceEligibilityResult> {
+  const { data: results } = await supabase
+    .from('assessment_results')
+    .select('percentage, passed, assessment_type, subject')
+    .eq('user_id', userId)
+    .eq('abandoned', false);
+
+  const passedMocks = new Set(
+    (results || [])
+      .filter((r) => r.passed === true && r.assessment_type === 'mock' && r.subject)
+      .map((r) => r.subject)
+  ).size;
+  const passedExams = new Set(
+    (results || [])
+      .filter((r) => r.passed === true && r.assessment_type === 'examination' && r.subject)
+      .map((r) => r.subject)
+  ).size;
+  const scores = (results || [])
+    .map((r) => Number(r.percentage))
+    .filter((n) => !Number.isNaN(n));
+  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+  const mocksReq: BeceRequirement = {
+    key: 'passedMocks',
+    label: 'Passed mocks across subjects',
+    target: BECE_SUBJECT_TARGET,
+    current: passedMocks,
+    met: passedMocks >= BECE_SUBJECT_TARGET,
+  };
+  const examsReq: BeceRequirement = {
+    key: 'passedExams',
+    label: 'Passed examinations across subjects',
+    target: BECE_SUBJECT_TARGET,
+    current: passedExams,
+    met: passedExams >= BECE_SUBJECT_TARGET,
+  };
+  const avgReq: BeceRequirement = {
+    key: 'averageScore',
+    label: 'Average score',
+    target: MIN_AVG_BECE,
+    current: avgScore,
+    met: avgScore >= MIN_AVG_BECE,
+  };
+
+  const usage = await checkBeceUsage(userId);
+
+  return {
+    eligible: mocksReq.met && examsReq.met && avgReq.met,
+    requirements: [mocksReq, examsReq, avgReq],
+    usage,
+  };
+}
+
+export async function checkBeceUsage(userId: string): Promise<BeceUsageResult> {
+  const { data: results } = await supabase
+    .from('assessment_results')
+    .select('completed_at')
+    .eq('user_id', userId)
+    .eq('assessment_type', 'likely-bece');
+
+  const cutoff = new Date(Date.now() - BECE_WINDOW_MS).toISOString();
+  const withinWindow = (results || [])
+    .map((r) => String(r.completed_at || ''))
+    .filter((ts) => ts && ts >= cutoff)
+    .sort();
+
+  const used = withinWindow.length;
+  let nextUnlockAt: string | null = null;
+  if (used >= BECE_MAX_ATTEMPTS) {
+    const oldest = new Date(withinWindow[0]);
+    nextUnlockAt = new Date(oldest.getTime() + BECE_WINDOW_MS).toISOString();
+  }
+
+  return { used: Math.min(used, BECE_MAX_ATTEMPTS), limit: BECE_MAX_ATTEMPTS, nextUnlockAt };
+}
+
+export async function getBeceEligibility(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+    const eligibility = await checkBeceEligibility(userId);
+    res.json(eligibility);
+  } catch (error) {
+    console.error('Get BECE eligibility error:', error);
+    res.status(500).json({ message: 'Failed to fetch BECE eligibility' });
+  }
+}
+
 export async function saveAssessmentResult(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user?.id;
@@ -11,18 +127,40 @@ export async function saveAssessmentResult(req: AuthRequest, res: Response): Pro
       return;
     }
 
+    const assessmentType = (req.body as { assessmentType?: string }).assessmentType || '';
+
     if (req.user?.role === 'student') {
       const effective = await getEffectivePlan(userId);
       const limits = PLAN_LIMITS[effective.plan];
-      const assessmentType = (req.body as { assessmentType?: string }).assessmentType || '';
 
-      const feature = assessmentType === 'examination' ? 'examinations' : assessmentType === 'mock' ? 'mocks' : null;
+      const feature = assessmentType === 'mock' ? 'mocks' : assessmentType === 'quiz' ? null : 'examinations';
       if (feature && !limits[feature]) {
         res.status(403).json({
           message: `${assessmentType} assessments require an active subscription. Your free trial has ended or is not active.`,
           requiresPlan: 'premium',
         });
         return;
+      }
+
+      if (assessmentType === 'likely-bece') {
+        const eligibility = await checkBeceEligibility(userId);
+        if (!eligibility.eligible) {
+          res.status(403).json({
+            message: 'Likely BECE assessments are locked until you pass a mock and an examination in every subject and reach a 70% average score.',
+            requiresUnlock: 'bece',
+            eligibility,
+          });
+          return;
+        }
+
+        if (eligibility.usage.used >= eligibility.usage.limit) {
+          res.status(403).json({
+            message: 'Likely BECE is currently locked. You have used your attempts for this 72-hour window.',
+            requiresUnlock: 'bece-usage',
+            eligibility,
+          });
+          return;
+        }
       }
     }
 
@@ -34,7 +172,7 @@ export async function saveAssessmentResult(req: AuthRequest, res: Response): Pro
         user_id: userId,
         class_level: rest.classLevel,
         subject: rest.subject || '',
-        difficulty: rest.difficulty,
+        difficulty: rest.difficulty || 'intermediate',
         assessment_type: rest.assessmentType,
         total_questions: rest.totalQuestions,
         answered_questions: rest.answeredQuestions,

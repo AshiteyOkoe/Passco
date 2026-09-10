@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
+import { resolveAnswerToText } from '../utils/questionNormalize';
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const GEMINI_URL = (model: string, key: string) =>
@@ -254,16 +255,8 @@ function normalizeQuestion(raw: Record<string, unknown>, fallbackDifficulty: str
       correctAnswer = Boolean(raw.correctAnswer);
     } else {
       const ans = String(raw.correctAnswer ?? '').trim();
-      if (ans.length === 1 && /^[A-Da-d]$/.test(ans)) {
-        const idx = ans.toUpperCase().charCodeAt(0) - 65;
-        if (idx >= 0 && idx < options.length && options[idx]) {
-          correctAnswer = options[idx];
-        } else {
-          correctAnswer = ans;
-        }
-      } else {
-        correctAnswer = ans;
-      }
+      const resolved = resolveAnswerToText(options, ans);
+      correctAnswer = resolved.ok ? resolved.value : ans;
     }
   } else {
     const ans = raw.correctAnswer;

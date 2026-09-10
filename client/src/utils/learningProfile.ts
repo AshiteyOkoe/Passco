@@ -85,6 +85,7 @@ export function getSubjectMeta(subject: string) {
 
 export function getAssessmentTypeLabel(type: string): string {
   const t = (type || '').toLowerCase();
+  if (t === 'likely-bece' || t === 'likely') return 'Likely BECE';
   if (t === 'mock' || t.includes('mock')) return 'Mock';
   if (t === 'examination' || t.includes('exam')) return 'Exam';
   if (t.includes('quiz')) return 'Quiz';

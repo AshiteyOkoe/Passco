@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
 import { logAuditEvent } from '../services/auditService';
+import { resolveAnswerToText } from '../utils/questionNormalize';
 
 const SUBJECT_KEYS = ['mathematics', 'science', 'english', 'social-studies', 'ict', 'rme', 'creative-arts', 'career-tech'];
 
@@ -25,6 +26,24 @@ function normalizeSubject(value: string): string {
 
 function normalizeClass(value: string): string {
   return (value || '').toLowerCase().replace(/\s+/g, '');
+}
+
+function normalizeTrueFalseAnswer(value: unknown): unknown {
+  if (typeof value === 'boolean') return value;
+  const s = String(value ?? '').trim().toLowerCase();
+  if (s === 'true' || s === '1' || s === 't' || s === 'yes') return true;
+  if (s === 'false' || s === '0' || s === 'f' || s === 'no') return false;
+  return value;
+}
+
+function normalizeCorrectAnswer(type: string, options: unknown[] | undefined, correctAnswer: unknown): unknown {
+  const raw = String(correctAnswer ?? '').trim();
+  if (type === 'true-false') return normalizeTrueFalseAnswer(correctAnswer);
+  if (Array.isArray(options) && options.length > 0) {
+    const resolved = resolveAnswerToText(options as string[], raw);
+    if (resolved.ok) return resolved.value;
+  }
+  return correctAnswer;
 }
 
 async function fetchAllQuestionRows(): Promise<Array<{ subject: string; class_level: string }>> {
@@ -144,7 +163,7 @@ export async function createQuestion(req: AuthRequest, res: Response): Promise<v
         question,
         type,
         options: type === 'multiple-choice' ? options : [],
-        correct_answer: correctAnswer,
+        correct_answer: normalizeCorrectAnswer(type, type === 'multiple-choice' ? options : undefined, correctAnswer),
         explanation: explanation || '',
         difficulty: difficulty || 'intermediate',
         topic: topic || (document.topics && document.topics[0]) || 'General',
@@ -308,7 +327,7 @@ export async function updateQuestion(req: AuthRequest, res: Response): Promise<v
     const { id } = req.params;
     const updates = req.body;
 
-    const { data: existing } = await supabase.from('questions').select('id, created_by').eq('id', id).single();
+    const { data: existing } = await supabase.from('questions').select('id, created_by, type, options').eq('id', id).single();
     if (!existing) {
       res.status(404).json({ message: 'Question not found' });
       return;
@@ -323,7 +342,11 @@ export async function updateQuestion(req: AuthRequest, res: Response): Promise<v
     if (updates.question !== undefined) dbUpdates.question = updates.question;
     if (updates.type !== undefined) dbUpdates.type = updates.type;
     if (updates.options !== undefined) dbUpdates.options = updates.options;
-    if (updates.correctAnswer !== undefined) dbUpdates.correct_answer = updates.correctAnswer;
+    if (updates.correctAnswer !== undefined) {
+      const nextType = updates.type !== undefined ? updates.type : existing.type;
+      const nextOptions = updates.options !== undefined ? updates.options : existing.options;
+      dbUpdates.correct_answer = normalizeCorrectAnswer(nextType, nextOptions, updates.correctAnswer);
+    }
     if (updates.explanation !== undefined) dbUpdates.explanation = updates.explanation;
     if (updates.difficulty !== undefined) dbUpdates.difficulty = updates.difficulty;
     if (updates.topic !== undefined) dbUpdates.topic = updates.topic;

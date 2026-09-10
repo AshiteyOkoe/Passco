@@ -376,6 +376,92 @@ export default function ReportDocument({ data, photoData, className = '' }: Repo
           <span>Generated {fmtDate(data.meta.dateIssued)}</span>
         </div>
       </section>
+
+      {/* ============ BECE READINESS PAGE ============ */}
+      {data.bece && (() => {
+        const b = data.bece;
+        const eligibility = b.eligibility;
+        return (
+          <section className="rept-page" aria-label="Page 4 - Likely BECE readiness">
+            <SectionTitle>Likely BECE Readiness</SectionTitle>
+            <p className="rept-note">
+              Performance in Likely BECE assessments for this reporting period, alongside the eligibility
+              requirements needed to unlock further BECE practice attempts.
+            </p>
+
+            <div className="rept-stats-grid cols-3">
+              <StatCard label="BECE Attempts" value={`${b.attempts}`} />
+              <StatCard label="Best Score" value={`${b.bestScore}%`} />
+              <StatCard label="Best Grade" value={b.bestGrade} />
+            </div>
+
+            <div className="rept-stat-line">
+              <span>
+                Eligibility Status:{' '}
+                <strong className={eligibility.eligible ? 'text-pass' : 'text-review'}>
+                  {eligibility.eligible ? 'Eligible' : 'Not yet eligible'}
+                </strong>
+              </span>
+              <span>Overall Readiness: <strong>{b.passed ? 'Met target' : 'Below target'}</strong></span>
+              <span>
+                Best Performance:{' '}
+                <strong>
+                  <span className={`rept-grade-lg ${gradeTone(b.bestGrade)}`}>{b.bestGrade}</span>
+                </strong>
+              </span>
+            </div>
+
+            <div className="rept-block">
+              <SectionTitle>Eligibility Checklist</SectionTitle>
+              <ul className="rept-list">
+                {eligibility.requirements.map((r) => (
+                  <li key={r.key}>
+                    <span className={`rept-dot ${r.met ? 'green' : 'red'}`} aria-hidden="true" />
+                    {r.label}: <strong>{Math.min(r.current, r.target)}/{r.target}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {b.subjects.length > 0 && (
+              <div className="rept-block">
+                <SectionTitle>Subject-level BECE Performance</SectionTitle>
+                <table className="rept-table">
+                  <caption className="sr-only-print">Likely BECE performance by subject</caption>
+                  <thead>
+                    <tr>
+                      <th>Subject</th>
+                      <th className="num">Attempts</th>
+                      <th className="num">Best Score</th>
+                      <th>Best Grade</th>
+                      <th>Readiness</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {b.subjects.map((s) => (
+                      <tr key={s.subjectKey}>
+                        <td className="strong">{s.label}</td>
+                        <td className="num">{s.attempts}</td>
+                        <td className="num">{s.bestScore}%</td>
+                        <td><span className={`rept-grade ${gradeTone(s.bestGrade)}`}>{s.bestGrade}</span></td>
+                        <td>
+                          <span className={s.passed ? 'text-pass' : 'text-review'}>{s.passed ? 'Met' : 'Below'}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="rept-footer">
+              <span>PASSCO · Likely BECE Readiness</span>
+              <span>Report No. {data.meta.reportNumber}</span>
+              <span>Generated {fmtDate(data.meta.dateIssued)}</span>
+            </div>
+          </section>
+        );
+      })()}
     </div>
   );
 }

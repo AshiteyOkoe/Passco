@@ -39,6 +39,9 @@ export async function createOTP(email: string): Promise<string> {
   const normalized = email.toLowerCase();
   const expiresAt = new Date(Date.now() + OTP_TTL).toISOString();
 
+  // Keep only one active code per email so stale codes can't be replayed.
+  await supabase.from('otp_codes').delete().eq('email', normalized);
+
   const { error } = await supabase
     .from('otp_codes')
     .insert({ email: normalized, code, expires_at: expiresAt });
@@ -91,6 +94,31 @@ export async function verifyOTP(email: string, code: string): Promise<boolean> {
   if (entry.code !== code) return false;
   otpStore.delete(normalized);
   return true;
+}
+
+export function smtpConfigured(): boolean {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+export async function testSMTPConnection(): Promise<{ ok: boolean; detail: string }> {
+  if (!smtpConfigured()) {
+    return { ok: false, detail: 'SMTP_HOST, SMTP_USER or SMTP_PASS is missing from the environment.' };
+  }
+  try {
+    const transporter = getTransporter();
+    await transporter.verify();
+    return { ok: true, detail: 'SMTP connection verified (auth + server reachable).' };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const tag = /Invalid login|535|auth/i.test(msg)
+      ? 'AUTH_FAILED'
+      : /getaddrinfo|ENOTFOUND|ECONNREFUSED|socket|timeout|ETIMEDOUT/i.test(msg)
+        ? 'CONNECTION_FAILED'
+        : /self-signed|certificate|tls/i.test(msg)
+          ? 'TLS_FAILED'
+          : 'OTHER';
+    return { ok: false, detail: `[${tag}] ${msg}` };
+  }
 }
 
 export async function sendOTPEmail(

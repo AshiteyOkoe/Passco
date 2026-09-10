@@ -26,7 +26,7 @@ const defaultFaqs: FAQItem[] = [
   {
     question: 'What types of assessments can I take?',
     answer:
-      'Three modes: Quiz (7 minutes), Mock Test (15 minutes) and Examination (50 minutes). Each assessment is made up of objective questions that mirror real BECE-style conditions.',
+      'Four modes: Quiz, Mock Test (10 questions · 7 minutes), Examination (20 questions · 15 minutes) and Likely BECE (50 questions · 50 minutes). Each assessment is made up of objective questions that mirror real BECE-style conditions.',
   },
   {
     question: 'How do I see my results?',

@@ -51,7 +51,7 @@ export default function Register() {
         classLevel,
         dateOfBirth,
       });
-      if ('code' in res) {
+      if (import.meta.env.DEV && 'code' in res) {
         params.set('devCode', (res as { code: string }).code);
       }
       navigate(`/verify-otp?${params.toString()}`);

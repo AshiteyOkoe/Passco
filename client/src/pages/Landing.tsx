@@ -1178,7 +1178,7 @@ export default function Landing() {
 
           <div className="grid gap-8 md:grid-cols-3">
             {[
-              { step: '01', icon: GraduationCap, title: 'Pick Your Class & Subject', desc: 'Choose your JHS class level (1–3), select a subject, and pick a difficulty — Quiz, Mock, or full Examination.' },
+              { step: '01', icon: GraduationCap, title: 'Pick Your Class & Subject', desc: 'Choose your JHS class level (1–3), select a subject, and pick an assessment — Quiz, Mock Test, Examination, or Likely BECE.' },
               { step: '02', icon: ClipboardCheck, title: 'Take the Assessment', desc: 'Answer timed multiple-choice questions curated by educators. Each test covers real syllabus content.' },
               { step: '03', icon: Award, title: 'Get Results & Badges', desc: 'See your score instantly with grade breakdowns. Earn badges as you improve and climb the leaderboard.' },
             ].map((item, i) => (

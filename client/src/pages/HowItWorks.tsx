@@ -12,7 +12,7 @@ const steps = [
     details: [
       'Three class levels: JHS 1, JHS 2, and JHS 3',
       'Eight subjects aligned to the Ghanaian curriculum',
-      'Three modes: Quiz (7 min), Mock Test (15 min), or Examination (50 min)',
+      'Four modes: Quiz, Mock Test (10 Qs · 7 min), Examination (20 Qs · 15 min), or Likely BECE (50 Qs · 50 min)',
       'Switch subjects and difficulties anytime',
     ],
     gradient: 'from-indigo-500 to-indigo-600',

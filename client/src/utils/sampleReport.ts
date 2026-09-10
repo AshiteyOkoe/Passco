@@ -57,6 +57,55 @@ export function buildSampleReport(): ReportData {
         timestamp,
       });
     });
+
+    const mockScore = clampScore(p.base, 6);
+    const examScore = clampScore(p.base, 4);
+    const beceScore = clampScore(p.base, 8 + (pi % 5));
+    const baseTs = start + (pi * 12 + 10) * DAY;
+    assessments.push(
+      {
+        subject: SUBJECT_META[p.subjectKey].label,
+        subjectKey: p.subjectKey,
+        classLevel: 'jhs3',
+        assessmentType: 'Mock',
+        questionsAttempted: 40,
+        answeredQuestions: 40,
+        correctAnswers: Math.round((mockScore / 100) * 40),
+        percentage: mockScore,
+        grade: gradeFor(mockScore, gradeConfig).grade,
+        passed: true,
+        timeSpent: 2100 + mockScore * 15,
+        timestamp: baseTs,
+      },
+      {
+        subject: SUBJECT_META[p.subjectKey].label,
+        subjectKey: p.subjectKey,
+        classLevel: 'jhs3',
+        assessmentType: 'Examination',
+        questionsAttempted: 40,
+        answeredQuestions: 40,
+        correctAnswers: Math.round((examScore / 100) * 40),
+        percentage: examScore,
+        grade: gradeFor(examScore, gradeConfig).grade,
+        passed: true,
+        timeSpent: 2000 + examScore * 15,
+        timestamp: baseTs + 2 * DAY,
+      },
+      {
+        subject: SUBJECT_META[p.subjectKey].label,
+        subjectKey: p.subjectKey,
+        classLevel: 'jhs3',
+        assessmentType: 'Likely BECE',
+        questionsAttempted: 50,
+        answeredQuestions: 50,
+        correctAnswers: Math.round((beceScore / 100) * 50),
+        percentage: beceScore,
+        grade: gradeFor(beceScore, gradeConfig).grade,
+        passed: beceScore >= 50,
+        timeSpent: 2400 + beceScore * 12,
+        timestamp: baseTs + 4 * DAY,
+      }
+    );
   });
 
   return buildReportData({

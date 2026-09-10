@@ -675,7 +675,7 @@ function QuestSidebar({ questions, answers, currentIndex, answeredCount, showSid
                   animate={{ scale: 1 }}
                   transition={{ delay: i * 0.02, type: 'spring', stiffness: 200 }}
                   onClick={() => onSelect(i)}
-                  className={cn('relative flex h-9 w-full items-center justify-center rounded-lg text-xs font-semibold transition', isCurrent && 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900', isAnswered && !isCurrent && 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400', !isAnswered && !isCurrent && 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500')}
+                  className={cn('relative flex h-9 w-full items-center justify-center rounded-lg text-xs font-semibold transition-colors duration-200', isCurrent && 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-slate-900', isAnswered ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white', 'hover:brightness-95 active:scale-95')}
                   aria-label={`Question ${i + 1}${isAnswered ? ' answered' : ''}${isFlagged ? ' flagged' : ''}`}
                 >
                   {i + 1}
@@ -690,8 +690,8 @@ function QuestSidebar({ questions, answers, currentIndex, answeredCount, showSid
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <div className="flex justify-between text-xs"><span className="text-slate-500 dark:text-slate-400">Answered</span><span className="font-semibold text-slate-700 dark:text-slate-200">{answeredCount}/{questions.length}</span></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-500 dark:text-slate-400">Remaining</span><span className="font-semibold text-slate-700 dark:text-slate-200">{questions.length - answeredCount}</span></div>
+            <div className="flex items-center justify-between text-xs"><span className="flex items-center gap-2 text-slate-500 dark:text-slate-400"><span className="h-2.5 w-2.5 rounded bg-emerald-500" />Answered</span><span className="font-semibold text-slate-700 dark:text-slate-200">{answeredCount}/{questions.length}</span></div>
+            <div className="flex items-center justify-between text-xs"><span className="flex items-center gap-2 text-slate-500 dark:text-slate-400"><span className="h-2.5 w-2.5 rounded bg-rose-500" />Unanswered</span><span className="font-semibold text-slate-700 dark:text-slate-200">{questions.length - answeredCount}</span></div>
           </motion.div>
         </div>
       </motion.div>
