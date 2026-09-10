@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { getAdminAnalytics, getStudents, getAdminStudentDetail } from '../services/api';
 import {
   BarChart3, Users, GraduationCap, TrendingUp, Trophy, Target, BookOpen,
-  Download, Activity, ArrowLeft, FileText, Calendar, Building2, Mail,
+  Download, Activity, X, FileText, Calendar, Building2, Mail,
   Clock, CheckCircle2,
 } from 'lucide-react';
 import { cn } from '../utils';
@@ -13,6 +13,7 @@ import { bounceIn, fadeUp, slideUp, stagger } from '../utils/animations';
 import AnimatedSpinner from '../components/AnimatedSpinner';
 import Pagination from '../components/Pagination';
 import { usePagination } from '../hooks/usePagination';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface Student {
   id: string;
@@ -75,8 +76,10 @@ interface StudentDetail {
 }
 
 export default function AdminAnalytics() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const studentId = searchParams.get('student');
+
+  const closeStudent = () => setSearchParams({});
 
   const [analytics, setAnalytics] = useState<{
     totalQuizzes: number;
@@ -109,7 +112,6 @@ export default function AdminAnalytics() {
   }, [studentId]);
 
   useEffect(() => {
-    if (studentId) return;
     setLoading(true);
     Promise.all([getAdminAnalytics(), getStudents()])
       .then(([a, s]) => {
@@ -134,18 +136,6 @@ export default function AdminAnalytics() {
     URL.revokeObjectURL(url);
   };
 
-  if (studentId && studentLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <AnimatedSpinner label="Loading student report..." />
-      </div>
-    );
-  }
-
-  if (studentId && studentDetail) {
-    return <StudentReport detail={studentDetail} onBack={() => window.history.back()} />;
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -157,6 +147,7 @@ export default function AdminAnalytics() {
   const maxCount = analytics ? Math.max(...analytics.scoreDistribution.map((d) => d.count), 1) : 1;
 
   return (
+    <>
     <div className="p-4 sm:p-6">
       <motion.div
         className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -415,10 +406,13 @@ export default function AdminAnalytics() {
         </motion.div>
       </div>
     </div>
+
+      <StudentReportModal open={!!studentId} detail={studentDetail} loading={studentLoading} onClose={closeStudent} />
+    </>
   );
 }
 
-function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () => void }) {
+function StudentReport({ detail }: { detail: StudentDetail }) {
   const { student, results, assessmentResults, documents, stats } = detail;
 
   const quizPagination = usePagination(results, 10);
@@ -427,18 +421,6 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
 
   return (
     <div className="p-4 sm:p-6">
-      <motion.div className="mb-6" variants={fadeUp} initial="hidden" animate="visible">
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={onBack}
-          className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Analytics
-        </motion.button>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Student Report</h1>
-      </motion.div>
 
       <motion.div
         className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
@@ -689,6 +671,55 @@ function StudentReport({ detail, onBack }: { detail: StudentDetail; onBack: () =
             </div>
           </motion.div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function StudentReportModal({ open, detail, loading, onClose }: { open: boolean; detail: StudentDetail | null; loading: boolean; onClose: () => void }) {
+  const { dialogRef } = useModalA11y(open, { onClose });
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="student-report-title"
+        className="animate-sheet-up flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl dark:bg-slate-900"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+          <div className="min-w-0">
+            <h2 id="student-report-title" className="text-lg font-bold text-slate-900 dark:text-white">Student Report</h2>
+            <p className="truncate text-sm text-slate-500 dark:text-slate-400">
+              {loading || !detail ? 'Loading…' : `${detail.student.name} · ${detail.student.email}`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close student report"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 pb-[max(1.25rem,env(safe-area-inset-bottom))] dark:bg-slate-950">
+          {loading && !detail ? (
+            <div className="flex items-center justify-center py-16">
+              <AnimatedSpinner label="Loading student report..." />
+            </div>
+          ) : detail ? (
+            <StudentReport detail={detail} />
+          ) : (
+            <div className="flex flex-col items-center py-16 text-sm text-slate-500 dark:text-slate-400">
+              <p>Could not load this student's report.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
