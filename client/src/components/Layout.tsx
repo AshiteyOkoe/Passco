@@ -147,15 +147,13 @@ export default function Layout() {
       <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl safe-area-top transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950/90">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
           <div className="flex items-center gap-3">
-            {isAdmin && (
-              <button
-                onClick={() => setMobileNavOpen(true)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 sm:hidden dark:hover:bg-slate-800 dark:hover:text-slate-300"
-                aria-label="Open admin menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-            )}
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 sm:hidden dark:hover:bg-slate-800 dark:hover:text-slate-300"
+              aria-label={isAdmin ? 'Open admin menu' : 'Open menu'}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <Link to="/" className="flex items-center gap-2.5">
               <img
                 src="/images/logos/qna.svg"
@@ -362,7 +360,7 @@ export default function Layout() {
         </aside>
 
         <AnimatePresence>
-          {isAdmin && mobileNavOpen && (
+          {mobileNavOpen && (
             <>
               <motion.div
                 initial={{ opacity: 0 }}
@@ -380,30 +378,57 @@ export default function Layout() {
                 className="fixed inset-y-0 left-0 z-[70] flex w-72 max-w-[85vw] flex-col overflow-hidden bg-white shadow-2xl sm:hidden dark:bg-slate-950"
               >
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Admin Menu</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{isAdmin ? 'Admin Menu' : 'Menu'}</p>
                   <button
                     onClick={() => setMobileNavOpen(false)}
                     className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-                    aria-label="Close admin menu"
+                    aria-label="Close menu"
                   >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
                 <nav className="flex-1 overflow-y-auto p-3 pb-8">
-                  {adminGroups.map((group) => (
-                    <div key={group.title} className="mb-2">
+                  {isAdmin ? (
+                    adminGroups.map((group) => (
+                      <div key={group.title} className="mb-2">
+                        <p className="mb-1 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          {group.title}
+                        </p>
+                        {group.links.map((link) => {
+                          const Icon = link.icon;
+                          const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to));
+                          return (
+                            <Link
+                              key={link.to}
+                              to={link.to}
+                              onClick={() => setMobileNavOpen(false)}
+                              className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-all mb-0.5 ${
+                                isActive
+                                  ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-500/10 dark:text-blue-400'
+                                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
+                              }`}
+                            >
+                              <Icon className="h-5 w-5" />
+                              {link.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="mb-2">
                       <p className="mb-1 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                        {group.title}
+                        Navigation
                       </p>
-                      {group.links.map((link) => {
+                      {studentLinks.map((link) => {
                         const Icon = link.icon;
-                        const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to));
+                        const isActive = location.pathname === link.to || (link.to !== '/dashboard' && location.pathname.startsWith(link.to));
                         return (
                           <Link
                             key={link.to}
                             to={link.to}
                             onClick={() => setMobileNavOpen(false)}
-                            className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-all mb-0.5 ${
+                            className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all mb-1 ${
                               isActive
                                 ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-500/10 dark:text-blue-400'
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'
@@ -415,7 +440,7 @@ export default function Layout() {
                         );
                       })}
                     </div>
-                  ))}
+                  )}
                 </nav>
               </motion.aside>
             </>
