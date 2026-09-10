@@ -56,6 +56,10 @@ export default function Layout() {
     { to: '/profile', label: 'My Profile', icon: User },
   ];
 
+  const bottomTabPaths = isAdmin
+    ? ['/admin', '/admin/questions', '/admin/ai-generator', '/admin/analytics', '/profile']
+    : ['/dashboard', '/competitions', '/assessment/setup', '/analytics', '/profile'];
+
   const adminGroups = [
     {
       title: 'Dashboard',
@@ -389,7 +393,13 @@ export default function Layout() {
                 </div>
                 <nav className="flex-1 overflow-y-auto p-3 pb-8">
                   {isAdmin ? (
-                    adminGroups.map((group) => (
+                    adminGroups
+                      .map((group) => ({
+                        ...group,
+                        links: group.links.filter((link) => !bottomTabPaths.includes(link.to)),
+                      }))
+                      .filter((group) => group.links.length > 0)
+                      .map((group) => (
                       <div key={group.title} className="mb-2">
                         <p className="mb-1 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                           {group.title}
@@ -420,7 +430,7 @@ export default function Layout() {
                       <p className="mb-1 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                         Navigation
                       </p>
-                      {studentLinks.map((link) => {
+                      {studentLinks.filter((link) => !bottomTabPaths.includes(link.to)).map((link) => {
                         const Icon = link.icon;
                         const isActive = location.pathname === link.to || (link.to !== '/dashboard' && location.pathname.startsWith(link.to));
                         return (
