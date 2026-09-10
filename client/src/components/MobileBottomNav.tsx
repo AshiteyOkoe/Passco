@@ -4,12 +4,12 @@ import { useSubscription } from '../context/SubscriptionContext';
 import { motion } from 'framer-motion';
 import {
   Home, BookOpen, ClipboardCheck, BarChart3, User,
-  LayoutDashboard, Users, Sparkles, Gem,
+  LayoutDashboard, Users, Sparkles, Gem, Trophy,
 } from 'lucide-react';
 
 const studentTabs = [
   { to: '/dashboard', label: 'Home', icon: Home },
-  { to: '/quizzes', label: 'Quizzes', icon: BookOpen },
+  { to: '/competitions', label: 'Competitions', icon: Trophy },
   { to: '/assessment/setup', label: 'Assess', icon: ClipboardCheck },
   { to: '/analytics', label: 'Stats', icon: BarChart3 },
   { to: '/profile', label: 'Profile', icon: User },

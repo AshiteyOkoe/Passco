@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useTheme } from '../context/ThemeContext';
 import {
-  BookOpen, Home, BarChart3, FileText, Library,
+  Home, BarChart3, FileText, Library,
   LogOut, Sun, Moon, ClipboardCheck, History,
   Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, Award, Gem,
   Sparkles, CreditCard, LayoutDashboard, Quote, Settings, MessageSquare, Flag, Menu, X, ClipboardList, Trophy
@@ -44,7 +44,6 @@ export default function Layout() {
 
   const studentLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: Home },
-    { to: '/quizzes', label: 'My Quizzes', icon: BookOpen },
     { to: '/assessment/setup', label: 'Assessment', icon: ClipboardCheck },
     { to: '/analytics', label: 'My Analytics', icon: BarChart3 },
     { to: '/analytics/performance', label: 'Performance', icon: TrendingUp },
