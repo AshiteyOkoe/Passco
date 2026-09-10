@@ -10,7 +10,7 @@ import {
 import { resolveUploadUrl, getLeaderboard, isCustomAvatar, getQuestionCounts, getTestimonials, getPlatformStats, type LeaderboardEntry } from '../services/api';
 import type { Testimonial, PlatformStats } from '../types';
 import { DefaultAvatar } from '../components/DefaultAvatars';
-import { SUBJECT_META, getQuestions, shuffleArray, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
+import { SUBJECT_META, CLASS_META, type SubjectId, type ClassLevel } from '../data/questionBank';
 import { MOTIVATIONS } from '../data/motivations';
 import { getRewardLabel } from '../utils/rewards';
 
@@ -24,19 +24,38 @@ const fadeUpFast = {
 
 const ALL_SUBJECTS: SubjectId[] = ['mathematics', 'science', 'english', 'social-studies', 'ict', 'rme', 'creative-arts', 'career-tech'];
 
-function generateDemoQuestions() {
-  const selected = shuffleArray(ALL_SUBJECTS).slice(0, 5);
-  return selected.map((subject) => {
-    const pool = getQuestions('jhs1', 10, subject).filter(
-      (q) => q.type === 'multiple-choice' && q.options && q.options.length >= 2,
-    );
-    if (pool.length === 0) return null;
-    const q = pool[Math.floor(Math.random() * pool.length)];
-    const options = q.options!;
-    const correctIdx = options.findIndex((o) => o === String(q.correctAnswer));
-    return { q: q.question, options, correct: correctIdx >= 0 ? correctIdx : 0, subject };
-  }).filter(Boolean) as Array<{ q: string; options: string[]; correct: number; subject: SubjectId }>;
-}
+const DEMO_QUESTIONS: Array<{ q: string; options: string[]; correct: number; subject: SubjectId }> = [
+  {
+    q: 'What is 15 + 27?',
+    options: ['40', '42', '44', '38'],
+    correct: 1,
+    subject: 'mathematics',
+  },
+  {
+    q: 'What is the closest star to Earth?',
+    options: ['The Moon', 'The Sun', 'Mars', 'Polaris'],
+    correct: 1,
+    subject: 'science',
+  },
+  {
+    q: 'Which word is a noun? "The cat sat on the mat."',
+    options: ['sat', 'on', 'cat', 'the'],
+    correct: 2,
+    subject: 'english',
+  },
+  {
+    q: 'Ghana gained independence in which year?',
+    options: ['1955', '1957', '1960', '1963'],
+    correct: 1,
+    subject: 'social-studies',
+  },
+  {
+    q: 'What does CPU stand for?',
+    options: ['Central Processing Unit', 'Computer Personal Unit', 'Central Program Utility', 'Core Processing Unit'],
+    correct: 0,
+    subject: 'ict',
+  },
+];
 
 const landingPlans = [
   {
@@ -262,7 +281,7 @@ function LeaderboardEntryRow({ entry, rank, user, navigate, delay = 0 }: Leaderb
 export default function Landing() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [demoQuestions, setDemoQuestions] = useState(() => generateDemoQuestions());
+  const [demoQuestions, setDemoQuestions] = useState(DEMO_QUESTIONS);
   const [demoAnswers, setDemoAnswers] = useState<(number | null)[]>(() => new Array(5).fill(null));
   const [demoSubmitted, setDemoSubmitted] = useState(false);
 
@@ -277,9 +296,8 @@ export default function Landing() {
   );
 
   const resetDemo = () => {
-    const fresh = generateDemoQuestions();
-    setDemoQuestions(fresh);
-    setDemoAnswers(new Array(fresh.length).fill(null));
+    setDemoQuestions(DEMO_QUESTIONS);
+    setDemoAnswers(new Array(DEMO_QUESTIONS.length).fill(null));
     setDemoSubmitted(false);
   };
 

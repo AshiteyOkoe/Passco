@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscription } from '../context/SubscriptionContext';
 import { useTheme } from '../context/ThemeContext';
 import {
-  BookOpen, Home, BarChart3, FileText, Library, PlusCircle,
+  BookOpen, Home, BarChart3, FileText, Library,
   LogOut, Sun, Moon, ClipboardCheck, History,
   Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, Award, Gem,
   Sparkles, CreditCard, LayoutDashboard, Quote, Settings, MessageSquare, Flag, Menu, X, ClipboardList, Trophy
@@ -73,7 +73,6 @@ export default function Layout() {
       title: 'Assessments',
       links: [
         { to: '/admin/jhs-questions', label: 'JHS Questions', icon: HelpCircle },
-        { to: '/admin/create-quiz', label: 'Create Quiz', icon: PlusCircle },
         { to: '/admin/questions', label: 'Question Bank', icon: Library },
         { to: '/admin/ai-generator', label: 'AI Generator', icon: Sparkles },
         { to: '/admin/competitions', label: 'Competitions', icon: Trophy },
@@ -83,7 +82,6 @@ export default function Layout() {
       title: 'Resources',
       links: [
         { to: '/admin/bulk-upload', label: 'Bulk Upload', icon: FileUp },
-        { to: '/admin/files', label: 'All Files', icon: FileText },
         { to: '/admin/testimonials', label: 'Testimonials', icon: Quote },
       ],
     },

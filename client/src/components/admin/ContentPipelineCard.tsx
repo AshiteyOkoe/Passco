@@ -70,7 +70,7 @@ export default function ContentPipelineCard({ pipeline }: ContentPipelineCardPro
       </div>
 
       <Link
-        to="/admin/files"
+        to="/admin/bulk-upload"
         className="mt-4 flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-300 dark:hover:text-indigo-400"
       >
         View Processing Queue <ArrowRight className="h-4 w-4" />

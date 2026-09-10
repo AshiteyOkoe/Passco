@@ -146,14 +146,14 @@ export default function NotificationBell() {
         chip: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
       },
       {
-        to: '/admin/files',
+        to: '/admin/bulk-upload',
         label: 'Files processing / queued',
         value: cmd ? cmd.pipeline.processing + cmd.pipeline.queued : 0,
         icon: Loader,
         chip: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
       },
       {
-        to: '/admin/files',
+        to: '/admin/bulk-upload',
         label: 'Failed processing',
         value: cmd ? cmd.pipeline.failed : 0,
         icon: AlertTriangle,

@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  PlusCircle, FileUp, Sparkles, ClipboardCheck, Users, CreditCard,
+  FileUp, Sparkles, ClipboardCheck, Users, CreditCard,
   BarChart3, Megaphone,
 } from 'lucide-react';
 
 const ACTIONS = [
-  { label: 'Create Exam / Quiz', to: '/admin/create-quiz', icon: PlusCircle, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
   { label: 'Add / Review Questions', to: '/admin/questions?status=pending', icon: ClipboardCheck, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
   { label: 'Bulk Upload', to: '/admin/bulk-upload', icon: FileUp, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
   { label: 'AI Generator', to: '/admin/ai-generator', icon: Sparkles, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },

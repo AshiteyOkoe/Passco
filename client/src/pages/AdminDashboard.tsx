@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { getAdminCommandCenter, getStudents } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  Users, FileText, Library, CheckCircle2, XCircle, Clock, Search, Building2,
+  Users, Library, CheckCircle2, XCircle, Clock, Search, Building2,
   GraduationCap, BookOpen, Wallet, CreditCard, HelpCircle,
 } from 'lucide-react';
 import { cn } from '../utils';
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
       })()}
 
       <motion.div
-        className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
+        className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
         variants={stagger}
         initial="hidden"
         animate="visible"
@@ -138,7 +138,6 @@ export default function AdminDashboard() {
         <KpiCard icon={Users} value={kpis.students.value} label="Students" delta={kpis.students.delta} caption="this month" color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" to="/admin/analytics" />
         <KpiCard icon={BookOpen} value={kpis.results.value} label="Exams Taken" delta={kpis.results.delta} caption="vs last month" color="text-rose-500" bg="bg-rose-50 dark:bg-rose-500/10" to="/admin/analytics" />
         <KpiCard icon={Library} value={kpis.questions.value} label="Questions" delta={kpis.questions.delta} caption="this week" color="text-violet-500" bg="bg-violet-50 dark:bg-violet-500/10" to="/admin/jhs-questions" />
-        <KpiCard icon={FileText} value={kpis.documents.value} label="Resources" delta={kpis.documents.delta} caption="this month" color="text-blue-500" bg="bg-blue-50 dark:bg-blue-500/10" to="/admin/files" />
         <KpiCard icon={HelpCircle} value={kpis.pendingQuestions} label="Pending Review" caption="awaiting approval" color="text-amber-500" bg="bg-amber-50 dark:bg-amber-500/10" to="/admin/questions?status=pending" />
         <KpiCard icon={CreditCard} value={kpis.activeSubscriptions} label="Active Subs" caption="paid plans" color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" to="/admin/subscriptions" />
         <KpiCard icon={Wallet} value={kpis.revenueThisMonth} label="Revenue (GH₵)" caption="this month" color="text-cyan-500" bg="bg-cyan-50 dark:bg-cyan-500/10" to="/admin/subscriptions" />

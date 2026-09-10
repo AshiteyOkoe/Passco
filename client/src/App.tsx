@@ -24,9 +24,7 @@ import TakeAssessment from './pages/TakeAssessment';
 import AssessmentResult from './pages/AssessmentResult';
 import AssessmentHistory from './pages/AssessmentHistory';
 import AdminDashboard from './pages/AdminDashboard';
-import AdminFiles from './pages/AdminFiles';
 import AdminQuestionBank from './pages/AdminQuestionBank';
-import AdminCreateQuiz from './pages/AdminCreateQuiz';
 import AdminAnalytics from './pages/AdminAnalytics';
 import AdminClasses from './pages/AdminClasses';
 import AdminSubjects from './pages/AdminSubjects';
@@ -170,9 +168,7 @@ export default function App() {
             <Route path="subjects" element={<AdminSubjects />} />
             <Route path="jhs-questions" element={<AdminJHSQuestions />} />
             <Route path="bulk-upload" element={<AdminBulkUpload />} />
-            <Route path="files" element={<AdminFiles />} />
             <Route path="questions" element={<AdminQuestionBank />} />
-            <Route path="create-quiz" element={<AdminCreateQuiz />} />
             <Route path="ai-generator" element={<AIGenerator />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="certificates" element={<AdminCertificates />} />
