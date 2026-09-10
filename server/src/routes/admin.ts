@@ -25,6 +25,11 @@ import {
   approveDocumentRequest,
   rejectDocumentRequest,
 } from '../controllers/documentRequestController';
+import {
+  listCompetitionsAdmin,
+  adminGetCompetition,
+  getCompetitionStatsAdmin,
+} from '../controllers/competitionController';
 
 const router = Router();
 
@@ -53,5 +58,9 @@ router.get('/analytics', getFullAnalytics);
 router.get('/subject-counts', getSubjectQuestionCounts);
 router.get('/command-center', getCommandCenter);
 router.delete('/questions/bank', clearQuestionBank);
+
+router.get('/competitions', listCompetitionsAdmin);
+router.get('/competitions/stats', getCompetitionStatsAdmin);
+router.get('/competitions/:id', adminGetCompetition);
 
 export default router;

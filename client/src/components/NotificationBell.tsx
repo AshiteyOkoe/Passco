@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertTriangle, Bell, BellOff, Clock, FileText, Loader, Megaphone, X
+  AlertTriangle, Bell, BellOff, Clock, FileText, Loader, Megaphone, X,
+  Swords, Check, Ban, Trophy, PlayCircle, Medal,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getAdminCommandCenter, getAnnouncements } from '../services/api';
-import type { AdminCommandCenter, Announcement } from '../types';
+import { getAdminCommandCenter, getAnnouncements, getMyNotifications, markAllNotificationsRead } from '../services/api';
+import type { AdminCommandCenter, Announcement, UserNotification } from '../types';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
@@ -18,6 +19,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [cmd, setCmd] = useState<AdminCommandCenter | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[] | null>(null);
+  const [notifications, setNotifications] = useState<UserNotification[] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const readKey = `passco:readAnnouncements:${user?.id ?? 'guest'}`;
@@ -56,11 +58,35 @@ export default function NotificationBell() {
       .catch(console.error);
     if (isAdmin) {
       getAdminCommandCenter(7).then(setCmd).catch(console.error);
+    } else {
+      getMyNotifications()
+        .then((r) => {
+          if (active) setNotifications(r.notifications);
+        })
+        .catch(console.error);
     }
     return () => {
       active = false;
     };
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin) return;
+    const interval = window.setInterval(() => {
+      getMyNotifications()
+        .then((r) => setNotifications(r.notifications))
+        .catch(console.error);
+    }, 30000);
+    return () => window.clearInterval(interval);
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!open || isAdmin) return;
+    if (notifications && notifications.some((n) => !n.isRead)) {
+      markAllNotificationsRead().catch(console.error);
+      setNotifications((prev) => (prev || []).map((n) => ({ ...n, isRead: true })));
+    }
+  }, [open, notifications, isAdmin]);
 
   useEffect(() => {
     if (!open || isAdmin) return;
@@ -98,7 +124,9 @@ export default function NotificationBell() {
     ? cmd.kpis.pendingQuestions + cmd.pipeline.processing + cmd.pipeline.queued + cmd.pipeline.failed
     : 0;
 
-  const unreadCount = isAdmin ? pendingCount : (announcements?.filter((a) => !readIds.includes(a.id)).length ?? 0);
+  const unreadCount = isAdmin
+    ? pendingCount
+    : (announcements?.filter((a) => !readIds.includes(a.id)).length ?? 0) + (notifications?.filter((n) => !n.isRead).length ?? 0);
   const count = unreadCount;
   const badge = count > 9 ? '9+' : String(count);
   const liveMessage =
@@ -157,6 +185,56 @@ export default function NotificationBell() {
     );
   };
 
+  const NOTIF_META: Record<string, { icon: typeof Swords; className: string; bg: string }> = {
+    competition_invite: { icon: Swords, className: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
+    competition_accepted: { icon: Check, className: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+    competition_declined: { icon: Ban, className: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10' },
+    competition_started: { icon: PlayCircle, className: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+    competition_finished: { icon: Trophy, className: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+    competition_cancelled: { icon: X, className: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10' },
+  };
+
+  const renderNotifications = () => {
+    if (!notifications || notifications.length === 0) return null;
+    return (
+      <>
+        <div className="my-2 border-t border-slate-100 dark:border-slate-800" />
+        <p className="flex items-center gap-1.5 px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <Swords className="h-3.5 w-3.5" aria-hidden="true" /> Competitions
+        </p>
+        {notifications.slice(0, 8).map((n) => {
+          const meta = NOTIF_META[n.type] || NOTIF_META.competition_finished;
+          const Icon = meta.icon;
+          const body = (
+            <span className="flex min-w-0 items-start gap-3">
+              <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.bg}`}>
+                <Icon className={`h-4 w-4 ${meta.className}`} aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-slate-800 dark:text-white">{n.title}</span>
+                <span className="mt-0.5 line-clamp-2 block text-xs text-slate-500 dark:text-slate-400">{n.body}</span>
+                <span className="mt-1 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  {new Date(n.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </span>
+              </span>
+              {!n.isRead && <span aria-hidden="true" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />}
+            </span>
+          );
+          return n.entityId ? (
+            <Link key={n.id} to={`/competitions/${n.entityId}`} onClick={close} className="block rounded-xl px-3 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-800">
+              {body}
+            </Link>
+          ) : (
+            <div key={n.id} className="block rounded-xl px-3 py-2">
+              {body}
+            </div>
+          );
+        })}
+      </>
+    );
+  };
+
   const renderAnnouncements = () => {
     if (announcements === null || announcements.length === 0) return null;
 
@@ -206,7 +284,7 @@ export default function NotificationBell() {
           Loading notifications...
         </p>
       )}
-      {!isAdmin && announcements !== null && announcements.length === 0 && (
+      {!isAdmin && notifications !== null && notifications.length === 0 && announcements !== null && announcements.length === 0 && (
         <div className="flex flex-col items-center px-4 py-10 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
             <BellOff className="h-6 w-6 text-slate-400 dark:text-slate-500" aria-hidden="true" />
@@ -215,6 +293,7 @@ export default function NotificationBell() {
           <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">New announcements will show up here.</p>
         </div>
       )}
+      {renderNotifications()}
       {renderAnnouncements()}
     </>
   );

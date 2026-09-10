@@ -27,6 +27,13 @@ import type {
   ReportVerifyResponse,
   DocumentRequestRecord,
   EligibilityResult,
+  Competition,
+  CompetitionCreatePayload,
+  CompetitionParticipant,
+  CompetitionSession,
+  CompetitionQuestion,
+  UserNotification,
+  AdminCompetitionRow,
 } from '../types';
 
 const API_BASE = import.meta.env.DEV ? '/api' : '/api';
@@ -87,7 +94,7 @@ export async function login(data: { email: string; password: string }): Promise<
   return res.data;
 }
 
-export async function sendOTP(email: string): Promise<{ message: string; code?: string }> {
+export async function sendOTP(email: string): Promise<{ message: string; sent: boolean; configured: boolean; code?: string }> {
   const res = await api.post('/otp/send', { email });
   return res.data;
 }
@@ -244,6 +251,31 @@ export async function getApprovedBankQuestions(params?: {
   return res.data;
 }
 
+export interface BeceRequirement {
+  key: string;
+  label: string;
+  target: number;
+  current: number;
+  met: boolean;
+}
+
+export interface BeceUsage {
+  used: number;
+  limit: number;
+  nextUnlockAt: string | null;
+}
+
+export interface BeceEligibility {
+  eligible: boolean;
+  requirements: BeceRequirement[];
+  usage?: BeceUsage;
+}
+
+export async function getBeceEligibility(): Promise<BeceEligibility> {
+  const res = await api.get('/assessment/bece-eligibility');
+  return res.data;
+}
+
 export async function createQuestion(data: {
   documentId: string;
   question: string;
@@ -346,6 +378,7 @@ export async function getStudents(): Promise<{
     avatar?: string;
     gender?: string;
     quizzesTaken: number;
+    assessmentsTaken: number;
     avgScore: number;
     documentsUploaded: number;
     createdAt: string;
@@ -365,24 +398,40 @@ export async function getAdminStudentDetail(studentId: string): Promise<{
     createdAt: string;
   };
   results: Array<{
-    _id: string;
-    quizId: string | { _id: string; title: string };
+    id: string;
+    quizTitle: string;
     score: number;
     totalQuestions: number;
     correctCount: number;
+    incorrectCount: number;
+    skippedCount: number;
+    timeTaken: number;
+    completedAt: string;
+  }>;
+  assessmentResults: Array<{
+    id: string;
+    subject: string;
+    percentage: number;
+    grade: string;
+    passed: boolean;
+    timeSpent: number;
+    totalQuestions: number;
+    assessmentType: string;
     completedAt: string;
   }>;
   documents: Array<{
     id: string;
-    originalName: string;
+    name: string;
     fileSize: number;
     status: string;
     createdAt: string;
   }>;
   stats: {
-    totalQuizzes: number;
-    averageScore: number;
-    totalDocuments: number;
+    documentsUploaded: number;
+    quizzesTaken: number;
+    assessmentsTaken: number;
+    questionsCreated: number;
+    avgScore: number;
   };
 }> {
   const res = await api.get(`/admin/students/${studentId}`);
@@ -884,6 +933,107 @@ export async function approveDocumentRequest(id: string, data: Record<string, un
 
 export async function rejectDocumentRequest(id: string, note: string): Promise<{ request: DocumentRequestRecord }> {
   const res = await api.post(`/admin/document-requests/${id}/reject`, { note });
+  return res.data;
+}
+
+export async function searchCompetitionParticipants(q: string): Promise<{
+  participants: Array<{ id: string; name: string; classLevel: string; avatar: string | null }>;
+}> {
+  const res = await api.get('/competitions/participants/search', { params: { q } });
+  return res.data;
+}
+
+export async function createCompetition(payload: CompetitionCreatePayload): Promise<{ competition: Competition }> {
+  const res = await api.post('/competitions', payload);
+  return res.data;
+}
+
+export async function getMyCompetitions(): Promise<{ competitions: Competition[]; openInvites: number }> {
+  const res = await api.get('/competitions/mine');
+  return res.data;
+}
+
+export async function getCompetition(id: string): Promise<{ competition: Competition }> {
+  const res = await api.get(`/competitions/${id}`);
+  return res.data;
+}
+
+export async function acceptCompetition(id: string): Promise<{ success: boolean }> {
+  const res = await api.post(`/competitions/${id}/accept`);
+  return res.data;
+}
+
+export async function declineCompetition(id: string): Promise<{ success: boolean }> {
+  const res = await api.post(`/competitions/${id}/decline`);
+  return res.data;
+}
+
+export async function startCompetition(id: string): Promise<{ success: boolean; status: string }> {
+  const res = await api.post(`/competitions/${id}/start`);
+  return res.data;
+}
+
+export async function startCompetitionSession(id: string): Promise<{
+  session: CompetitionSession;
+  competition: { id: string; title: string; subject: string; creatorName: string };
+  questions: CompetitionQuestion[];
+}> {
+  const res = await api.post(`/competitions/${id}/start-session`);
+  return res.data;
+}
+
+export async function submitCompetition(
+  id: string,
+  payload: { answers: Array<{ questionId: string; answer: string | boolean | null }>; timeSpent: number }
+): Promise<{
+  result: { score: number; correctAnswers: number; answeredQuestions: number; totalQuestions: number; timeSpent: number };
+  competition: { id: string; status: string; winnerId: string | null; endedAt: string | null };
+}> {
+  const res = await api.post(`/competitions/${id}/submit`, payload);
+  return res.data;
+}
+
+export async function abandonCompetition(id: string): Promise<{ success: boolean }> {
+  const res = await api.post(`/competitions/${id}/abandon`);
+  return res.data;
+}
+
+export async function cancelCompetition(id: string): Promise<{ success: boolean }> {
+  const res = await api.post(`/competitions/${id}/cancel`);
+  return res.data;
+}
+
+export async function getMyNotifications(): Promise<{ notifications: UserNotification[]; unread: number }> {
+  const res = await api.get('/notifications');
+  return res.data;
+}
+
+export async function markNotificationRead(id: string): Promise<{ success: boolean }> {
+  const res = await api.post(`/notifications/${id}/read`);
+  return res.data;
+}
+
+export async function markAllNotificationsRead(): Promise<{ success: boolean }> {
+  const res = await api.post('/notifications/read-all');
+  return res.data;
+}
+
+export async function getAdminCompetitions(): Promise<{ competitions: AdminCompetitionRow[] }> {
+  const res = await api.get('/admin/competitions');
+  return res.data;
+}
+
+export async function getAdminCompetition(id: string): Promise<{ competition: Competition }> {
+  const res = await api.get(`/admin/competitions/${id}`);
+  return res.data;
+}
+
+export async function getAdminCompetitionStats(): Promise<{
+  total: number;
+  byStatus: { pending: number; live: number; finished: number; cancelled: number };
+  participantCount: number;
+}> {
+  const res = await api.get('/admin/competitions/stats');
   return res.data;
 }
 

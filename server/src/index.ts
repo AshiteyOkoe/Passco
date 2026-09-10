@@ -25,6 +25,8 @@ import contactRoutes from './routes/contact';
 import reportCardRoutes from './routes/reportCards';
 import documentRequestRoutes from './routes/documentRequests';
 import statsRoutes from './routes/stats';
+import competitionRoutes from './routes/competitions';
+import notificationRoutes from './routes/notifications';
 
 console.log('dotenv loaded, GEMINI_API_KEY present:', !!process.env.GEMINI_API_KEY, 'prefix:', process.env.GEMINI_API_KEY?.substring(0, 8));
 
@@ -75,6 +77,8 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/report-cards', reportCardRoutes);
 app.use('/api/document-requests', documentRequestRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/competitions', competitionRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);

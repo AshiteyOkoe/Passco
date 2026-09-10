@@ -66,6 +66,107 @@ export interface AuthResponse {
   user: User;
 }
 
+export type CompetitionStatus = 'pending' | 'live' | 'finished' | 'cancelled';
+export type CompetitionParticipantStatus = 'invited' | 'accepted' | 'declined' | 'playing' | 'finished' | 'abandoned';
+export type NotificationType =
+  | 'competition_invite'
+  | 'competition_accepted'
+  | 'competition_declined'
+  | 'competition_started'
+  | 'competition_finished'
+  | 'competition_cancelled';
+
+export interface CompetitionParticipant {
+  id: string;
+  userId: string;
+  name: string;
+  status: CompetitionParticipantStatus;
+  isCreator: boolean;
+  startedAt: string | null;
+  submittedAt: string | null;
+  score: number;
+  correctAnswers: number;
+  answeredQuestions: number;
+  timeSpent: number;
+  answers?: Array<{ questionId: string; userAnswer?: unknown; correctAnswer?: unknown; isCorrect: boolean; subject?: string }>;
+}
+
+export interface Competition {
+  id: string;
+  createdBy: string;
+  creatorName?: string;
+  title: string;
+  subject: string;
+  classLevel: string;
+  totalQuestions: number;
+  timeMinutes: number;
+  maxParticipants: number;
+  questionIds: string[];
+  status: CompetitionStatus;
+  startedAt: string | null;
+  endedAt: string | null;
+  winnerId: string | null;
+  winnerName?: string | null;
+  createdAt: string;
+  participants: CompetitionParticipant[];
+  mine?: CompetitionParticipant | null;
+}
+
+export interface CompetitionQuestion {
+  id: string;
+  question: string;
+  type: QuestionType;
+  options: string[];
+  difficulty?: string;
+  subject?: string;
+}
+
+export interface CompetitionSession {
+  startedAt: string;
+  endsAt: string;
+  timeMinutes: number;
+  totalQuestions: number;
+}
+
+export interface UserNotification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  entityType: string;
+  entityId: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface CompetitionCreatePayload {
+  title?: string;
+  subject: string;
+  classLevel?: string;
+  totalQuestions: number;
+  timeMinutes: number;
+  inviteeIds: string[];
+}
+
+export interface AdminCompetitionRow {
+  id: string;
+  title: string;
+  subject: string;
+  creatorName: string;
+  status: CompetitionStatus;
+  totalQuestions: number;
+  timeMinutes: number;
+  maxParticipants: number;
+  createdAt: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  winnerId: string | null;
+  winnerName?: string | null;
+  participantCount: number;
+  finishedCount: number;
+}
+
 export interface UploadedDocument {
   id: string;
   originalName: string;

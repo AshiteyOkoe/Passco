@@ -4,13 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import {
   getStudentAnalytics, getInProgressAttempts, deleteQuizAttempt,
   getMyAssessmentResults, getLeaderboard, type LeaderboardEntry,
+  getMyCompetitions,
 } from '../services/api';
 import {
   Brain, Target, BookOpen, TrendingUp, Trophy,
   Sparkles, ArrowRight, History, BarChart3,
   ClipboardCheck, GraduationCap,
   Lock, Award, Star, Zap, Flame, Medal, AlertCircle,
-  Play, X, Users, FileText
+  Play, X, Users, FileText, Swords
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -468,7 +469,7 @@ export default function StudentDashboard() {
                       <span className="text-xs font-semibold text-blue-100">JHS Assessment</span>
                     </div>
                     <h2 className="text-lg font-bold text-white sm:text-xl">Take an Assessment</h2>
-                    <p className="mt-1 text-sm text-blue-100">Quiz, Mock Test, or Examination</p>
+                    <p className="mt-1 text-sm text-blue-100">Quiz, Mock Test, Examination, or Likely BECE</p>
                     <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition group-hover:bg-white/25 sm:mt-4">
                       <ClipboardCheck className="h-4 w-4" />
                       Start Now
@@ -567,6 +568,9 @@ export default function StudentDashboard() {
             </Link>
           </motion.div>
         </div>
+
+        {/* Quiz Competitions banner */}
+        <CompetitionChallengeCard />
 
         {/* Subject Performance */}
         {subjectProgress.length > 0 && (
@@ -1018,5 +1022,55 @@ function MetricCard({ icon: Icon, value, label, color, bg }: { icon: React.Compo
       <p className="text-xl font-bold text-slate-900 sm:text-2xl dark:text-white">{value}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
+  );
+}
+
+function CompetitionChallengeCard() {
+  const [invites, setInvites] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getMyCompetitions()
+      .then((res) => {
+        if (active) setInvites(res.openInvites);
+      })
+      .catch(() => {
+        if (active) setInvites(0);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <Link to="/competitions" className="group block">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 p-5 shadow-xl shadow-indigo-500/20 transition-all active:scale-[0.98] sm:p-6 sm:hover:shadow-2xl sm:hover:shadow-indigo-500/30 sm:hover:scale-[1.01]">
+        <Swords className="pointer-events-none absolute -right-4 -top-4 h-28 w-28 text-white/10" aria-hidden="true" />
+        <div className="relative z-10 flex items-center justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Swords className="h-4 w-4 text-indigo-200" aria-hidden="true" />
+              <span className="text-xs font-semibold text-indigo-100">Head-to-head learning</span>
+            </div>
+            <h2 className="text-lg font-bold text-white sm:text-xl">Quiz Competitions</h2>
+            <p className="mt-1 text-sm text-indigo-100">
+              Challenge up to 3 classmates to a timed quiz race. Highest score wins.
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {invites !== null && invites > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white text-indigo-700 px-3 py-1 text-xs font-bold">
+                <span className="h-2 w-2 rounded-full bg-indigo-500" aria-hidden="true" />
+                {invites} open invitation{invites === 1 ? '' : 's'}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition group-hover:bg-white/25">
+              Play Now
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }

@@ -6,7 +6,7 @@ import {
   BookOpen, Home, BarChart3, FileText, Library, PlusCircle,
   LogOut, Sun, Moon, ClipboardCheck, History,
   Building2, BookMarked, HelpCircle, TrendingUp, FileUp, User, Award, Gem,
-  Sparkles, CreditCard, LayoutDashboard, Quote, Settings, MessageSquare, Flag, Menu, X, ClipboardList
+  Sparkles, CreditCard, LayoutDashboard, Quote, Settings, MessageSquare, Flag, Menu, X, ClipboardList, Trophy
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -50,6 +50,7 @@ export default function Layout() {
     { to: '/analytics/performance', label: 'Performance', icon: TrendingUp },
     { to: '/results-dashboard', label: 'Results Dashboard', icon: LayoutDashboard },
     { to: '/achievements', label: 'Achievements', icon: Award },
+    { to: '/competitions', label: 'Competitions', icon: Trophy },
     { to: '/assessment/history', label: 'Results History', icon: History },
     { to: '/reports', label: 'Report Cards', icon: FileText },
     { to: '/subscription', label: 'Subscription', icon: CreditCard },
@@ -75,6 +76,7 @@ export default function Layout() {
         { to: '/admin/create-quiz', label: 'Create Quiz', icon: PlusCircle },
         { to: '/admin/questions', label: 'Question Bank', icon: Library },
         { to: '/admin/ai-generator', label: 'AI Generator', icon: Sparkles },
+        { to: '/admin/competitions', label: 'Competitions', icon: Trophy },
       ],
     },
     {

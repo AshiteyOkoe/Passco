@@ -43,6 +43,10 @@ import AdminAuditLogs from './pages/AdminAuditLogs';
 import AdminContactMessages from './pages/AdminContactMessages';
 import VerifyReport from './pages/VerifyReport';
 import ReportsPage from './pages/ReportsPage';
+import StudentCompetitions from './pages/StudentCompetitions';
+import CompetitionDetail from './pages/CompetitionDetail';
+import TakeCompetition from './pages/TakeCompetition';
+import AdminCompetitions from './pages/AdminCompetitions';
 import AdminReports from './pages/AdminReports';
 import AdminReportSettings from './pages/AdminReportSettings';
 import AdminDocumentRequests from './pages/AdminDocumentRequests';
@@ -145,6 +149,9 @@ export default function App() {
             <Route path="/assessment/result" element={<AssessmentResult />} />
             <Route path="/assessment/history" element={<AssessmentHistory />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/competitions" element={<StudentCompetitions />} />
+            <Route path="/competitions/:id" element={<CompetitionDetail />} />
+            <Route path="/competitions/:id/play" element={<TakeCompetition />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/subscription" element={<Subscription />} />
           </Route>
@@ -176,6 +183,7 @@ export default function App() {
             <Route path="reports" element={<AdminReports />} />
             <Route path="report-settings" element={<AdminReportSettings />} />
             <Route path="document-requests" element={<AdminDocumentRequests />} />
+            <Route path="competitions" element={<AdminCompetitions />} />
             <Route path="profile" element={<AdminProfile />} />
           </Route>
 
