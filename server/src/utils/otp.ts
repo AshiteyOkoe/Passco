@@ -96,11 +96,82 @@ export async function verifyOTP(email: string, code: string): Promise<boolean> {
   return true;
 }
 
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+
 export function smtpConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
+export function brevoApiConfigured(): boolean {
+  return Boolean(process.env.BREVO_API_KEY);
+}
+
+export function emailConfigured(): boolean {
+  return smtpConfigured() || brevoApiConfigured();
+}
+
+function otpHtml(code: string): string {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #4f46e5;">Passco Verification</h2>
+      <p>Your verification code is:</p>
+      <div style="background: #f1f5f9; padding: 16px; text-align: center; border-radius: 8px; margin: 16px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e293b;">${code}</span>
+      </div>
+      <p style="color: #64748b; font-size: 14px;">This code expires in 5 minutes. Do not share it with anyone.</p>
+    </div>
+  `;
+}
+
+async function sendViaBrevoApi(
+  email: string,
+  code: string
+): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+  try {
+    const res = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY || '',
+      },
+      body: JSON.stringify({
+        sender: { name: 'Passco', email: process.env.SMTP_FROM || 'noreply@passco.app' },
+        to: [{ email }],
+        subject: 'Passco - Your Verification Code',
+        htmlContent: otpHtml(code),
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return { sent: false, configured: true, error: `Brevo API ${res.status}: ${text.slice(0, 200)}` };
+    }
+    return { sent: true, configured: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { sent: false, configured: true, error: `Brevo API error: ${msg}` };
+  }
+}
+
 export async function testSMTPConnection(): Promise<{ ok: boolean; detail: string }> {
+  if (!emailConfigured()) {
+    return { ok: false, detail: 'No mail transport configured. Set BREVO_API_KEY or SMTP_HOST/SMTP_USER/SMTP_PASS.' };
+  }
+
+  if (brevoApiConfigured()) {
+    try {
+      const to = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+      const { sent, error } = await sendViaBrevoApi(to, '000000');
+      return sent
+        ? { ok: true, detail: `Brevo API verified (test email queued to ${to}).` }
+        : { ok: false, detail: error || 'Brevo API send failed' };
+    } catch (err) {
+      return { ok: false, detail: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
   if (!smtpConfigured()) {
     return { ok: false, detail: 'SMTP_HOST, SMTP_USER or SMTP_PASS is missing from the environment.' };
   }
@@ -125,6 +196,17 @@ export async function sendOTPEmail(
   email: string,
   code: string
 ): Promise<{ sent: boolean; configured: boolean; error?: string }> {
+  // Prefer the Brevo REST API (HTTPS/443) over SMTP: cloud hosts like Render
+  // frequently block egress to SMTP relay ports, while HTTPS egress always works.
+  if (brevoApiConfigured()) {
+    const result = await sendViaBrevoApi(email, code);
+    if (!result.sent) {
+      console.error('Failed to send email via Brevo API:', result.error);
+      console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
+    }
+    return result;
+  }
+
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
     return { sent: false, configured: false };
@@ -136,16 +218,7 @@ export async function sendOTPEmail(
       from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@passco.app',
       to: email,
       subject: 'Passco - Your Verification Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #4f46e5;">Passco Verification</h2>
-          <p>Your verification code is:</p>
-          <div style="background: #f1f5f9; padding: 16px; text-align: center; border-radius: 8px; margin: 16px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e293b;">${code}</span>
-          </div>
-          <p style="color: #64748b; font-size: 14px;">This code expires in 5 minutes. Do not share it with anyone.</p>
-        </div>
-      `,
+      html: otpHtml(code),
     });
     return { sent: true, configured: true };
   } catch (err) {

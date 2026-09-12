@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest } from '../types';
-import { createOTP, verifyOTP, sendOTPEmail, smtpConfigured } from '../utils/otp';
+import { createOTP, verifyOTP, sendOTPEmail, emailConfigured } from '../utils/otp';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../middleware/auth';
 import { grantTrial } from '../services/subscriptionService';
@@ -59,7 +59,7 @@ export async function sendOTP(req: AuthRequest, res: Response): Promise<void> {
 
     // SMTP unavailable: signal it to the client. The code is ONLY exposed in
     // non-production environments to keep local dev sign-ups working.
-    if (!smtpConfigured()) {
+    if (!emailConfigured()) {
       if (process.env.NODE_ENV === 'production') {
         console.error('Send OTP error: SMTP is not configured. To deliver verification codes, set SMTP_HOST/SMTP_USER/SMTP_PASS and a verified sender.');
         res.status(503).json({
