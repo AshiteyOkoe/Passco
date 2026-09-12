@@ -7,7 +7,7 @@ import {
   Swords, Check, Ban, Trophy, PlayCircle, Medal,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getAdminCommandCenter, getAnnouncements, getMyNotifications, markAllNotificationsRead, acceptCompetition, declineCompetition } from '../services/api';
+import { getAdminCommandCenter, getAnnouncements, getMyNotifications, markNotificationRead, acceptCompetition, declineCompetition } from '../services/api';
 import type { AdminCommandCenter, Announcement, UserNotification } from '../types';
 import { useToast } from './toast/ToastProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
@@ -58,6 +58,8 @@ export default function NotificationBell() {
         await declineCompetition(n.entityId);
         toast.success('Invite declined');
       }
+      markNotificationRead(n.id).catch(() => undefined);
+      setNotifications((prev) => (prev || []).map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
       getMyNotifications()
         .then((r) => setNotifications(r.notifications))
         .catch(console.error);
@@ -101,10 +103,16 @@ export default function NotificationBell() {
 
   useEffect(() => {
     if (!open || isAdmin) return;
-    if (notifications && notifications.some((n) => !n.isRead)) {
-      markAllNotificationsRead().catch(console.error);
-      setNotifications((prev) => (prev || []).map((n) => ({ ...n, isRead: true })));
-    }
+    if (!notifications || notifications.length === 0) return;
+    const toMark = notifications.filter((n) => !n.isRead && n.type !== 'competition_invite');
+    if (toMark.length === 0) return;
+    Promise.all(toMark.map((n) => markNotificationRead(n.id)))
+      .then(() => {
+        setNotifications((prev) =>
+          (prev || []).map((n) => (toMark.some((m) => m.id === n.id) ? { ...n, isRead: true } : n))
+        );
+      })
+      .catch(console.error);
   }, [open, notifications, isAdmin]);
 
   useEffect(() => {

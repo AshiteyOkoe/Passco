@@ -305,7 +305,16 @@ export default function CompetitionDetail() {
           <Users className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           <p>
             Set up is nearly done. This challenge cannot start until at least one classmate accepts your invite.
-            {competition.status === 'pending' && ' Share the link with them or wait for them to accept.'}
+            {' '}
+            {competition.status === 'pending' && (
+              (() => {
+                const waiting = competition.participants.filter((p) => p.status === 'invited').map((p) => p.name);
+                if (waiting.length > 0) {
+                  return `Waiting on ${waiting.join(', ')} to accept. Share the link with them if they haven't seen it.`;
+                }
+                return 'Share the link with them or wait for them to accept.';
+              })()
+            )}
           </p>
         </motion.div>
       )}

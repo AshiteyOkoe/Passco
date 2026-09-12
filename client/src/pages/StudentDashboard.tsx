@@ -11,7 +11,7 @@ import {
   Sparkles, ArrowRight, History, BarChart3,
   ClipboardCheck, GraduationCap,
   Lock, Award, Star, Zap, Flame, Medal, AlertCircle,
-  Play, X, Users, FileText, Swords
+  Play, X, Users, FileText, Swords, Bell
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -1059,17 +1059,25 @@ function CompetitionChallengeCard() {
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
             {invites !== null && invites > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white text-indigo-700 px-3 py-1 text-xs font-bold">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white text-indigo-700 px-3 py-1 text-xs font-bold shadow-sm">
                 <span className="h-2 w-2 rounded-full bg-indigo-500" aria-hidden="true" />
                 {invites} open invitation{invites === 1 ? '' : 's'}
               </span>
             )}
             <span className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition group-hover:bg-white/25">
-              Play Now
+              {invites !== null && invites > 0 ? `Respond to invite${invites === 1 ? '' : 's'}` : 'Play Now'}
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </span>
           </div>
         </div>
+        {invites !== null && invites > 0 && (
+          <div className="relative z-10 mt-4 flex items-center gap-2.5 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+            <Bell className="h-5 w-5 shrink-0 text-white" aria-hidden="true" />
+            <p className="text-sm font-medium text-white">
+              You've been challenged. Open the competition to accept before the race starts.
+            </p>
+          </div>
+        )}
       </div>
     </Link>
   );
