@@ -207,6 +207,14 @@ export async function sendOTPEmail(
     return result;
   }
 
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      'Send OTP error: BREVO_API_KEY is missing in production. ' +
+      'Refusing to fall back to SMTP because cloud (Render) egress to SMTP relay ports is unreliable and can hang sign-up.'
+    );
+    return { sent: false, configured: false };
+  }
+
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.log(`\n====== OTP CODE FOR ${email}: ${code} ======\n`);
     return { sent: false, configured: false };
