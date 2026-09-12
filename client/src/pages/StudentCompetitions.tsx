@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy, Plus, Users, Clock, ListChecks, Search, X, Sparkles, Swords,
   Check, Ban, ChevronRight, Loader2, Layers, Medal, PlayCircle, Mail,
+  Building2, AtSign,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/toast/ToastProvider';
@@ -382,9 +383,9 @@ function CreateCompetitionModal({
   const [classLevel, setClassLevel] = useState('');
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [timeMinutes, setTimeMinutes] = useState(10);
-  const [invitees, setInvitees] = useState<Array<{ id: string; name: string; classLevel: string }>>([]);
+  const [invitees, setInvitees] = useState<Array<{ id: string; name: string; school: string; classLevel: string; username: string | null }>>([]);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Array<{ id: string; name: string; classLevel: string; avatar: string | null }>>([]);
+  const [results, setResults] = useState<Array<{ id: string; name: string; school: string; classLevel: string; username: string | null; avatar: string | null }>>([]);
   const [searching, setSearching] = useState(false);
   const searchTimer = useRef<number | undefined>(undefined);
 
@@ -408,7 +409,7 @@ function CreateCompetitionModal({
     return () => window.clearTimeout(searchTimer.current);
   }, [query, open]);
 
-  const addInvitee = (p: { id: string; name: string; classLevel: string }) => {
+  const addInvitee = (p: { id: string; name: string; school: string; classLevel: string; username: string | null }) => {
     if (invitees.some((i) => i.id === p.id)) return;
     if (invitees.length >= 3) {
       toast.error('Max 3 classmates', 'Competitions are limited to 4 players total.');
@@ -610,11 +611,15 @@ function CreateCompetitionModal({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by name…"
+                placeholder="Search by name, @username, or school…"
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
               {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" aria-hidden="true" />}
             </div>
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+              <AtSign className="h-3.5 w-3.5" aria-hidden="true" />
+              Search by name, @username, or school — school helps when names match.
+            </p>
 
             {results.length > 0 && (
               <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
@@ -628,10 +633,34 @@ function CreateCompetitionModal({
                       onClick={() => addInvitee(p)}
                       className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left transition hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800"
                     >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-slate-800 dark:text-white">{p.name}</span>
-                        <span className="block text-xs text-slate-400">
-                          {p.classLevel ? `JHS ${p.classLevel.slice(-1)}` : 'Student'}
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                          {p.avatar ? (
+                            <img src={p.avatar} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-semibold">{p.name.charAt(0)}</span>
+                          )}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-slate-800 dark:text-white">{p.name}</span>
+                          <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                            {p.school && (
+                              <span className="inline-flex min-w-0 items-center gap-1">
+                                <Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{p.school}</span>
+                              </span>
+                            )}
+                            {p.username && (
+                              <span className="inline-flex shrink-0 items-center gap-0.5">
+                                <AtSign className="h-3 w-3" aria-hidden="true" />
+                                {p.username}
+                              </span>
+                            )}
+                            {(p.school || p.username) && <span aria-hidden="true">·</span>}
+                            <span className="shrink-0">
+                              {p.classLevel ? `JHS ${p.classLevel.slice(-1)}` : 'Student'}
+                            </span>
+                          </span>
                         </span>
                       </span>
                       <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">

@@ -317,18 +317,21 @@ export async function searchParticipants(req: AuthRequest, res: Response): Promi
       res.json({ participants: [] });
       return;
     }
+    const escaped = q.replace(/[%,]/g, '');
     const { data } = await supabase
       .from('users')
-      .select('id, name, class_level, avatar')
+      .select('id, name, institution, class_level, username, avatar')
       .eq('role', 'student')
-      .ilike('name', `%${q}%`)
+      .or(`name.ilike.%${escaped}%,institution.ilike.%${escaped}%,username.ilike.%${escaped}%`)
       .neq('id', userId)
       .limit(10);
     res.json({
       participants: (data || []).map((u) => ({
         id: u.id,
         name: u.name,
+        school: u.institution || '',
         classLevel: u.class_level || '',
+        username: u.username || null,
         avatar: u.avatar || null,
       })),
     });

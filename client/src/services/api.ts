@@ -937,7 +937,14 @@ export async function rejectDocumentRequest(id: string, note: string): Promise<{
 }
 
 export async function searchCompetitionParticipants(q: string): Promise<{
-  participants: Array<{ id: string; name: string; classLevel: string; avatar: string | null }>;
+  participants: Array<{
+    id: string;
+    name: string;
+    school: string;
+    classLevel: string;
+    username: string | null;
+    avatar: string | null;
+  }>;
 }> {
   const res = await api.get('/competitions/participants/search', { params: { q } });
   return res.data;
