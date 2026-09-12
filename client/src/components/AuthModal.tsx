@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { sendOTP, verifyOTPAndRegister } from '../services/api';
 import { useModalA11y } from '../hooks/useModalA11y';
-import { LogIn, UserPlus, Mail, Lock, User, Building2, GraduationCap, Eye, EyeOff, AlertCircle, X, BookOpen, Chrome, Github, Calendar, Shield, Loader2 } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, User, Building2, GraduationCap, Eye, EyeOff, AlertCircle, X, BookOpen, Calendar, Shield, Loader2 } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -501,42 +501,6 @@ export default function AuthModal({ isOpen, initialTab = 'login', onClose }: Aut
                   </motion.form>
                 )}
               </AnimatePresence>
-
-              {/* Social Login */}
-              <div className="mt-6">
-                <div className="relative mb-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-white px-2 text-slate-400 dark:bg-slate-900 dark:text-slate-500">
-                      Or continue with
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.location.href = '/api/auth/google';
-                    }}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                  >
-                    <Chrome className="h-4 w-4" />
-                    Google
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError('GitHub login coming soon. Use email/password or Google for now.');
-                    }}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                  >
-                    <Github className="h-4 w-4" />
-                    GitHub
-                  </button>
-                </div>
-              </div>
             </div>
           </motion.div>
         </div>
