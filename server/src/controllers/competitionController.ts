@@ -502,7 +502,7 @@ async function groupByCompetition(
       winnerId: c.winner_id,
       createdAt: c.created_at,
       participants: participants.map((p) => serializeParticipant(p, allNames)),
-      mine,
+      mine: mine ? serializeParticipant(mine, allNames) : null,
     };
   });
 }
@@ -580,7 +580,7 @@ export async function getCompetition(req: AuthRequest, res: Response): Promise<v
         winnerName: competition.winner_id ? names.get(competition.winner_id) || '' : null,
         createdAt: competition.created_at,
         participants: participants.map((p) => serializeParticipant(p, names)),
-        mine,
+        mine: mine ? serializeParticipant(mine, names) : null,
       },
     });
   } catch (error) {
@@ -615,10 +615,15 @@ export async function acceptCompetition(req: AuthRequest, res: Response): Promis
       res.status(400).json({ message: 'Competition is full' });
       return;
     }
-    await supabase
+    const { error: acceptError } = await supabase
       .from('competition_participants')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
       .eq('id', participant.id);
+    if (acceptError) {
+      console.error('Accept competition update error:', acceptError);
+      res.status(500).json({ message: 'Failed to accept invite' });
+      return;
+    }
     const { data: me } = await supabase.from('users').select('name').eq('id', req.user!.id).maybeSingle();
     if (me) {
       await pushNotification(
