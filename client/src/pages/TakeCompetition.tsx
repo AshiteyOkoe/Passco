@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ChevronLeft, ChevronRight, Loader2, Send, Trophy, Clock, ListChecks,
-  Check, CheckCircle2, XCircle, AlertTriangle, Flag,
+  Check, CheckCircle2, XCircle, AlertTriangle, Flag, RotateCcw,
 } from 'lucide-react';
 import { useToast } from '../components/toast/ToastProvider';
 import AnimatedSpinner from '../components/AnimatedSpinner';
@@ -46,12 +46,15 @@ export default function TakeCompetition() {
   const [result, setResult] = useState<SubmittedResult | null>(null);
   const [completionStatus, setCompletionStatus] = useState<'live' | 'finished' | null>(null);
   const [livePromptDismissed, setLivePromptDismissed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const startedRef = useRef<string | null>(null);
   const submittedRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
+    setError('');
     startCompetitionSession(id)
       .then((res) => {
         if (!mounted) return;
@@ -70,7 +73,7 @@ export default function TakeCompetition() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, retryKey]);
 
   const submit = useCallback(
     async (onTimeout = false) => {
@@ -235,10 +238,36 @@ export default function TakeCompetition() {
   if (!session || questions.length === 0) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-        <AnimatedSpinner label="Loading questions..." />
-        <p className="mt-3 text-center text-xs text-slate-400">
-          If this takes too long, <Link to={`/competitions/${id}`} className="text-indigo-500 underline">return to the competition</Link>.
-        </p>
+        <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-900">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-500/10">
+            <AlertTriangle className="h-7 w-7 text-amber-500" aria-hidden="true" />
+          </span>
+          <p className="mt-4 text-base font-semibold text-slate-800 dark:text-white">Couldn't load this test yet</p>
+          <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+            We couldn't fetch your questions. This sometimes happens right at the start of a live competition — try again, or check the competition page.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setRetryKey((k) => k + 1)}
+              className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" /> Try again
+            </button>
+            <Link
+              to={`/competitions/${id}`}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              View competition
+            </Link>
+            <Link
+              to="/competitions"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Back to competitions
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
