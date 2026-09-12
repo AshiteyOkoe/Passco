@@ -7,14 +7,16 @@ import {
   Swords, Check, Ban, Trophy, PlayCircle, Medal,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getAdminCommandCenter, getAnnouncements, getMyNotifications, markAllNotificationsRead } from '../services/api';
+import { getAdminCommandCenter, getAnnouncements, getMyNotifications, markAllNotificationsRead, acceptCompetition, declineCompetition } from '../services/api';
 import type { AdminCommandCenter, Announcement, UserNotification } from '../types';
+import { useToast } from './toast/ToastProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
 export default function NotificationBell() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const toast = useToast();
 
   const [open, setOpen] = useState(false);
   const [cmd, setCmd] = useState<AdminCommandCenter | null>(null);
@@ -46,6 +48,23 @@ export default function NotificationBell() {
 
   const isDesktop = useMediaQuery('(min-width: 640px)');
   const close = () => setOpen(false);
+
+  const respondToInvite = async (n: UserNotification, action: 'accept' | 'decline') => {
+    try {
+      if (action === 'accept') {
+        await acceptCompetition(n.entityId);
+        toast.success('Invite accepted', 'You are in the competition.');
+      } else {
+        await declineCompetition(n.entityId);
+        toast.success('Invite declined');
+      }
+      getMyNotifications()
+        .then((r) => setNotifications(r.notifications))
+        .catch(console.error);
+    } catch {
+      toast.error(action === 'accept' ? 'Could not accept invite' : 'Could not decline invite');
+    }
+  };
 
   const { dialogRef } = useModalA11y(open && !isDesktop, { onClose: close });
 
@@ -222,9 +241,31 @@ export default function NotificationBell() {
             </span>
           );
           return n.entityId ? (
-            <Link key={n.id} to={`/competitions/${n.entityId}`} onClick={close} className="block rounded-xl px-3 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-800">
-              {body}
-            </Link>
+            <div key={n.id} className="block rounded-xl px-3 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-800">
+              <Link to={`/competitions/${n.entityId}`} onClick={close} className="block">
+                {body}
+              </Link>
+              {n.type === 'competition_invite' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void respondToInvite(n, 'accept')}
+                    aria-label={`Accept invite to ${n.title}`}
+                    className="inline-flex h-10 min-w-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white transition hover:bg-indigo-700"
+                  >
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" /> Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void respondToInvite(n, 'decline')}
+                    aria-label={`Decline invite to ${n.title}`}
+                    className="inline-flex h-10 min-w-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    <Ban className="h-3.5 w-3.5" aria-hidden="true" /> Decline
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <div key={n.id} className="block rounded-xl px-3 py-2">
               {body}
