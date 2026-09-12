@@ -383,6 +383,14 @@ export default function Profile() {
             </div>
           </div>
 
+          {/* ===== Accuracy Notice ===== */}
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>
+              <span className="font-semibold">Please ensure your details are accurate.</span> Your name, gender, date of birth, institution and class level <span className="font-semibold">cannot be edited</span> after registration. Only your profile photo can be changed later.
+            </p>
+          </div>
+
           {/* ===== Quick Nav ===== */}
           <div className="sticky top-14 z-30 -mx-4 mt-6 overflow-x-auto bg-slate-50/90 px-4 py-3 backdrop-blur dark:bg-slate-950/90 sm:top-16">
             <div className="flex w-max gap-2">
@@ -423,8 +431,8 @@ export default function Profile() {
           </span>
         )}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Full Name" icon={User}>
-              <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Your full name" />
+            <Field label="Full Name (read-only)" icon={User}>
+              <div className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">{name || '—'}</div>
             </Field>
             <Field label="Email Address (read-only)" icon={Mail}>
               <div className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">{user?.email || '—'}</div>
@@ -435,15 +443,15 @@ export default function Profile() {
             <Field label="Username" icon={AtSign}>
               <input value={username} onChange={(e) => setUsername(e.target.value)} className={inputCls} placeholder="Optional username" />
             </Field>
-            <Field label="Gender" icon={User}>
-              <select value={gender} onChange={(e) => setGender(e.target.value as 'male' | 'female' | '')} className={cn(inputCls, 'capitalize')}>
-                <option value="">Prefer not to say</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
+            <Field label="Gender (read-only)" icon={User}>
+              <div className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm capitalize text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+                {gender ? gender : 'Prefer not to say'}
+              </div>
             </Field>
-            <Field label="Date of Birth" icon={Calendar}>
-              <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputCls} />
+            <Field label="Date of Birth (read-only)" icon={Calendar}>
+              <div className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+                {dateOfBirth ? new Date(`${dateOfBirth}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+              </div>
             </Field>
           </div>
           <button
@@ -461,13 +469,10 @@ export default function Profile() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Current Class Level</label>
-              <select value={classLevel} onChange={(e) => { setClassLevel(e.target.value); updateProfile({ classLevel: e.target.value }).catch(() => {}); }} className={cn(inputCls, 'capitalize')}>
-                <option value="">Select class...</option>
-                {(['jhs1', 'jhs2', 'jhs3'] as const).map((c) => (
-                  <option key={c} value={c}>{getClassLabel(c)}</option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Your class level determines the questions you'll be asked.</p>
+              <div className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm capitalize text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+                {classLevel ? getClassLabel(classLevel) : 'Not set'}
+              </div>
+              <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Your class level determines the questions you'll be asked. It cannot be changed after registration.</p>
             </div>
             <div>
               <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Subjects Covered</p>
